@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-compact">
+    <div class="eyebrow">Method and limitations</div>
+    <h1>What the system means, and what it does not mean.</h1>
+    <p class="hero-copy">
+      Discovery Intelligence is a decision-support product for helping researchers prioritize molecules for testing.
+      It is not a replacement for experiments or domain expertise.
+    </p>
+  </section>
+
+  <section class="card-grid">
+    <article class="panel">
+      <h2>Current Pipeline</h2>
+      <p>
+        The system ingests molecular data, builds RDKit-derived features, trains or reuses a calibrated classifier,
+        scores confidence and uncertainty, estimates novelty relative to known chemistry, and ranks molecules by
+        experiment value and review priority.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Confidence</h2>
+      <p>
+        Confidence is the model’s estimated strength for a predicted label. Higher confidence can support screening,
+        but it still does not guarantee real-world experimental behavior.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Uncertainty</h2>
+      <p>
+        Uncertainty indicates where the model is less sure. High-uncertainty molecules are often more useful for
+        learning and review than for immediate, high-trust claims.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Novelty</h2>
+      <p>
+        Novelty reflects how dissimilar a molecule is from chemistry the system already knows. High novelty can be
+        valuable for exploration, but it also means the model may be operating farther from familiar data.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Experiment Value</h2>
+      <p>
+        Experiment value is a prioritization signal that combines uncertainty, novelty, and confidence-related terms
+        to suggest which molecules may be most useful to test next.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Appropriate Use</h2>
+      <p>
+        Use the system to prioritize review and testing queues, compare candidate lists, and identify where the model
+        sees high-value follow-up work. It should support planning, not replace lab validation.
+      </p>
+    </article>
+  </section>
+
+  <section class="notice-panel">
+    <strong>Limitations</strong>
+    <p>
+      Predictions are model-guided recommendations, not experimental truth. Results should be used to prioritize
+      testing, not replace experiments. Performance is strongest for chemistry similar to the system’s training data,
+      and low-quality uploads or weak label coverage can reduce reliability.
+    </p>
+  </section>
+{% endblock %}

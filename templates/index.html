@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero">
+    <div class="eyebrow">Decision-support system</div>
+    <h1>Prioritize which molecules are worth testing next.</h1>
+    <p class="hero-copy">
+      Discovery Intelligence helps researchers use confidence, uncertainty, novelty, and experiment value
+      to rank molecules for review and testing. It is designed to guide decisions, not replace experimental work.
+    </p>
+    <div class="cta-row">
+      <a class="button button-primary" href="/upload">Upload Data</a>
+      <a class="button button-secondary" href="/discovery">View Discovery Results</a>
+      <a class="button button-secondary" href="/dashboard">Open Dashboard</a>
+    </div>
+  </section>
+
+  <section class="card-grid metrics-grid">
+    <article class="panel">
+      <span class="panel-label">Current Top K</span>
+      <strong>{{ decision_output.summary.top_k }}</strong>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Current Candidate Count</span>
+      <strong>{{ decision_output.summary.candidate_count }}</strong>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Current Top Experiment Value</span>
+      <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Current Snapshot</span>
+      <strong>{{ decision_output.source_path or "No stored snapshot" }}</strong>
+    </article>
+  </section>
+
+  <section class="card-grid">
+    <article class="panel">
+      <h2>What This System Does</h2>
+      <p>
+        It helps researchers review uploaded molecules, score them, and surface candidates that are most useful
+        to test next based on confidence, uncertainty, novelty, and experiment value.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>How It Works</h2>
+      <p class="pipeline-line">Upload data → validate columns → score or generate → rank → review</p>
+      <p>
+        The current pipeline uses RDKit features, calibrated classification, and structured ranking logic.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>What You Can Upload</h2>
+      <p>
+        CSV files with a <code>smiles</code> column and optional fields such as labels, molecule IDs, source, and notes.
+        The guided upload flow helps map columns before analysis begins.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>What Outputs You Receive</h2>
+      <p>
+        Ranked candidates, review-ready statuses, explanations, warnings, provenance, and structured JSON artifacts
+        for discovery output, analysis reports, and review queues.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Who It Is For</h2>
+      <p>
+        This interface is for researchers who want support deciding which molecules deserve testing or review next,
+        especially when screening or comparing candidate sets.
+      </p>
+    </article>
+    <article class="panel">
+      <h2>Current Limitations</h2>
+      <p>
+        Predictions are model-guided recommendations, not experimental truth. Performance is strongest for chemistry
+        similar to the training data, and low-quality or weakly labeled uploads reduce recommendation quality.
+      </p>
+    </article>
+  </section>
+
+  <section class="notice-panel">
+    <strong>What it does not claim</strong>
+    <p>
+      This is not a truth engine, simulator, autonomous invention platform, or replacement for chemists.
+      It should be used to prioritize testing and review, not to replace experiments.
+    </p>
+  </section>
+{% endblock %}

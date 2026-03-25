@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-compact">
+    <div class="eyebrow">Integrated dashboard</div>
+    <h1>Understand system behavior and recommendation patterns.</h1>
+    <p class="hero-copy">
+      This dashboard runs inside the website itself. It summarizes dataset state, recommendation distributions,
+      and review workflow activity for the current public snapshot or a specific upload session.
+    </p>
+  </section>
+
+  {% if dashboard.warnings %}
+    <section class="warning-stack">
+      {% for warning in dashboard.warnings %}
+        <article class="warning-card">
+          <strong>Run warning</strong>
+          <p>{{ warning }}</p>
+        </article>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="card-grid metrics-grid">
+    {% for card in dashboard.cards %}
+      <article class="panel">
+        <span class="panel-label">{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="dashboard-grid">
+    {% for chart in dashboard.charts %}
+      <article class="panel chart-panel">
+        <h2>{{ chart.title }}</h2>
+        <p class="helper-copy">{{ chart.description }}</p>
+        <div class="chart-shell">{{ chart.chart_html | safe }}</div>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Top Experiment Candidates</h2>
+        <p class="helper-copy">These are the current highest-priority molecules for review or testing.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>SMILES</th>
+            <th>Confidence</th>
+            <th>Uncertainty</th>
+            <th>Novelty</th>
+            <th>Experiment Value</th>
+            <th>Bucket</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for candidate in dashboard.top_candidates %}
+            <tr>
+              <td>{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer or "-" }}</td>
+              <td class="smiles-cell">{{ candidate.smiles }}</td>
+              <td>{{ "%.3f"|format(candidate.confidence) }}</td>
+              <td>{{ "%.3f"|format(candidate.uncertainty) }}</td>
+              <td>{{ "%.3f"|format(candidate.novelty) }}</td>
+              <td>{{ "%.3f"|format(candidate.experiment_value) }}</td>
+              <td>{{ candidate.bucket or candidate.selection_bucket }}</td>
+              <td>{{ candidate.status or "suggested" }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="empty-cell">No ranked candidates are available yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

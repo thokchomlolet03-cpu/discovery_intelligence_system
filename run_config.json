@@ -1,0 +1,73 @@
+{
+  "model": {
+    "random_state": 42,
+    "n_estimators": 200,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced_subsample",
+    "test_size": 0.2,
+    "evaluation_cv_splits": 5,
+    "calibration_methods": [
+      "isotonic",
+      "sigmoid"
+    ],
+    "calibration_cv": 3,
+    "probability_clip": 1e-06
+  },
+  "generator": {
+    "candidate_pool_multiplier": 3,
+    "max_attempt_multiplier": 50,
+    "prefer_balanced_sources": true,
+    "reference_similarity_threshold": 0.85,
+    "batch_similarity_threshold": 0.85,
+    "min_mw": 50.0,
+    "max_mw": 500.0,
+    "functional_groups": [
+      "O",
+      "N",
+      "C(=O)O"
+    ],
+    "chain_extensions": [
+      "C",
+      "CC",
+      "CO",
+      "OC"
+    ],
+    "ring_fragments": [
+      "c1ccccc1"
+    ]
+  },
+  "acquisition": {
+    "exploit_fraction": 0.4,
+    "uncertainty_fraction": 0.3,
+    "novelty_fraction": 0.3,
+    "w_conf": 0.5,
+    "w_novelty": 0.3,
+    "w_uncertainty": 0.2
+  },
+  "pseudo_label": {
+    "positive": 0.7,
+    "negative": 0.3,
+    "min_confidence_std": 0.05,
+    "min_confidence_span": 0.25
+  },
+  "feasibility": {
+    "max_mw": 1000.0,
+    "max_atoms": 80,
+    "max_rings": 5
+  },
+  "decision": {
+    "top_k": 10,
+    "high_risk_uncertainty": 0.7,
+    "low_risk_confidence": 0.8,
+    "w_uncertainty": 0.5,
+    "w_novelty": 0.3,
+    "w_low_confidence": 0.2
+  },
+  "loop": {
+    "iterations": 3,
+    "candidates_per_round": 30,
+    "feedback_per_class": 5,
+    "seed": 42,
+    "dry_run": false
+  }
+}

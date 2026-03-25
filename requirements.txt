@@ -1,0 +1,14 @@
+numpy<2
+pandas<3
+scikit-learn<1.6
+shap<0.45
+numba<0.60
+llvmlite<0.43
+joblib
+rdkit-pypi
+streamlit
+plotly
+fastapi
+uvicorn
+jinja2
+python-multipart

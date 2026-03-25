@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-compact">
+    <div class="eyebrow">Guided upload</div>
+    <h1>Upload and analyze molecular data safely.</h1>
+    <p class="hero-copy">
+      This workflow is designed to reduce format mistakes, clarify intent, and make it explicit whether your upload
+      should stay private or be allowed to improve the system.
+    </p>
+  </section>
+
+  <section class="step-shell">
+    <article class="panel">
+      <div class="step-header">
+        <span class="step-number">1</span>
+        <div>
+          <h2>Input Type</h2>
+          <p>Select the kind of dataset you are providing.</p>
+        </div>
+      </div>
+      <div class="choice-grid" id="input-type-options">
+        <label class="choice-card active">
+          <input type="radio" name="input_type" value="experimental_results" checked />
+          <strong>Experimental results</strong>
+          <span>Use when the CSV contains measured outcomes or assay results.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="input_type" value="known_labeled_molecules" />
+          <strong>Known labeled molecules</strong>
+          <span>Use when the file is a labeled set for model-guided discovery.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="input_type" value="molecules_to_screen_only" />
+          <strong>Molecules to screen only</strong>
+          <span>Use when you mainly want predictions or ranking for uploaded molecules.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="input_type" value="candidate_list_for_ranking" />
+          <strong>Candidate list for ranking</strong>
+          <span>Use when you already have a candidate set and want prioritization support.</span>
+        </label>
+      </div>
+      <div class="upload-form">
+        <label class="file-picker" for="dataset-file">
+          <span>Select CSV file</span>
+          <input id="dataset-file" name="file" type="file" accept=".csv" required />
+        </label>
+        <button class="button button-primary" id="inspect-button" type="button">Inspect upload</button>
+      </div>
+      <div id="inspect-status" class="status-box muted">No file has been inspected yet.</div>
+    </article>
+
+    <article class="panel hidden" id="mapping-panel">
+      <div class="step-header">
+        <span class="step-number">2</span>
+        <div>
+          <h2>Column Mapping</h2>
+          <p>Confirm which columns correspond to the required and optional fields.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label>
+          <span>SMILES</span>
+          <select id="map-smiles"></select>
+        </label>
+        <label>
+          <span>Biodegradable label</span>
+          <select id="map-biodegradable"></select>
+        </label>
+        <label>
+          <span>Molecule name / ID</span>
+          <select id="map-molecule-id"></select>
+        </label>
+        <label>
+          <span>Source</span>
+          <select id="map-source"></select>
+        </label>
+        <label>
+          <span>Notes</span>
+          <select id="map-notes"></select>
+        </label>
+      </div>
+    </article>
+
+    <article class="panel hidden" id="validation-panel">
+      <div class="step-header">
+        <span class="step-number">3</span>
+        <div>
+          <h2>Validation Summary</h2>
+          <p>Review the parsed file before analysis runs.</p>
+        </div>
+      </div>
+      <div class="card-grid metrics-grid" id="validation-grid"></div>
+      <div id="validation-warning" class="notice-panel hidden"></div>
+      <div class="table-wrap">
+        <table id="preview-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="panel hidden" id="intent-panel">
+      <div class="step-header">
+        <span class="step-number">4</span>
+        <div>
+          <h2>User Intent</h2>
+          <p>Select the outcome you want from this run.</p>
+        </div>
+      </div>
+      <div class="choice-grid" id="intent-options">
+        <label class="choice-card active">
+          <input type="radio" name="intent" value="predict_labels" checked />
+          <strong>Predict labels</strong>
+          <span>Use the current workflow to estimate likely labels for uploaded molecules.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="intent" value="rank_uploaded_molecules" />
+          <strong>Rank by test value</strong>
+          <span>Prioritize uploaded molecules using the decision-support scores.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="intent" value="generate_candidates" />
+          <strong>Generate suggestions</strong>
+          <span>Create new candidate suggestions when the upload has enough label coverage.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="intent" value="explore_uncertain" />
+          <strong>Explore uncertain molecules</strong>
+          <span>Prioritize molecules that are more useful for learning and review.</span>
+        </label>
+      </div>
+    </article>
+
+    <article class="panel hidden" id="mode-panel">
+      <div class="step-header">
+        <span class="step-number">5</span>
+        <div>
+          <h2>Scoring Mode</h2>
+          <p>Adjust ranking emphasis to match your current review strategy.</p>
+        </div>
+      </div>
+      <div class="choice-grid" id="mode-options">
+        <label class="choice-card">
+          <input type="radio" name="scoring_mode" value="conservative" />
+          <strong>Conservative</strong>
+          <span>Higher emphasis on confidence and lower emphasis on exploratory behavior.</span>
+        </label>
+        <label class="choice-card active">
+          <input type="radio" name="scoring_mode" value="balanced" checked />
+          <strong>Balanced</strong>
+          <span>Balanced ranking across confidence, uncertainty, novelty, and test value.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="scoring_mode" value="exploratory" />
+          <strong>Exploratory</strong>
+          <span>Higher emphasis on novelty and uncertainty for broader learning.</span>
+        </label>
+      </div>
+    </article>
+
+    <article class="panel hidden" id="consent-panel">
+      <div class="step-header">
+        <span class="step-number">6</span>
+        <div>
+          <h2>Consent For Learning</h2>
+          <p>Your data will not be added to the learning queue unless you opt in explicitly.</p>
+        </div>
+      </div>
+      <div class="choice-grid" id="consent-options">
+        <label class="choice-card active">
+          <input type="radio" name="consent_choice" value="private" checked />
+          <strong>Keep my uploaded data private</strong>
+          <span>The run stays in its session folder and is not added to the learning queue.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="consent_choice" value="allow_learning" />
+          <strong>Allow my uploaded data to improve the system</strong>
+          <span>Usable labeled rows are copied into the explicit feedback queue.</span>
+        </label>
+      </div>
+      <button class="button button-primary" id="analyze-button" type="button">Run analysis</button>
+      <div id="analysis-status" class="status-box muted">Inspect a file before analysis.</div>
+    </article>
+  </section>
+
+  <section id="result-shell" class="result-shell hidden">
+    <div class="card-grid metrics-grid" id="summary-grid"></div>
+    <div id="warnings-shell" class="warning-stack"></div>
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Prioritized Candidates</h2>
+          <p class="helper-copy">Review these as recommendations for testing or further expert review.</p>
+        </div>
+        <span id="result-mode" class="pill"></span>
+      </div>
+      <div class="cta-row">
+        <a class="button button-secondary hidden" id="discovery-link" href="#">Open session results</a>
+        <a class="button button-secondary hidden" id="dashboard-link" href="#">Open session dashboard</a>
+      </div>
+      <div class="table-wrap">
+        <table id="result-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>SMILES</th>
+              <th>Confidence</th>
+              <th>Uncertainty</th>
+              <th>Novelty</th>
+              <th>Experiment Value</th>
+              <th>Bucket</th>
+              <th>Risk</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Raw Result</h2>
+      <pre id="result-json" class="json-view"></pre>
+    </div>
+  </section>
+
+  <script>
+    const state = {
+      sessionId: null,
+      previewRows: [],
+      columns: [],
+    };
+
+    const inspectButton = document.getElementById("inspect-button");
+    const analyzeButton = document.getElementById("analyze-button");
+    const inspectStatus = document.getElementById("inspect-status");
+    const analysisStatus = document.getElementById("analysis-status");
+    const mappingPanel = document.getElementById("mapping-panel");
+    const validationPanel = document.getElementById("validation-panel");
+    const intentPanel = document.getElementById("intent-panel");
+    const modePanel = document.getElementById("mode-panel");
+    const consentPanel = document.getElementById("consent-panel");
+    const validationGrid = document.getElementById("validation-grid");
+    const validationWarning = document.getElementById("validation-warning");
+    const previewTableHead = document.querySelector("#preview-table thead");
+    const previewTableBody = document.querySelector("#preview-table tbody");
+    const resultShell = document.getElementById("result-shell");
+    const summaryGrid = document.getElementById("summary-grid");
+    const warningsShell = document.getElementById("warnings-shell");
+    const resultMode = document.getElementById("result-mode");
+    const resultTableBody = document.querySelector("#result-table tbody");
+    const resultJson = document.getElementById("result-json");
+    const discoveryLink = document.getElementById("discovery-link");
+    const dashboardLink = document.getElementById("dashboard-link");
+
+    const mappingFields = [
+      ["smiles", "map-smiles"],
+      ["biodegradable", "map-biodegradable"],
+      ["molecule_id", "map-molecule-id"],
+      ["source", "map-source"],
+      ["notes", "map-notes"],
+    ];
+
+    const selectValue = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
+    const mappingPayload = () => Object.fromEntries(mappingFields.map(([field, id]) => [field, document.getElementById(id).value || null]));
+    const formatNumber = (value) => {
+      const numeric = Number(value ?? 0);
+      return Number.isFinite(numeric) ? numeric.toFixed(3) : "-";
+    };
+
+    const showWorkflow = () => {
+      [mappingPanel, validationPanel, intentPanel, modePanel, consentPanel].forEach((panel) => panel.classList.remove("hidden"));
+    };
+
+    const renderChoices = (containerId) => {
+      const inputs = document.querySelectorAll(`#${containerId} input[type="radio"]`);
+      inputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          inputs.forEach((item) => item.closest(".choice-card").classList.toggle("active", item.checked));
+        });
+      });
+    };
+    ["input-type-options", "intent-options", "mode-options", "consent-options"].forEach(renderChoices);
+
+    const renderSelectOptions = (id, columns, selected) => {
+      const select = document.getElementById(id);
+      select.innerHTML = `<option value="">Not mapped</option>${columns.map((column) => `
+        <option value="${column}" ${selected === column ? "selected" : ""}>${column}</option>
+      `).join("")}`;
+      select.addEventListener("change", refreshValidation);
+    };
+
+    const renderValidation = (summary) => {
+      const items = [
+        ["Total rows", summary.total_rows],
+        ["Valid SMILES", summary.valid_smiles_count],
+        ["Invalid SMILES", summary.invalid_smiles_count],
+        ["Duplicates", summary.duplicate_count],
+        ["Rows with labels", summary.rows_with_labels],
+        ["Rows without labels", summary.rows_without_labels],
+      ];
+      validationGrid.innerHTML = items.map(([label, value]) => `
+        <article class="panel">
+          <span class="panel-label">${label}</span>
+          <strong>${value}</strong>
+        </article>
+      `).join("");
+
+      const missing = summary.missing_fields || [];
+      if (missing.length) {
+        validationWarning.innerHTML = `<strong>Warning</strong><p>Required mapping still missing: ${missing.join(", ")}</p>`;
+        validationWarning.classList.remove("hidden");
+      } else {
+        validationWarning.classList.add("hidden");
+      }
+    };
+
+    const renderPreview = () => {
+      if (!state.previewRows.length) return;
+      const columns = Object.keys(state.previewRows[0]);
+      previewTableHead.innerHTML = `<tr>${columns.map((column) => `<th>${column}</th>`).join("")}</tr>`;
+      previewTableBody.innerHTML = state.previewRows.map((row) => `
+        <tr>${columns.map((column) => `<td>${row[column] ?? ""}</td>`).join("")}</tr>
+      `).join("");
+    };
+
+    const refreshValidation = async () => {
+      if (!state.sessionId) return;
+      const response = await fetch("/api/upload/validate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          session_id: state.sessionId,
+          mapping: mappingPayload(),
+        }),
+      });
+      const body = await response.json();
+      if (response.ok) {
+        renderValidation(body.validation_summary);
+      }
+    };
+
+    inspectButton.addEventListener("click", async () => {
+      const fileInput = document.getElementById("dataset-file");
+      if (!fileInput.files.length) {
+        inspectStatus.textContent = "Select a CSV file before inspection.";
+        inspectStatus.className = "status-box error";
+        return;
+      }
+
+      inspectStatus.textContent = "Inspecting uploaded file...";
+      inspectStatus.className = "status-box";
+
+      const payload = new FormData();
+      payload.append("file", fileInput.files[0]);
+      payload.append("input_type", selectValue("input_type") || "molecules_to_screen_only");
+
+      const response = await fetch("/api/upload/inspect", {method: "POST", body: payload});
+      const body = await response.json();
+      if (!response.ok) {
+        inspectStatus.textContent = body.detail || "File inspection failed.";
+        inspectStatus.className = "status-box error";
+        return;
+      }
+
+      state.sessionId = body.session_id;
+      state.previewRows = body.preview_rows || [];
+      state.columns = body.columns || [];
+
+      mappingFields.forEach(([field, id]) => renderSelectOptions(id, state.columns, body.inferred_mapping?.[field] || ""));
+      showWorkflow();
+      renderValidation(body.validation_summary);
+      renderPreview();
+      inspectStatus.textContent = `Inspection complete. Session: ${body.session_id}`;
+      inspectStatus.className = "status-box success";
+    });
+
+    const renderResultWarnings = (warnings) => {
+      warningsShell.innerHTML = "";
+      if (!warnings?.length) return;
+      warnings.forEach((warning) => {
+        const node = document.createElement("div");
+        node.className = "warning-card";
+        node.innerHTML = `<strong>Warning</strong><p>${warning}</p>`;
+        warningsShell.appendChild(node);
+      });
+    };
+
+    const renderResultSummary = (body) => {
+      const items = [
+        ["Mode", body.scoring_mode],
+        ["Intent", body.intent],
+        ["Analyzed rows", body.summary.analyzed_rows || body.summary.valid_rows || body.summary.valid_smiles_count],
+        ["Queued feedback", body.feedback_store.queued_rows],
+      ];
+      summaryGrid.innerHTML = items.map(([label, value]) => `
+        <article class="panel">
+          <span class="panel-label">${label}</span>
+          <strong>${value}</strong>
+        </article>
+      `).join("");
+    };
+
+    const renderResultTable = (rows) => {
+      if (!rows.length) {
+        resultTableBody.innerHTML = `<tr><td colspan="9" class="empty-cell">No prioritized candidates were returned for this run.</td></tr>`;
+        return;
+      }
+      resultTableBody.innerHTML = rows.map((row) => `
+        <tr>
+          <td>${row.candidate_id || row.molecule_id || row.polymer || "-"}</td>
+          <td class="smiles-cell">${row.smiles || "-"}</td>
+          <td>${formatNumber(row.confidence)}</td>
+          <td>${formatNumber(row.uncertainty)}</td>
+          <td>${formatNumber(row.novelty)}</td>
+          <td>${formatNumber(row.experiment_value)}</td>
+          <td>${row.bucket || row.selection_bucket || "-"}</td>
+          <td>${row.risk || row.risk_level || "-"}</td>
+          <td>${row.status || "-"}</td>
+        </tr>
+      `).join("");
+    };
+
+    analyzeButton.addEventListener("click", async () => {
+      if (!state.sessionId) {
+        analysisStatus.textContent = "Inspect a file before analysis.";
+        analysisStatus.className = "status-box error";
+        return;
+      }
+
+      analysisStatus.textContent = "Running analysis...";
+      analysisStatus.className = "status-box";
+      await refreshValidation();
+
+      const payload = new FormData();
+      payload.append("session_id", state.sessionId);
+      payload.append("input_type", selectValue("input_type") || "molecules_to_screen_only");
+      payload.append("intent", selectValue("intent") || "rank_uploaded_molecules");
+      payload.append("scoring_mode", selectValue("scoring_mode") || "balanced");
+      payload.append("consent_choice", selectValue("consent_choice") || "private");
+      const mapping = mappingPayload();
+      payload.append("smiles_column", mapping.smiles || "");
+      payload.append("biodegradable_column", mapping.biodegradable || "");
+      payload.append("molecule_id_column", mapping.molecule_id || "");
+      payload.append("source_column", mapping.source || "");
+      payload.append("notes_column", mapping.notes || "");
+
+      const response = await fetch("/upload", {method: "POST", body: payload});
+      const body = await response.json();
+      if (!response.ok) {
+        analysisStatus.textContent = body.detail || "Analysis failed.";
+        analysisStatus.className = "status-box error";
+        resultShell.classList.add("hidden");
+        return;
+      }
+
+      analysisStatus.textContent = body.message;
+      analysisStatus.className = "status-box success";
+      resultMode.textContent = body.mode;
+      renderResultSummary(body);
+      renderResultWarnings(body.warnings || []);
+      renderResultTable(body.top_candidates || []);
+      resultJson.textContent = JSON.stringify(body, null, 2);
+      discoveryLink.href = body.discovery_url;
+      dashboardLink.href = body.dashboard_url;
+      discoveryLink.classList.remove("hidden");
+      dashboardLink.classList.remove("hidden");
+      resultShell.classList.remove("hidden");
+    });
+  </script>
+{% endblock %}

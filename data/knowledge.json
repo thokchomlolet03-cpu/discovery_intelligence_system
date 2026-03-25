@@ -1,0 +1,1332 @@
+[
+  {
+    "smiles": "CC(C)CO",
+    "prediction": 1,
+    "confidence": 0.6907587059777791,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "C=C1CCC(C(=O)O)(c2ccccc2)O1",
+    "prediction": 1,
+    "confidence": 0.7233611614616842,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(CCl)C(C)OC=O",
+    "prediction": 0,
+    "confidence": 0.4160364983114562,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(C)Cl",
+    "prediction": 0,
+    "confidence": 0.16096934755900977,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "COCCO",
+    "prediction": 1,
+    "confidence": 0.8530292482799036,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "Cc1c(N)cccc1-c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.20408216121190267,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "COC(=O)CC(CO)(OC=O)OC(C)=O",
+    "prediction": 1,
+    "confidence": 0.9760252539537585,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCOC",
+    "prediction": 0,
+    "confidence": 0.489507291422237,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "O=C(O)OC(=O)CC(OC(=O)O)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.9781033314488972,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(N)C(C)C",
+    "prediction": 0,
+    "confidence": 0.27385283986613834,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "COC(=O)Cc1cccc(-c2ccccc2)c1",
+    "prediction": 1,
+    "confidence": 0.699445105321403,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NCCCl",
+    "prediction": 0,
+    "confidence": 0.38272849828579075,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(OC)OC(=O)OOC(=O)O",
+    "prediction": 1,
+    "confidence": 0.9678931812181458,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "COOOOC(=O)CC(C)OC(C)=O",
+    "prediction": 1,
+    "confidence": 0.974629901429885,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "C=C(C)OCC(C(=O)OC(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.8940993257230739,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(C)(CC)CCl",
+    "prediction": 0,
+    "confidence": 0.17348367878972684,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "OCCCCl",
+    "prediction": 1,
+    "confidence": 0.6913511906085364,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCCc1ccccc1OC=O",
+    "prediction": 0,
+    "confidence": 0.21267817081883914,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(N)c1cccc(OC=O)c1",
+    "prediction": 0,
+    "confidence": 0.49166745447192595,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCCOC(=O)OC(CC(=O)OC(=O)OO)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9290961034742108,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "ClCOc1ccccc1-c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.2640906431087973,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCCC(Cl)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.10775936423278352,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCOC(=O)OC(=O)C(COC(C)=O)(OC(C)=O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9149767791536169,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCc1ccc(CC(C)OC)cc1-c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.28097276442574765,
+    "explanation": "No strong rule-based driver detected from the current feature set",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCOOC(=O)OC(=O)C(OC(C)=O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9197695697322091,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "Oc1cc2cc-2c1",
+    "prediction": 1,
+    "confidence": 0.5928371511534398,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(C)Cc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.09635170676564525,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "c1ccc(-c2ccccc2)cc1",
+    "prediction": 0,
+    "confidence": 0.13467099140752156,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(C)(C)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.10774174631638002,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "O=C(O)OC(=O)C(OC(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.889058706949271,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(C)CO",
+    "prediction": 1,
+    "confidence": 0.7990600584285991,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "COOC(=O)CO",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1ccccc1C(C)CCN",
+    "prediction": 0,
+    "confidence": 0.0392156862745098,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(=O)OCC(C(=O)OC(=O)OCC(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=C(OCc1ccccc1)Oc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.7540294125260142,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCc1cc(CCCN)ccc1C(=O)O",
+    "prediction": 1,
+    "confidence": 0.6661240640053946,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(C)C(C)CO",
+    "prediction": 0,
+    "confidence": 0.41905916527256054,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "OOC1CC1",
+    "prediction": 1,
+    "confidence": 0.890596340986966,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=C(O)Cc1cccc(-c2ccccc2)c1",
+    "prediction": 1,
+    "confidence": 0.7467400289075067,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(Cl)CCCC(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCCCCCO",
+    "prediction": 0,
+    "confidence": 0.4539443138743145,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(Nc1ccccc1)C(C)C",
+    "prediction": 0,
+    "confidence": 0.0392156862745098,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1cccc(CCC(N)CO)c1",
+    "prediction": 1,
+    "confidence": 0.5175062970817511,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(=O)OC(CO)(CC(=O)OC)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(C)COC=O",
+    "prediction": 1,
+    "confidence": 0.7034598549022918,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(C(=O)OC(=O)O)C(O)OC(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(C)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "COC(=O)C(C)C(CO)(OC=O)OC(C)=O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "Oc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.13431804280601886,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=C(O)C(CO)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.9333333333333332,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(C)c1ccccc1N",
+    "prediction": 0,
+    "confidence": 0.0392156862745098,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CNCC(Cc1ccccc1)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.0697003665084893,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(Cl)C(CC)CC",
+    "prediction": 0,
+    "confidence": 0.0392156862745098,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "NC(C(=O)OC(=O)O)C(OC(=O)O)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCCCO",
+    "prediction": 1,
+    "confidence": 0.7106595798910572,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(NO)C(C)C",
+    "prediction": 1,
+    "confidence": 0.7271837651542579,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(CCC(=O)O)(C(=O)OCO)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9097105539365841,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "COc1ccc(CC(C)CO)cc1",
+    "prediction": 0,
+    "confidence": 0.34499726778112233,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(C)CCCO",
+    "prediction": 1,
+    "confidence": 0.6854358610800474,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(COC(=O)OOC(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9023260216465662,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(Cl)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCc1ccc(CC(C)OCO)cc1",
+    "prediction": 0,
+    "confidence": 0.2812494541397994,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(=O)OC(C(=O)OC(=O)OOC(=O)OC(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(Cl)CCCCO",
+    "prediction": 0,
+    "confidence": 0.3333333333333333,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(N)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.041666666666666664,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C(O)CCCC(=O)Oc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(OC=O)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "COC(=O)C1(OC)C(OC=O)C1C(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC1(O)CCCC(=O)O1",
+    "prediction": 1,
+    "confidence": 0.9201126964709351,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "COc1ccccc1OC(=O)O",
+    "prediction": 1,
+    "confidence": 0.8386607486196884,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(CC)OC",
+    "prediction": 0,
+    "confidence": 0.22274625194522626,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(C)CCC(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C(O)OOOOC(=O)CCc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "c1ccc(-c2ccccc2)cc1",
+    "prediction": 0,
+    "confidence": 1e-06,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(=O)OCC(N)(CO)C(=O)OC(O)CO",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCc1ccc(OC=O)cc1N",
+    "prediction": 0,
+    "confidence": 0.33329289998605544,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(CC)(CC)CCl",
+    "prediction": 0,
+    "confidence": 0.041666666666666664,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "COOOOC(=O)C(C)C",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCOC(=O)CC(O)(OC(C)=O)OC(C)=O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "OCCCO",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "Cc1ccc(CO)cc1N",
+    "prediction": 1,
+    "confidence": 0.6020248572711439,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCCCCOC",
+    "prediction": 0,
+    "confidence": 0.29782959800226155,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCOOC(=O)C(OC)(OC(C)=O)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCCCCO",
+    "prediction": 1,
+    "confidence": 0.5945021087273531,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(CCO)CC(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(C)(CO)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.041666666666666664,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(C(=O)O)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C(O)Cc1ccccc1C(=O)O",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CNOC(=O)Oc1cccc(-c2ccccc2)c1",
+    "prediction": 1,
+    "confidence": 0.7078662681931419,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "NC(=O)CCCC(=O)Nc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.8888888888888888,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(C)CO",
+    "prediction": 1,
+    "confidence": 0.8958333333333334,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "C=C1CCC(C(=O)O)(c2ccccc2)O1",
+    "prediction": 1,
+    "confidence": 0.8906070940807095,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(CCl)C(C)OC=O",
+    "prediction": 0,
+    "confidence": 0.24012288607861199,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(CCl)C(C)OC",
+    "prediction": 0,
+    "confidence": 0.07043969059519839,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(C)CCl",
+    "prediction": 0,
+    "confidence": 0.031746031746031744,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCOC(=O)C(N)CC",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "COCCO",
+    "prediction": 1,
+    "confidence": 0.8958333333333334,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(N)c1ccccc1CO",
+    "prediction": 0,
+    "confidence": 0.37761457545794735,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCCC(C)(C)OC=O",
+    "prediction": 0,
+    "confidence": 0.3506705622367962,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCc1cccc(OC(=O)c2ccccc2)c1",
+    "prediction": 1,
+    "confidence": 0.5566764301951257,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(CC)c1ccccc1CO",
+    "prediction": 0,
+    "confidence": 0.15345394528055412,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NCCC(c1ccccc1)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.04231582175201563,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCOOC",
+    "prediction": 1,
+    "confidence": 0.5038023517505716,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(CC)(CCl)C(C)c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.041666666666666664,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCCC(C)(C)OC=O",
+    "prediction": 0,
+    "confidence": 0.23250990021621595,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCc1cccc(OC(=O)c2ccccc2)c1",
+    "prediction": 0,
+    "confidence": 0.3707899910684045,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "O=C(O)c1ccccc1OCCl",
+    "prediction": 1,
+    "confidence": 0.6048963116673233,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NCCCl",
+    "prediction": 0,
+    "confidence": 0.2893911498271699,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "O=C(O)c1ccccc1O",
+    "prediction": 1,
+    "confidence": 0.8717948717948718,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(=O)OC(C)(N)C(=O)OC(=O)OO",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "O=C(O)OC1(C(=O)O)CC(=O)OCC(=O)O1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(Cl)CC(C)OC",
+    "prediction": 0,
+    "confidence": 0.0601203438377117,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "COC(=O)CCc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.6234543018293782,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(C)O",
+    "prediction": 1,
+    "confidence": 0.5710096309070348,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(N)C(C)Cc1ccccc1",
+    "prediction": 0,
+    "confidence": 1e-06,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "COC(C)OC(=O)O",
+    "prediction": 1,
+    "confidence": 0.9848984576643,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NC(=O)CC(CO)CC(N)=O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "O=C(O)CCCC(=O)OOC(=O)OCC(C(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCc1ccc(CC(C)OCO)c(N)c1",
+    "prediction": 0,
+    "confidence": 0.4361101100019968,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(CCl)COC=O",
+    "prediction": 0,
+    "confidence": 0.29103091907281714,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NC(=O)CCCC(=O)Nc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.8717948717948718,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(=O)OC(CO)C(CO)C(=O)OC",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(CC)(CCl)C(C)OC",
+    "prediction": 0,
+    "confidence": 0.10640435526372914,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(C)C(=O)OOOc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.682683728332974,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(CCC(N)=O)C(N)=O",
+    "prediction": 1,
+    "confidence": 0.8717948717948718,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NC(Cl)Oc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.041666666666666664,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(N)COC(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CCC(C)(CC)CO",
+    "prediction": 0,
+    "confidence": 0.3333333333333333,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "CC(=O)OCC(C(=O)O)C(=O)OC(=O)OO",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 1
+  },
+  {
+    "smiles": "COc1ccc(C)cc1CCCN",
+    "prediction": 0,
+    "confidence": 0.06230585845075635,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 1
+  },
+  {
+    "smiles": "NC(CCC(=O)OOO)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1ccc(OC=O)cc1N",
+    "prediction": 1,
+    "confidence": 0.6665154787456059,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCc1cccc(OC(=O)OO)c1",
+    "prediction": 1,
+    "confidence": 0.7714355982814656,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "C=C1CC(OC=O)C(C(=O)O)O1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(N)c1ccccc1O",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCc1ccc(CC(C)OCO)cc1-c1ccccc1",
+    "prediction": 0,
+    "confidence": 0.3333333333333333,
+    "explanation": "No strong rule-based driver detected from the current feature set",
+    "iteration": 2
+  },
+  {
+    "smiles": "COC(=O)Oc1cccc(-c2ccccc2)c1",
+    "prediction": 1,
+    "confidence": 0.6460562969255607,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1ccccc1NO",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=C1OC(O)C(C(=O)O)O1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCCc1ccccc1OC(N)=O",
+    "prediction": 1,
+    "confidence": 0.6519074644735039,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "COC(=O)C(C)N",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(c1ccccc1)C(Cc1ccccc1)OC",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "No strong rule-based driver detected from the current feature set",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(=O)Oc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.6948030558963044,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(C)C(C)Cl",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "COC(C)CCl",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(O)Cl",
+    "prediction": 1,
+    "confidence": 0.8168937654892009,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1ccccc1C(C)C(CN)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.6572196587083792,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=C(O)C(CO)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.9074074074074074,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(N)C(C)Cc1ccccc1",
+    "prediction": 0,
+    "confidence": 1e-06,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(C)(CCCc1ccccc1)OC=O",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=COCC(=O)OCCC(=O)OO",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=COC1CC(=O)OCOC(=O)C1",
+    "prediction": 1,
+    "confidence": 0.9074074074074074,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "COc1ccccc1C(=O)O",
+    "prediction": 1,
+    "confidence": 0.9074074074074074,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(Cl)C(=O)O",
+    "prediction": 1,
+    "confidence": 0.9074074074074074,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(Cl)C(CC)C(C)CO",
+    "prediction": 0,
+    "confidence": 0.33388018736707586,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "O=C(O)CCC(O)CO",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1ccc(O)cc1",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(CO)CCl",
+    "prediction": 1,
+    "confidence": 0.6522009880981894,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CC(=O)OCC(N)(CO)C(=O)OC(O)(CO)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 2
+  },
+  {
+    "smiles": "Cc1ccccc1C(C)(N)CCN",
+    "prediction": 0,
+    "confidence": 0.037037037037037035,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 2
+  },
+  {
+    "smiles": "CCC(c1ccccc1)C(C)OC=O",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(N)C(C)Cc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCOC(=O)C(C)OC(C)=O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(C(=O)OC(=O)OC(=O)OO)C(OC(=O)O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9575371634292896,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCc1cccc(CO)c1N",
+    "prediction": 0,
+    "confidence": 0.3394669415164207,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(C)CN",
+    "prediction": 0,
+    "confidence": 0.3637250688887876,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(OC(=O)OO)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9047619047619048,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(CCl)OCc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C1CCC(CCc2ccccc2)O1",
+    "prediction": 0,
+    "confidence": 0.2731829573934837,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(O)(CCC(=O)O)C(=O)OOC(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(=O)OOOOOc1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9047619047619048,
+    "explanation": "lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(N)CCOC",
+    "prediction": 1,
+    "confidence": 0.7278427253366854,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCOOC(=O)c1ccc(C(=O)OC(O)c2ccccc2)cc1",
+    "prediction": 1,
+    "confidence": 0.9047619047619048,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(C)C(O)Cl",
+    "prediction": 0,
+    "confidence": 0.3420603993512908,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(C)C(Cl)CN",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(=O)OCC(N)(CO)C(=O)OC(O)(CO)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(CC)(CO)c1ccccc1CO",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C(O)CC(CO)C(O)C(=O)OOC(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C1OC1CCc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.15573023606239786,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(C)(CC)CC",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "NC(=O)CC(COC(=O)O)CC(N)=O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCc1cc(CO)ccc1N",
+    "prediction": 0,
+    "confidence": 0.36712829311092143,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C(O)COC(=O)OC(=O)OC(=O)CC(CO)OC(=O)O",
+    "prediction": 1,
+    "confidence": 0.999999,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CC(CO)C1OC1=O",
+    "prediction": 1,
+    "confidence": 0.9523809523809524,
+    "explanation": "hydrophilic profile suggests easier environmental interaction; lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "COC(=O)CC(OC=O)(OC(C)=O)C(O)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9523809523809524,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(CC)C(O)(Cl)CC",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCOC=O",
+    "prediction": 1,
+    "confidence": 0.8501702777153413,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=COCC(CCl)Cc1ccccc1",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  },
+  {
+    "smiles": "O=C(OOOOO)C(O)(Cc1ccccc1)c1ccccc1",
+    "prediction": 1,
+    "confidence": 0.9047619047619048,
+    "explanation": "higher hydrogen-bond acceptor count is consistent with biodegradable behavior",
+    "iteration": 3
+  },
+  {
+    "smiles": "CCC(N)CCl",
+    "prediction": 0,
+    "confidence": 0.03508771929824561,
+    "explanation": "lower molecular weight favors degradability",
+    "iteration": 3
+  }
+]

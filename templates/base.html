@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div>
+          <a class="brand" href="/">Discovery Intelligence</a>
+          <p class="brand-subtitle">Scientific decision-support for prioritizing molecules worth testing next</p>
+        </div>
+        <nav class="site-nav">
+          <a href="/" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+          <a href="/upload" class="{% if active_page == 'upload' %}active{% endif %}">Upload / Analyze</a>
+          <a href="/discovery" class="{% if active_page == 'discovery' %}active{% endif %}">Discovery</a>
+          <a href="/dashboard" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+          <a href="/about" class="{% if active_page == 'about' %}active{% endif %}">About</a>
+        </nav>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>

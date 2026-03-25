@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-compact">
+    <div class="eyebrow">Discovery results</div>
+    <h1>Review model-guided candidate recommendations.</h1>
+    <p class="hero-copy">
+      These results are recommendations for prioritizing review and testing. They should support expert judgment,
+      not replace experimental validation.
+    </p>
+  </section>
+
+  {% if analysis_report.warnings %}
+    <section class="warning-stack">
+      {% for warning in analysis_report.warnings %}
+        <article class="warning-card">
+          <strong>Run warning</strong>
+          <p>{{ warning }}</p>
+        </article>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="card-grid metrics-grid">
+    <article class="panel">
+      <span class="panel-label">Iteration</span>
+      <strong>{{ decision_output.iteration }}</strong>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Candidate Count</span>
+      <strong>{{ decision_output.summary.candidate_count }}</strong>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Top Experiment Value</span>
+      <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Pending Review</span>
+      <strong>{{ review_queue.summary.pending_review }}</strong>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Review Queue</h2>
+        <p class="helper-copy">
+          Session: <code>{{ session_id or "public" }}</code>
+        </p>
+      </div>
+    </div>
+    <div class="card-grid metrics-grid">
+      <article class="panel compact-panel">
+        <span class="panel-label">Approved</span>
+        <strong>{{ review_queue.summary.approved }}</strong>
+      </article>
+      <article class="panel compact-panel">
+        <span class="panel-label">Rejected</span>
+        <strong>{{ review_queue.summary.rejected }}</strong>
+      </article>
+      <article class="panel compact-panel">
+        <span class="panel-label">Tested</span>
+        <strong>{{ review_queue.summary.tested }}</strong>
+      </article>
+      <article class="panel compact-panel">
+        <span class="panel-label">Ingested</span>
+        <strong>{{ review_queue.summary.ingested }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="candidate-grid">
+    {% for candidate in candidates %}
+      <article class="panel candidate-card" data-candidate-id="{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer }}" data-smiles="{{ candidate.smiles }}">
+        <div class="candidate-head">
+          <div>
+            <span class="eyebrow">Candidate</span>
+            <h2>{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer or "Unnamed candidate" }}</h2>
+          </div>
+          <span class="status-pill">{{ candidate.status or "suggested" }}</span>
+        </div>
+
+        <div class="candidate-meta">
+          <div>
+            <span class="panel-label">SMILES</span>
+            <p class="smiles-cell">{{ candidate.smiles }}</p>
+          </div>
+          <div>
+            <span class="panel-label">Bucket</span>
+            <p>{{ candidate.bucket or candidate.selection_bucket }}</p>
+          </div>
+          <div>
+            <span class="panel-label">Risk</span>
+            <p>{{ candidate.risk }}</p>
+          </div>
+          <div>
+            <span class="panel-label">Confidence</span>
+            <p>{{ "%.3f"|format(candidate.confidence) }}</p>
+          </div>
+          <div>
+            <span class="panel-label">Uncertainty</span>
+            <p>{{ "%.3f"|format(candidate.uncertainty) }}</p>
+          </div>
+          <div>
+            <span class="panel-label">Novelty</span>
+            <p>{{ "%.3f"|format(candidate.novelty) }}</p>
+          </div>
+          <div>
+            <span class="panel-label">Experiment Value</span>
+            <p>{{ "%.3f"|format(candidate.experiment_value) }}</p>
+          </div>
+        </div>
+
+        <div class="candidate-detail">
+          <span class="panel-label">Explanation</span>
+          <p>{{ candidate.explanation }}</p>
+        </div>
+        <div class="candidate-detail">
+          <span class="panel-label">Provenance</span>
+          <p>{{ candidate.provenance or "Not recorded" }}</p>
+        </div>
+
+        <form class="review-form">
+          <input type="hidden" name="session_id" value="{{ session_id or '' }}" />
+          <input type="hidden" name="candidate_id" value="{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer }}" />
+          <input type="hidden" name="smiles" value="{{ candidate.smiles }}" />
+          <div class="form-grid">
+            <label>
+              <span>Action</span>
+              <select name="action">
+                <option value="approve">Approve for testing</option>
+                <option value="reject">Reject</option>
+                <option value="later">Mark for later review</option>
+                <option value="tested">Mark as tested</option>
+                <option value="ingest">Mark as ingested</option>
+              </select>
+            </label>
+            <label>
+              <span>Status</span>
+              <select name="status">
+                <option value="suggested" {% if (candidate.status or "suggested") == "suggested" %}selected{% endif %}>Suggested</option>
+                <option value="under review" {% if candidate.status == "under review" %}selected{% endif %}>Under review</option>
+                <option value="approved" {% if candidate.status == "approved" %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if candidate.status == "rejected" %}selected{% endif %}>Rejected</option>
+                <option value="tested" {% if candidate.status == "tested" %}selected{% endif %}>Tested</option>
+                <option value="ingested" {% if candidate.status == "ingested" %}selected{% endif %}>Ingested</option>
+              </select>
+            </label>
+            <label>
+              <span>Reviewer</span>
+              <input type="text" name="reviewer" value="{{ candidate.reviewer or 'unassigned' }}" />
+            </label>
+            <label class="full-width">
+              <span>Review notes</span>
+              <textarea name="note" rows="3">{{ candidate.review_note or '' }}</textarea>
+            </label>
+          </div>
+          <button class="button button-primary" type="submit">Save review action</button>
+        </form>
+      </article>
+    {% else %}
+      <article class="panel">
+        <p>No decision output is available yet.</p>
+      </article>
+    {% endfor %}
+  </section>
+
+  <script>
+    document.querySelectorAll(".review-form").forEach((form) => {
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const payload = Object.fromEntries(new FormData(form).entries());
+        const response = await fetch("/api/reviews", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const body = await response.json();
+          alert(body.detail || "Could not save review action.");
+          return;
+        }
+        window.location.reload();
+      });
+    });
+  </script>
+{% endblock %}

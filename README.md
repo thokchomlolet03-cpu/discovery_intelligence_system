@@ -69,6 +69,20 @@ uvicorn app:app --reload
 
 Open `http://127.0.0.1:8000`.
 
+## Run Tests
+
+The repository uses Python's built-in `unittest` test discovery.
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+If you are using the checked-in virtual environment:
+
+```bash
+venv/bin/python -m unittest discover -s tests -v
+```
+
 ## Upload Behavior
 
 - CSV uploads are inspected first so users can map columns before analysis runs.

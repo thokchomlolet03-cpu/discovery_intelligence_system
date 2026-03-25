@@ -11,8 +11,15 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from system.discovery_workbench import build_discovery_workbench
 from system.dashboard_data import build_dashboard_context
-from system.review_manager import annotate_candidates_with_reviews, build_review_queue, persist_review_queue, record_review_action
+from system.review_manager import (
+    annotate_candidates_with_reviews,
+    build_review_queue,
+    persist_review_queue,
+    record_review_action,
+    record_review_actions,
+)
 from system.run_pipeline import run_pipeline
 from system.upload_parser import (
     create_upload_session,
@@ -62,12 +69,23 @@ def load_decision_output(session_id: str | None = None) -> dict[str, Any]:
         "iteration": 0,
         "summary": {"top_k": 0, "candidate_count": 0, "risk_counts": {}, "top_experiment_value": 0.0},
         "top_experiments": [],
+        "artifact_state": "missing",
     }
     for path in candidate_paths:
         if path.exists():
-            payload = _load_json(path) or default_payload
+            try:
+                payload = _load_json(path) or dict(default_payload)
+            except (json.JSONDecodeError, OSError) as exc:
+                return {
+                    **default_payload,
+                    "artifact_state": "error",
+                    "load_error": str(exc),
+                    "source_path": str(path),
+                }
             resolved = path.resolve()
             payload["source_path"] = str(resolved.relative_to(BASE_DIR)) if resolved.is_relative_to(BASE_DIR) else str(path)
+            payload["source_updated_at"] = path.stat().st_mtime
+            payload["artifact_state"] = "ok"
             return payload
     return default_payload
 
@@ -82,6 +100,21 @@ def load_analysis_report(session_id: str | None = None) -> dict[str, Any]:
             payload = _load_json(path)
             if isinstance(payload, dict):
                 return payload.get("analysis_report", payload)
+    return {}
+
+
+def load_evaluation_summary(session_id: str | None = None) -> dict[str, Any]:
+    candidate_paths = []
+    if session_id:
+        candidate_paths.append(session_dir(session_id) / "evaluation_summary.json")
+    candidate_paths.extend([BASE_DIR / "evaluation_summary.json", DATA_DIR / "evaluation_summary.json"])
+    for path in candidate_paths:
+        if path.exists():
+            try:
+                payload = _load_json(path)
+            except (json.JSONDecodeError, OSError):
+                return {}
+            return payload if isinstance(payload, dict) else {}
     return {}
 
 
@@ -235,6 +268,15 @@ async def discovery_page(
     candidates = annotate_candidates_with_reviews(decision_output.get("top_experiments", []), session_id=session_id)
     review_queue = build_review_queue(candidates, session_id=session_id)
     analysis_report = load_analysis_report(session_id=session_id)
+    evaluation_summary = load_evaluation_summary(session_id=session_id)
+    workbench = build_discovery_workbench(
+        decision_output=decision_output,
+        analysis_report=analysis_report,
+        review_queue=review_queue,
+        session_id=session_id,
+        evaluation_summary=evaluation_summary,
+        system_version=app.version,
+    )
 
     return templates.TemplateResponse(
         request,
@@ -247,6 +289,8 @@ async def discovery_page(
             "analysis_report": analysis_report,
             "candidates": candidates,
             "review_queue": review_queue,
+            "evaluation_summary": evaluation_summary,
+            "workbench": workbench,
         },
     )
 
@@ -254,6 +298,17 @@ async def discovery_page(
 @app.post("/api/reviews")
 async def create_review(payload: dict[str, Any] = Body(...)) -> JSONResponse:
     session_id = payload.get("session_id")
+    items = payload.get("items")
+    if isinstance(items, list):
+        records = record_review_actions(items, session_id=session_id)
+        if not records:
+            raise HTTPException(status_code=400, detail="At least one review item with a smiles value is required.")
+
+        decision_output = load_decision_output(session_id=session_id)
+        candidates = annotate_candidates_with_reviews(decision_output.get("top_experiments", []), session_id=session_id)
+        review_queue = persist_review_queue(candidates, session_id=session_id)
+        return JSONResponse({"reviews": records, "review_queue": review_queue})
+
     smiles = payload.get("smiles")
     if not smiles:
         raise HTTPException(status_code=400, detail="smiles is required for review actions.")
@@ -295,6 +350,16 @@ async def dashboard_page(
 @app.get("/api/discovery")
 async def discovery_api(session_id: str | None = Query(default=None)) -> JSONResponse:
     return JSONResponse(load_decision_output(session_id=session_id))
+
+
+@app.get("/api/discovery/download")
+async def discovery_download(session_id: str | None = Query(default=None)) -> JSONResponse:
+    payload = load_decision_output(session_id=session_id)
+    target = f"decision_package_{session_id or 'public'}.json"
+    return JSONResponse(
+        payload,
+        headers={"Content-Disposition": f'attachment; filename="{target}"'},
+    )
 
 
 @app.get("/healthz")

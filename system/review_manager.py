@@ -19,6 +19,8 @@ ACTION_STATUS_MAP = {
     "reject": "rejected",
     "later": "under review",
     "under_review": "under review",
+    "review_later": "under review",
+    "save_note": "under review",
     "tested": "tested",
     "ingest": "ingested",
 }
@@ -50,7 +52,10 @@ def candidate_key(session_id: str | None, candidate_id: str | None, smiles: str)
 def load_reviews(path: Path = REVIEWS_PATH) -> list[dict[str, Any]]:
     if not path.exists():
         return []
-    payload = json.loads(path.read_text())
+    try:
+        payload = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return []
     return payload if isinstance(payload, list) else []
 
 
@@ -67,6 +72,7 @@ def record_review_action(
     note: str,
     reviewer: str | None,
 ) -> dict[str, Any]:
+    reviewed_at = review_timestamp()
     record = {
         "session_id": review_session_key(session_id),
         "candidate_id": candidate_id or smiles,
@@ -74,13 +80,42 @@ def record_review_action(
         "action": action,
         "status": normalize_status(status, action=action),
         "note": note.strip(),
-        "timestamp": review_timestamp(),
+        "timestamp": reviewed_at,
+        "reviewed_at": reviewed_at,
         "reviewer": reviewer.strip() if reviewer else "unassigned",
     }
     reviews = load_reviews()
     reviews.append(record)
     save_reviews(reviews)
     return record
+
+
+def record_review_actions(items: list[dict[str, Any]], session_id: str | None = None) -> list[dict[str, Any]]:
+    reviews = load_reviews()
+    created: list[dict[str, Any]] = []
+
+    for item in items:
+        smiles = str(item.get("smiles") or "").strip()
+        if not smiles:
+            continue
+        reviewed_at = review_timestamp()
+        record = {
+            "session_id": review_session_key(item.get("session_id") or session_id),
+            "candidate_id": item.get("candidate_id") or smiles,
+            "smiles": smiles,
+            "action": str(item.get("action") or "later"),
+            "status": normalize_status(item.get("status"), action=item.get("action")),
+            "note": str(item.get("note") or "").strip(),
+            "timestamp": reviewed_at,
+            "reviewed_at": reviewed_at,
+            "reviewer": str(item.get("reviewer") or "unassigned").strip() or "unassigned",
+        }
+        reviews.append(record)
+        created.append(record)
+
+    if created:
+        save_reviews(reviews)
+    return created
 
 
 def latest_review_map(session_id: str | None) -> dict[str, dict[str, Any]]:
@@ -94,9 +129,24 @@ def latest_review_map(session_id: str | None) -> dict[str, dict[str, Any]]:
     return latest
 
 
+def review_history_map(session_id: str | None) -> dict[str, list[dict[str, Any]]]:
+    session_key = review_session_key(session_id)
+    history: dict[str, list[dict[str, Any]]] = {}
+    for review in load_reviews():
+        if review.get("session_id") != session_key:
+            continue
+        key = candidate_key(session_id, review.get("candidate_id"), review.get("smiles", ""))
+        history.setdefault(key, []).append(review)
+
+    for key, items in history.items():
+        history[key] = sorted(items, key=lambda item: str(item.get("reviewed_at") or item.get("timestamp") or ""))
+    return history
+
+
 def annotate_candidates_with_reviews(candidates: list[dict[str, Any]], session_id: str | None) -> list[dict[str, Any]]:
     annotated = []
     latest = latest_review_map(session_id)
+    history = review_history_map(session_id)
     for candidate in candidates:
         row = dict(candidate)
         key = candidate_key(session_id, row.get("candidate_id") or row.get("molecule_id") or row.get("polymer"), row.get("smiles", ""))
@@ -104,7 +154,8 @@ def annotate_candidates_with_reviews(candidates: list[dict[str, Any]], session_i
         row["status"] = review.get("status", row.get("status", "suggested"))
         row["review_note"] = review.get("note", row.get("review_note", ""))
         row["reviewer"] = review.get("reviewer", row.get("reviewer", ""))
-        row["reviewed_at"] = review.get("timestamp", row.get("reviewed_at", ""))
+        row["reviewed_at"] = review.get("reviewed_at", review.get("timestamp", row.get("reviewed_at", "")))
+        row["review_history"] = history.get(key, [])
         annotated.append(row)
     return annotated
 

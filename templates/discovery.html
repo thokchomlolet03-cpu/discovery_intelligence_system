@@ -1,187 +1,287 @@
 {% extends "base.html" %}
 
+{% set refresh_url = "/discovery?session_id=" ~ session_id if session_id else "/discovery" %}
+{% set dashboard_url = "/dashboard?session_id=" ~ session_id if session_id else "/dashboard" %}
+{% set download_url = "/api/discovery/download?session_id=" ~ session_id if session_id else "/api/discovery/download" %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', path='/discovery.css') }}" />
+{% endblock %}
+
 {% block content %}
-  <section class="hero hero-compact">
-    <div class="eyebrow">Discovery results</div>
-    <h1>Review model-guided candidate recommendations.</h1>
-    <p class="hero-copy">
-      These results are recommendations for prioritizing review and testing. They should support expert judgment,
-      not replace experimental validation.
-    </p>
-  </section>
-
-  {% if analysis_report.warnings %}
-    <section class="warning-stack">
-      {% for warning in analysis_report.warnings %}
-        <article class="warning-card">
-          <strong>Run warning</strong>
-          <p>{{ warning }}</p>
-        </article>
-      {% endfor %}
-    </section>
-  {% endif %}
-
-  <section class="card-grid metrics-grid">
-    <article class="panel">
-      <span class="panel-label">Iteration</span>
-      <strong>{{ decision_output.iteration }}</strong>
-    </article>
-    <article class="panel">
-      <span class="panel-label">Candidate Count</span>
-      <strong>{{ decision_output.summary.candidate_count }}</strong>
-    </article>
-    <article class="panel">
-      <span class="panel-label">Top Experiment Value</span>
-      <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
-    </article>
-    <article class="panel">
-      <span class="panel-label">Pending Review</span>
-      <strong>{{ review_queue.summary.pending_review }}</strong>
-    </article>
-  </section>
-
-  <section class="panel">
-    <div class="section-header">
-      <div>
-        <h2>Review Queue</h2>
-        <p class="helper-copy">
-          Session: <code>{{ session_id or "public" }}</code>
-        </p>
+  <section class="discovery-shell">
+    <section class="panel discovery-hero">
+      <div class="discovery-hero-copy">
+        <span class="eyebrow">Chemist decision workbench</span>
+        <h1>Discovery Results</h1>
+        <p class="hero-copy">Model-guided candidate recommendations for experimental prioritization</p>
       </div>
-    </div>
-    <div class="card-grid metrics-grid">
-      <article class="panel compact-panel">
-        <span class="panel-label">Approved</span>
-        <strong>{{ review_queue.summary.approved }}</strong>
-      </article>
-      <article class="panel compact-panel">
-        <span class="panel-label">Rejected</span>
-        <strong>{{ review_queue.summary.rejected }}</strong>
-      </article>
-      <article class="panel compact-panel">
-        <span class="panel-label">Tested</span>
-        <strong>{{ review_queue.summary.tested }}</strong>
-      </article>
-      <article class="panel compact-panel">
-        <span class="panel-label">Ingested</span>
-        <strong>{{ review_queue.summary.ingested }}</strong>
-      </article>
-    </div>
-  </section>
+      <div class="discovery-hero-actions">
+        <a class="button button-secondary" href="{{ refresh_url }}">Refresh results</a>
+        <a class="button button-secondary" href="{{ download_url }}">Download current decision package</a>
+        <a class="button button-primary" href="{{ dashboard_url }}">Open dashboard</a>
+      </div>
+    </section>
 
-  <section class="candidate-grid">
-    {% for candidate in candidates %}
-      <article class="panel candidate-card" data-candidate-id="{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer }}" data-smiles="{{ candidate.smiles }}">
-        <div class="candidate-head">
-          <div>
-            <span class="eyebrow">Candidate</span>
-            <h2>{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer or "Unnamed candidate" }}</h2>
-          </div>
-          <span class="status-pill">{{ candidate.status or "suggested" }}</span>
-        </div>
+    <section class="discovery-disclaimer">
+      <strong>Recommendation notice</strong>
+      <p>These results are recommendations, not experimental truth. Use them to prioritize review and testing.</p>
+    </section>
 
-        <div class="candidate-meta">
+    <section class="discovery-summary-grid">
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Iteration</span>
+        <strong>{{ workbench.summary.iteration }}</strong>
+      </article>
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Candidates Displayed</span>
+        <strong>{{ workbench.summary.candidates_displayed }}</strong>
+      </article>
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Top Experiment Value</span>
+        <strong>{{ "%.3f"|format(workbench.summary.top_experiment_value or 0) }}</strong>
+      </article>
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Average Confidence</span>
+        <strong>{{ "%.3f"|format(workbench.summary.average_confidence or 0) }}</strong>
+      </article>
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Average Uncertainty</span>
+        <strong>{{ "%.3f"|format(workbench.summary.average_uncertainty or 0) }}</strong>
+      </article>
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Model Version</span>
+        <strong>{{ workbench.summary.model_version }}</strong>
+      </article>
+      <article class="panel discovery-summary-card">
+        <span class="panel-label">Dataset Version</span>
+        <strong>{{ workbench.summary.dataset_version }}</strong>
+      </article>
+    </section>
+
+    {% if workbench.state.kind == "ready" %}
+      <section class="panel discovery-filter-panel">
+        <div class="section-header">
           <div>
-            <span class="panel-label">SMILES</span>
-            <p class="smiles-cell">{{ candidate.smiles }}</p>
+            <h2>Filter And Sort</h2>
+            <p class="helper-copy">Focus the current recommendation set by chemistry, strategy, risk, or review status.</p>
           </div>
-          <div>
-            <span class="panel-label">Bucket</span>
-            <p>{{ candidate.bucket or candidate.selection_bucket }}</p>
-          </div>
-          <div>
-            <span class="panel-label">Risk</span>
-            <p>{{ candidate.risk }}</p>
-          </div>
-          <div>
-            <span class="panel-label">Confidence</span>
-            <p>{{ "%.3f"|format(candidate.confidence) }}</p>
-          </div>
-          <div>
-            <span class="panel-label">Uncertainty</span>
-            <p>{{ "%.3f"|format(candidate.uncertainty) }}</p>
-          </div>
-          <div>
-            <span class="panel-label">Novelty</span>
-            <p>{{ "%.3f"|format(candidate.novelty) }}</p>
-          </div>
-          <div>
-            <span class="panel-label">Experiment Value</span>
-            <p>{{ "%.3f"|format(candidate.experiment_value) }}</p>
+          <div class="discovery-results-meta">
+            <span class="data-chip">Source: {{ workbench.source_path }}</span>
+            <span class="data-chip">Session: {{ session_id or "public" }}</span>
           </div>
         </div>
-
-        <div class="candidate-detail">
-          <span class="panel-label">Explanation</span>
-          <p>{{ candidate.explanation }}</p>
-        </div>
-        <div class="candidate-detail">
-          <span class="panel-label">Provenance</span>
-          <p>{{ candidate.provenance or "Not recorded" }}</p>
-        </div>
-
-        <form class="review-form">
-          <input type="hidden" name="session_id" value="{{ session_id or '' }}" />
-          <input type="hidden" name="candidate_id" value="{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer }}" />
-          <input type="hidden" name="smiles" value="{{ candidate.smiles }}" />
-          <div class="form-grid">
-            <label>
-              <span>Action</span>
-              <select name="action">
-                <option value="approve">Approve for testing</option>
-                <option value="reject">Reject</option>
-                <option value="later">Mark for later review</option>
-                <option value="tested">Mark as tested</option>
-                <option value="ingest">Mark as ingested</option>
-              </select>
+        <div class="discovery-filter-grid">
+          <label class="control-field search-field">
+            <span>Search by SMILES / ID</span>
+            <input id="filter-search" type="search" placeholder="cand_25, PET-like, CCO..." />
+          </label>
+          <label class="control-field">
+            <span>Bucket</span>
+            <select id="filter-bucket">
+              <option value="all">All buckets</option>
+              <option value="exploit">Exploit</option>
+              <option value="explore">Explore</option>
+              <option value="learn">Learn</option>
+            </select>
+          </label>
+          <label class="control-field">
+            <span>Risk</span>
+            <select id="filter-risk">
+              <option value="all">All risk levels</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label class="control-field">
+            <span>Status</span>
+            <select id="filter-status">
+              <option value="all">All statuses</option>
+              <option value="suggested">Suggested</option>
+              <option value="under review">Under review</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="tested">Tested</option>
+            </select>
+          </label>
+          <label class="control-field">
+            <span>Sort</span>
+            <select id="sort-by">
+              <option value="experiment_value">Experiment value</option>
+              <option value="confidence">Confidence</option>
+              <option value="uncertainty">Uncertainty</option>
+              <option value="novelty">Novelty</option>
+              <option value="risk">Risk</option>
+              <option value="latest">Latest first</option>
+            </select>
+          </label>
+          <div class="range-cluster">
+            <label class="control-field">
+              <span>Confidence range</span>
+              <div class="range-pair">
+                <input id="filter-confidence-min" type="number" min="0" max="1" step="0.05" value="0" />
+                <input id="filter-confidence-max" type="number" min="0" max="1" step="0.05" value="1" />
+              </div>
             </label>
-            <label>
-              <span>Status</span>
-              <select name="status">
-                <option value="suggested" {% if (candidate.status or "suggested") == "suggested" %}selected{% endif %}>Suggested</option>
-                <option value="under review" {% if candidate.status == "under review" %}selected{% endif %}>Under review</option>
-                <option value="approved" {% if candidate.status == "approved" %}selected{% endif %}>Approved</option>
-                <option value="rejected" {% if candidate.status == "rejected" %}selected{% endif %}>Rejected</option>
-                <option value="tested" {% if candidate.status == "tested" %}selected{% endif %}>Tested</option>
-                <option value="ingested" {% if candidate.status == "ingested" %}selected{% endif %}>Ingested</option>
-              </select>
+            <label class="control-field">
+              <span>Uncertainty range</span>
+              <div class="range-pair">
+                <input id="filter-uncertainty-min" type="number" min="0" max="1" step="0.05" value="0" />
+                <input id="filter-uncertainty-max" type="number" min="0" max="1" step="0.05" value="1" />
+              </div>
             </label>
-            <label>
-              <span>Reviewer</span>
-              <input type="text" name="reviewer" value="{{ candidate.reviewer or 'unassigned' }}" />
-            </label>
-            <label class="full-width">
-              <span>Review notes</span>
-              <textarea name="note" rows="3">{{ candidate.review_note or '' }}</textarea>
+            <label class="control-field">
+              <span>Novelty range</span>
+              <div class="range-pair">
+                <input id="filter-novelty-min" type="number" min="0" max="1" step="0.05" value="0" />
+                <input id="filter-novelty-max" type="number" min="0" max="1" step="0.05" value="1" />
+              </div>
             </label>
           </div>
-          <button class="button button-primary" type="submit">Save review action</button>
-        </form>
-      </article>
+        </div>
+      </section>
+
+      <section class="panel discovery-interpretation-panel">
+        <div class="section-header">
+          <div>
+            <h2>How To Interpret This Page</h2>
+            <p class="helper-copy">Use these signals to separate what to test now from what to review, defer, or reject.</p>
+          </div>
+        </div>
+        <div class="interpretation-grid">
+          {% for item in workbench.interpretation %}
+            <article class="interpretation-card">
+              <strong>{{ item.label }}</strong>
+              <p>{{ item.text }}</p>
+            </article>
+          {% endfor %}
+        </div>
+        {% if workbench.recommendation_summary %}
+          <div class="recommendation-callout">
+            <span class="panel-label">Current recommendation</span>
+            <p>{{ workbench.recommendation_summary }}</p>
+          </div>
+        {% endif %}
+        {% if workbench.warnings %}
+          <div class="warning-chip-row">
+            {% for warning in workbench.warnings %}
+              <article class="warning-chip">{{ warning }}</article>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="panel discovery-view-panel">
+        <div class="section-header">
+          <div>
+            <h2>Results View</h2>
+            <p class="helper-copy">Switch between dense table review and candidate cards with reasoning context.</p>
+          </div>
+          <div class="view-toggle" role="tablist" aria-label="Discovery view mode">
+            <button class="view-toggle-button is-active" data-view-mode="table" type="button">Table view</button>
+            <button class="view-toggle-button" data-view-mode="card" type="button">Card view</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel discovery-results-panel">
+        <div class="results-toolbar">
+          <div>
+            <span class="panel-label">Review set</span>
+            <h2 id="results-title">Candidate recommendations</h2>
+          </div>
+          <div class="results-toolbar-meta">
+            <span class="data-chip"><span id="results-count">{{ workbench.summary.candidates_displayed }}</span> visible</span>
+            <span class="data-chip"><span id="selected-count">0</span> selected</span>
+          </div>
+        </div>
+
+        <div class="bulk-action-bar">
+          <button class="button button-secondary" type="button" data-bulk-action="approve">Mark approved</button>
+          <button class="button button-secondary" type="button" data-bulk-action="reject">Mark rejected</button>
+          <button class="button button-secondary" type="button" data-bulk-action="under_review">Add to review queue</button>
+          <button class="button button-secondary" type="button" data-bulk-action="export">Export selected</button>
+        </div>
+
+        <div id="discovery-feedback" class="status-box muted hidden"></div>
+        <div id="discovery-results-root" class="results-root" aria-live="polite"></div>
+      </section>
+
+      <section class="panel discovery-workflow-panel">
+        <div class="section-header">
+          <div>
+            <h2>Review Workflow Summary</h2>
+            <p class="helper-copy">Track how the current recommendation set is moving through chemist review.</p>
+          </div>
+        </div>
+        <div class="workflow-grid">
+          <article class="workflow-card">
+            <span class="panel-label">Suggested</span>
+            <strong id="summary-suggested">{{ workbench.review_summary.suggested }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Under review</span>
+            <strong id="summary-under-review">{{ workbench.review_summary.under_review }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Approved</span>
+            <strong id="summary-approved">{{ workbench.review_summary.approved }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Rejected</span>
+            <strong id="summary-rejected">{{ workbench.review_summary.rejected }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Tested</span>
+            <strong id="summary-tested">{{ workbench.review_summary.tested }}</strong>
+          </article>
+        </div>
+      </section>
+    {% elif workbench.state.kind == "empty" %}
+      <section class="panel discovery-state-panel">
+        <div class="state-icon">No results</div>
+        <h2>No discovery results available yet.</h2>
+        <p>Run analysis or upload a dataset to generate recommendations.</p>
+        <div class="cta-row">
+          <a class="button button-primary" href="/upload">Upload Data</a>
+          <a class="button button-secondary" href="/">Go Home</a>
+        </div>
+      </section>
     {% else %}
-      <article class="panel">
-        <p>No decision output is available yet.</p>
-      </article>
-    {% endfor %}
-  </section>
+      <section class="panel discovery-state-panel">
+        <div class="state-icon">Artifact error</div>
+        <h2>Current decision artifact could not be loaded.</h2>
+        <p>Please rerun the pipeline or check output integrity.</p>
+        <div class="cta-row">
+          <a class="button button-primary" href="{{ refresh_url }}">Refresh results</a>
+          <a class="button button-secondary" href="/upload">Upload Data</a>
+        </div>
+      </section>
+    {% endif %}
 
+    <footer class="panel discovery-footer">
+      <div>
+        <span class="panel-label">Recommendation disclaimer</span>
+        <p>Model-guided outputs support what to test next. They do not replace bench validation or expert chemical judgment.</p>
+      </div>
+      <div class="discovery-footer-meta">
+        <span>Last updated: {{ workbench.last_updated_label }}</span>
+        <span>System version: {{ workbench.system_version }}</span>
+        <a href="/about">About / Method</a>
+      </div>
+    </footer>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script id="discovery-workbench-data" type="application/json">{{ workbench | tojson }}</script>
   <script>
-    document.querySelectorAll(".review-form").forEach((form) => {
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const payload = Object.fromEntries(new FormData(form).entries());
-        const response = await fetch("/api/reviews", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload),
-        });
-        if (!response.ok) {
-          const body = await response.json();
-          alert(body.detail || "Could not save review action.");
-          return;
-        }
-        window.location.reload();
-      });
-    });
+    window.discoveryWorkbenchConfig = {
+      sessionId: {{ (session_id or "") | tojson }},
+      reviewsEndpoint: "/api/reviews",
+      downloadUrl: {{ download_url | tojson }}
+    };
   </script>
+  <script src="{{ url_for('static', path='/discovery.js') }}"></script>
 {% endblock %}

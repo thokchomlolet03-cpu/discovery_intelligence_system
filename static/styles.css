@@ -293,6 +293,11 @@ p {
   background: rgba(141, 199, 188, 0.08);
 }
 
+.choice-card.muted {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
 .choice-card strong {
   font-size: 1rem;
 }
@@ -383,6 +388,7 @@ textarea {
   color: var(--success);
 }
 
+.status-box strong,
 .notice-panel strong,
 .warning-card strong {
   display: block;
@@ -405,6 +411,86 @@ textarea {
 .result-shell {
   display: grid;
   gap: 24px;
+}
+
+.job-progress {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(166, 180, 189, 0.16);
+  border-radius: 18px;
+  background: rgba(12, 18, 22, 0.4);
+}
+
+.progress-meter {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(166, 180, 189, 0.14);
+  overflow: hidden;
+}
+
+.progress-meter-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(141, 199, 188, 0.88), rgba(227, 180, 109, 0.92));
+  transition: width 180ms ease;
+}
+
+.job-progress-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.job-stage-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.job-stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(166, 180, 189, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+}
+
+.job-stage-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: rgba(166, 180, 189, 0.12);
+  color: var(--text);
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.job-stage.done {
+  color: var(--text);
+  border-color: rgba(142, 203, 155, 0.2);
+  background: rgba(142, 203, 155, 0.08);
+}
+
+.job-stage.current {
+  color: var(--text);
+  border-color: rgba(141, 199, 188, 0.28);
+  background: rgba(141, 199, 188, 0.12);
+}
+
+.job-stage.failed {
+  color: var(--danger);
+  border-color: rgba(216, 137, 137, 0.28);
+  background: rgba(216, 137, 137, 0.1);
 }
 
 .hidden {

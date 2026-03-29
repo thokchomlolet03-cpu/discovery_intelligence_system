@@ -218,8 +218,26 @@
           <span>Usable labeled rows are copied into the explicit feedback queue.</span>
         </label>
       </div>
+      <div id="consent-guidance" class="status-box muted hidden"></div>
       <button class="button button-primary" id="analyze-button" type="button">Run analysis</button>
       <div id="analysis-status" class="status-box muted">Inspect a file before analysis.</div>
+      <section id="job-progress-shell" class="job-progress hidden" aria-live="polite">
+        <div class="section-header">
+          <div>
+            <h2>Execution Progress</h2>
+            <p class="helper-copy">Track the current pipeline stage while the analysis job runs.</p>
+          </div>
+          <span id="job-progress-percent" class="pill">0%</span>
+        </div>
+        <div class="progress-meter" aria-hidden="true">
+          <span id="job-progress-fill" class="progress-meter-fill"></span>
+        </div>
+        <div class="job-progress-copy">
+          <strong id="job-progress-stage">Queued</strong>
+          <p id="job-progress-message" class="helper-copy">A new analysis job will appear here once it starts.</p>
+        </div>
+        <div id="job-stage-list" class="job-stage-list"></div>
+      </section>
     </article>
   </section>
 
@@ -270,6 +288,7 @@
       columns: [],
       jobId: null,
       jobPollHandle: null,
+      validationSummary: null,
     };
 
     const inspectButton = document.getElementById("inspect-button");
@@ -281,10 +300,17 @@
     const intentPanel = document.getElementById("intent-panel");
     const modePanel = document.getElementById("mode-panel");
     const consentPanel = document.getElementById("consent-panel");
+    const consentGuidance = document.getElementById("consent-guidance");
     const validationGrid = document.getElementById("validation-grid");
     const validationWarning = document.getElementById("validation-warning");
     const previewTableHead = document.querySelector("#preview-table thead");
     const previewTableBody = document.querySelector("#preview-table tbody");
+    const progressShell = document.getElementById("job-progress-shell");
+    const progressPercent = document.getElementById("job-progress-percent");
+    const progressFill = document.getElementById("job-progress-fill");
+    const progressStage = document.getElementById("job-progress-stage");
+    const progressMessage = document.getElementById("job-progress-message");
+    const jobStageList = document.getElementById("job-stage-list");
     const resultShell = document.getElementById("result-shell");
     const summaryGrid = document.getElementById("summary-grid");
     const warningsShell = document.getElementById("warnings-shell");
@@ -293,6 +319,30 @@
     const resultJson = document.getElementById("result-json");
     const discoveryLink = document.getElementById("discovery-link");
     const dashboardLink = document.getElementById("dashboard-link");
+    const privateConsentRadio = document.querySelector('input[name="consent_choice"][value="private"]');
+    const learningConsentRadio = document.querySelector('input[name="consent_choice"][value="allow_learning"]');
+    const jobStageOrder = [
+      "queued",
+      "loading_session",
+      "preparing_dataset",
+      "scoring_candidates",
+      "building_reports",
+      "queueing_feedback",
+      "persisting_artifacts",
+      "finalizing_artifacts",
+      "completed",
+    ];
+    const jobStageLabels = {
+      queued: "Queued",
+      loading_session: "Loading upload session",
+      preparing_dataset: "Preparing dataset",
+      scoring_candidates: "Scoring candidates",
+      building_reports: "Building report",
+      queueing_feedback: "Queueing feedback",
+      persisting_artifacts: "Saving artifacts",
+      finalizing_artifacts: "Finalizing outputs",
+      completed: "Completed",
+    };
 
     const mappingFields = [
       ["smiles", "map-smiles"],
@@ -309,6 +359,12 @@
       const numeric = Number(value ?? 0);
       return Number.isFinite(numeric) ? numeric.toFixed(3) : "-";
     };
+    const clampPercent = (value) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return 0;
+      return Math.max(0, Math.min(100, Math.round(numeric)));
+    };
+    const usableLabelCount = (summary) => Number(summary?.usable_label_count ?? summary?.rows_with_labels ?? 0);
     const upgradeAwareMessage = (body, fallback) => {
       const base = body?.message || body?.detail || fallback;
       return body?.upgrade_required ? `${base} Open Billing to upgrade this workspace.` : base;
@@ -323,6 +379,92 @@
         state.jobPollHandle = null;
       }
     };
+    const refreshChoiceCards = (containerId) => {
+      const inputs = document.querySelectorAll(`#${containerId} input[type="radio"]`);
+      inputs.forEach((item) => {
+        item.closest(".choice-card").classList.toggle("active", item.checked);
+      });
+    };
+    const resolveJobStage = (job) => {
+      if (job?.progress_stage) return job.progress_stage;
+      if (job?.status === "succeeded") return "completed";
+      if (job?.status === "queued") return "queued";
+      return "loading_session";
+    };
+    const resetJobProgress = () => {
+      progressShell.classList.add("hidden");
+      progressPercent.textContent = "0%";
+      progressFill.style.width = "0%";
+      progressStage.textContent = "Queued";
+      progressMessage.textContent = "A new analysis job will appear here once it starts.";
+      jobStageList.innerHTML = "";
+    };
+    const renderJobProgress = (job) => {
+      const status = job?.status || "queued";
+      const stage = resolveJobStage(job);
+      const percent = status === "succeeded" ? 100 : clampPercent(job?.progress_percent);
+      const currentIndex = Math.max(jobStageOrder.indexOf(stage), 0);
+
+      progressShell.classList.remove("hidden");
+      progressPercent.textContent = `${percent}%`;
+      progressFill.style.width = `${percent}%`;
+      progressStage.textContent = jobStageLabels[stage] || stage;
+      progressMessage.textContent = job?.progress_message || "Analysis is running...";
+      jobStageList.innerHTML = jobStageOrder.map((stageName, index) => {
+        let tone = "pending";
+        let marker = "•";
+        if (status === "succeeded" && index <= currentIndex) {
+          tone = "done";
+          marker = "✓";
+        } else if (status === "failed") {
+          if (index < currentIndex) {
+            tone = "done";
+            marker = "✓";
+          } else if (index === currentIndex) {
+            tone = "failed";
+            marker = "!";
+          }
+        } else if (index < currentIndex) {
+          tone = "done";
+          marker = "✓";
+        } else if (index === currentIndex) {
+          tone = "current";
+          marker = "⏳";
+        }
+        return `
+          <article class="job-stage ${tone}">
+            <span class="job-stage-marker">${marker}</span>
+            <div>
+              <strong>${jobStageLabels[stageName]}</strong>
+            </div>
+          </article>
+        `;
+      }).join("");
+    };
+    const updateConsentState = (summary) => {
+      const usableLabels = usableLabelCount(summary);
+      const warningTone = usableLabels > 0 ? "status-box muted" : "notice-panel";
+      if (usableLabels > 0) {
+        learningConsentRadio.disabled = false;
+        learningConsentRadio.closest(".choice-card").classList.remove("muted");
+        consentGuidance.innerHTML = `
+          <strong>${usableLabels} labeled rows are eligible for the feedback queue.</strong>
+          <p>If you choose Allow learning, only usable labeled rows from this upload will be added.</p>
+        `;
+      } else {
+        learningConsentRadio.disabled = true;
+        learningConsentRadio.checked = false;
+        privateConsentRadio.checked = true;
+        learningConsentRadio.closest(".choice-card").classList.add("muted");
+        consentGuidance.innerHTML = `
+          <strong>Learning is disabled for this upload.</strong>
+          <p>No usable labeled rows were detected, so this run can still score and rank molecules but it cannot add anything to the learning queue.</p>
+        `;
+      }
+      consentGuidance.className = warningTone;
+      consentGuidance.classList.remove("hidden");
+      refreshChoiceCards("consent-options");
+    };
 
     const showWorkflow = () => {
       [mappingPanel, validationPanel, intentPanel, modePanel, consentPanel].forEach((panel) => panel.classList.remove("hidden"));
@@ -332,9 +474,10 @@
       const inputs = document.querySelectorAll(`#${containerId} input[type="radio"]`);
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
-          inputs.forEach((item) => item.closest(".choice-card").classList.toggle("active", item.checked));
+          refreshChoiceCards(containerId);
         });
       });
+      refreshChoiceCards(containerId);
     };
     ["input-type-options", "intent-options", "mode-options", "consent-options"].forEach(renderChoices);
 
@@ -347,6 +490,7 @@
     };
 
     const renderValidation = (summary) => {
+      state.validationSummary = summary;
       const items = [
         ["Total rows", summary.total_rows],
         ["Valid SMILES", summary.valid_smiles_count],
@@ -363,12 +507,23 @@
       `).join("");
 
       const missing = summary.missing_fields || [];
+      const notices = [];
       if (missing.length) {
-        validationWarning.innerHTML = `<strong>Warning</strong><p>Required mapping still missing: ${missing.join(", ")}</p>`;
+        notices.push(`Required mapping still missing: ${missing.join(", ")}.`);
+      }
+      (summary.warnings || []).forEach((warning) => notices.push(warning));
+
+      if (notices.length) {
+        validationWarning.innerHTML = `
+          <strong>Validation notes</strong>
+          ${notices.map((warning) => `<p>${warning}</p>`).join("")}
+        `;
         validationWarning.classList.remove("hidden");
       } else {
         validationWarning.classList.add("hidden");
       }
+      analyzeButton.disabled = !summary.can_run_analysis;
+      updateConsentState(summary);
     };
 
     const renderPreview = () => {
@@ -404,6 +559,9 @@
         return;
       }
 
+      clearJobPoll();
+      resetJobProgress();
+      resultShell.classList.add("hidden");
       inspectStatus.textContent = "Inspecting uploaded file...";
       inspectStatus.className = "status-box";
 
@@ -499,6 +657,13 @@
         resultShell.classList.add("hidden");
         return;
       }
+      renderJobProgress({
+        ...jobBody,
+        status: "succeeded",
+        progress_stage: "completed",
+        progress_percent: 100,
+        progress_message: body.message || jobBody.progress_message || "Analysis completed.",
+      });
       setAnalysisStatus(body.message || jobBody.progress_message || "Analysis completed.", "success");
       renderCompletedResult(body, jobBody);
     };
@@ -515,6 +680,7 @@
 
       state.jobId = body.job_id;
       state.sessionId = body.session_id || state.sessionId;
+      renderJobProgress(body);
       if (body.status === "queued" || body.status === "running") {
         setAnalysisStatus(body.progress_message || "Analysis is running...");
         state.jobPollHandle = window.setTimeout(() => pollJob(jobUrl), 1200);
@@ -523,6 +689,7 @@
 
       clearJobPoll();
       if (body.status === "failed") {
+        renderJobProgress(body);
         setAnalysisStatus(body.error || "Analysis failed.", "error");
         resultShell.classList.add("hidden");
         return;
@@ -544,8 +711,13 @@
       }
 
       clearJobPoll();
+      resetJobProgress();
       setAnalysisStatus("Creating analysis job...");
       await refreshValidation();
+      if (analyzeButton.disabled) {
+        setAnalysisStatus("Resolve the validation issues before analysis can run.", "error");
+        return;
+      }
 
       const payload = new FormData();
       payload.append("session_id", state.sessionId);
@@ -571,6 +743,7 @@
 
       state.jobId = body.job_id;
       state.sessionId = body.session_id || state.sessionId;
+      renderJobProgress(body);
       setAnalysisStatus(body.progress_message || `Job ${body.job_id} queued.`);
       resultShell.classList.add("hidden");
       await pollJob(body.job_url);

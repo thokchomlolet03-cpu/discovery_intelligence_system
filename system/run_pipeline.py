@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -36,6 +36,21 @@ DEFAULT_ANALYSIS_OPTIONS = {
     "consent_learning": False,
     "column_mapping": None,
 }
+
+
+ProgressCallback = Callable[[str, str, int], None]
+
+
+def _emit_progress(
+    progress_callback: ProgressCallback | None,
+    *,
+    stage: str,
+    message: str,
+    percent: int,
+) -> None:
+    if progress_callback is None:
+        return
+    progress_callback(stage, message, percent)
 
 
 def _resolve_session_id(options: dict[str, Any], prepared: pd.DataFrame) -> str:
@@ -100,12 +115,25 @@ def run_pipeline(
     seed: int = 42,
     source_name: str | None = None,
     analysis_options: dict[str, Any] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     options = {**DEFAULT_ANALYSIS_OPTIONS, **(analysis_options or {})}
     source_name = source_name or "uploaded_dataset.csv"
     column_mapping = options.get("column_mapping") or infer_column_mapping(list(df.columns))
+    _emit_progress(
+        progress_callback,
+        stage="preparing_dataset",
+        message="Normalizing mapped columns and validating uploaded molecules.",
+        percent=12,
+    )
     prepared, summary = prepare_analysis_dataframe(df, column_mapping)
 
+    _emit_progress(
+        progress_callback,
+        stage="preparing_dataset",
+        message="Applying scoring mode and analysis configuration.",
+        percent=24,
+    )
     scoring_mode, config = apply_scoring_mode(default_system_config(seed=seed), options.get("scoring_mode"))
     session_id = _resolve_session_id(options, prepared)
     summary = _validated_normalized_summary(summary, session_id, source_name)
@@ -131,6 +159,7 @@ def run_pipeline(
             source_name,
             intent,
             scoring_mode,
+            progress_callback=progress_callback,
         )
     else:
         result, scored, bundle = build_prediction_result(
@@ -143,6 +172,7 @@ def run_pipeline(
             intent,
             scoring_mode,
             allow_session_training=session_training_available,
+            progress_callback=progress_callback,
         )
         generated = None
         processed = None
@@ -161,6 +191,12 @@ def run_pipeline(
     if intent == "generate_candidates" and not session_training_available:
         warnings.append("The upload did not contain enough labeled examples per class for session-trained candidate generation, so the run fell back to ranking uploaded molecules.")
 
+    _emit_progress(
+        progress_callback,
+        stage="building_reports",
+        message="Compiling session summary, warnings, and recommendation report.",
+        percent=80,
+    )
     session_summary = build_upload_session_summary(
         session_id=session_id,
         source_name=source_name,
@@ -195,6 +231,12 @@ def run_pipeline(
         analysis_report=analysis_report,
     )
 
+    _emit_progress(
+        progress_callback,
+        stage="queueing_feedback",
+        message="Evaluating whether labeled rows can enter the feedback queue.",
+        percent=88,
+    )
     result["feedback_store"] = queue_feedback_rows(prepared, consent_learning=consent_learning)
 
     if result.get("decision_output"):
@@ -206,11 +248,23 @@ def run_pipeline(
         result["decision_output"] = validate_decision_artifact(result["decision_output"])
         result["top_candidates"] = result["decision_output"].get("top_experiments", [])
 
+    _emit_progress(
+        progress_callback,
+        stage="persisting_artifacts",
+        message="Saving review queue artifacts for this analysis session.",
+        percent=92,
+    )
     result["review_queue"] = persist_review_queue(
         result.get("top_candidates", []),
         session_id=session_id,
         workspace_id=str(options.get("workspace_id") or "") or None,
         created_by_user_id=str(options.get("created_by_user_id") or "") or None,
+    )
+    _emit_progress(
+        progress_callback,
+        stage="persisting_artifacts",
+        message="Writing analysis artifacts for the completed run.",
+        percent=96,
     )
     result["artifacts"] = (
         persist_pipeline_artifacts(
@@ -236,4 +290,10 @@ def run_pipeline(
         write_decision_artifact(DEFAULT_DECISION_OUTPUT_PATH, result["decision_output"])
         write_decision_artifact(DECISION_OUTPUT_PATH, result["decision_output"])
 
+    _emit_progress(
+        progress_callback,
+        stage="finalizing_artifacts",
+        message="Preparing the final result payload for the upload session.",
+        percent=98,
+    )
     return result

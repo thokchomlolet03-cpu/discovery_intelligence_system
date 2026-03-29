@@ -67,6 +67,8 @@ class JobManagerTest(DatabaseBackedTestCase):
 
         self.assertEqual(persisted_job["job_id"], job["job_id"])
         self.assertEqual(persisted_job["status"], "queued")
+        self.assertEqual(persisted_job["progress_stage"], "queued")
+        self.assertEqual(persisted_job["progress_percent"], 0)
         self.assertEqual(persisted_session["session_id"], "session_1")
         self.assertEqual(persisted_session["latest_job_id"], job["job_id"])
         self.assertEqual(persisted_session["workspace_id"], self.workspace["workspace_id"])
@@ -117,6 +119,8 @@ class JobManagerTest(DatabaseBackedTestCase):
         session_metadata = SessionRepository().get_session("session_1", workspace_id=self.workspace["workspace_id"])
 
         self.assertEqual(stored["status"], "succeeded")
+        self.assertEqual(stored["progress_stage"], "completed")
+        self.assertEqual(stored["progress_percent"], 100)
         self.assertEqual(stored["artifact_refs"]["result_json"], str(result_path))
         self.assertIn("result_json", {artifact["artifact_type"] for artifact in artifacts})
         self.assertEqual(session_metadata["summary_metadata"]["last_job_status"], "succeeded")
@@ -170,6 +174,8 @@ class JobManagerTest(DatabaseBackedTestCase):
         )
 
         self.assertEqual(stored["status"], "succeeded")
+        self.assertEqual(stored["progress_stage"], "completed")
+        self.assertEqual(stored["progress_percent"], 100)
         self.assertEqual({artifact["artifact_type"] for artifact in artifacts}, {"result_json"})
 
     def test_job_lifecycle_transitions_to_failed_and_persists_error(self):
@@ -196,6 +202,7 @@ class JobManagerTest(DatabaseBackedTestCase):
         stored = manager.get_job(job["job_id"], workspace_id=self.workspace["workspace_id"])
         session_metadata = SessionRepository().get_session("session_1", workspace_id=self.workspace["workspace_id"])
         self.assertEqual(stored["status"], "failed")
+        self.assertGreaterEqual(stored["progress_percent"], 0)
         self.assertIn("ValueError", stored["error"])
         self.assertEqual(session_metadata["summary_metadata"]["last_job_status"], "failed")
         self.assertIn("bad input for scientific pipeline", session_metadata["summary_metadata"]["last_error"])
@@ -361,6 +368,8 @@ class JobRouteTest(DatabaseBackedTestCase):
         body = response.json()
         self.assertEqual(body["job_id"], queued_job["job_id"])
         self.assertEqual(body["status"], "queued")
+        self.assertEqual(body["progress_stage"], "queued")
+        self.assertEqual(body["progress_percent"], 0)
         self.assertIn("job_url", body)
         self.assertIn("result_url", body)
         mock_start.assert_called_once()
@@ -379,6 +388,8 @@ class JobRouteTest(DatabaseBackedTestCase):
         body = response.json()
         self.assertEqual(body["job_id"], queued_job["job_id"])
         self.assertEqual(body["status"], "queued")
+        self.assertEqual(body["progress_stage"], "queued")
+        self.assertEqual(body["progress_percent"], 0)
         self.assertEqual(body["job_url"], f"/api/jobs/{queued_job['job_id']}")
 
     def test_job_result_endpoint_returns_artifact_payload_when_job_succeeds(self):

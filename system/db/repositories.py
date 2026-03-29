@@ -142,6 +142,8 @@ def _job_payload(record: JobModel) -> dict[str, Any]:
             "created_at": record.created_at,
             "updated_at": record.updated_at,
             "job_type": record.job_type,
+            "progress_stage": record.progress_stage,
+            "progress_percent": record.progress_percent,
             "progress_message": record.progress_message,
             "error": record.error,
             "artifact_refs": record.artifact_refs or {},
@@ -569,6 +571,8 @@ class JobRepository:
         created_at: datetime,
         updated_at: datetime,
         job_type: str = "analysis",
+        progress_stage: str = "queued",
+        progress_percent: int = 0,
         progress_message: str = "",
         error: str = "",
         artifact_refs: dict[str, Any] | None = None,
@@ -594,6 +598,8 @@ class JobRepository:
                 "created_at": created_at,
                 "updated_at": updated_at,
                 "job_type": job_type,
+                "progress_stage": progress_stage,
+                "progress_percent": progress_percent,
                 "progress_message": progress_message,
                 "error": error,
                 "artifact_refs": artifact_refs or {},
@@ -609,6 +615,8 @@ class JobRepository:
                 created_at=_to_datetime(payload["created_at"]),
                 updated_at=_to_datetime(payload["updated_at"]),
                 job_type=payload.get("job_type", ""),
+                progress_stage=payload.get("progress_stage", "queued"),
+                progress_percent=int(payload.get("progress_percent", 0)),
                 progress_message=payload.get("progress_message", ""),
                 error=payload.get("error", ""),
                 artifact_refs=payload.get("artifact_refs", {}),
@@ -655,6 +663,8 @@ class JobRepository:
             record.status = payload["status"]
             record.updated_at = _to_datetime(payload["updated_at"])
             record.job_type = payload.get("job_type", "")
+            record.progress_stage = payload.get("progress_stage", "queued")
+            record.progress_percent = int(payload.get("progress_percent", 0))
             record.progress_message = payload.get("progress_message", "")
             record.error = payload.get("error", "")
             record.artifact_refs = payload.get("artifact_refs", {})

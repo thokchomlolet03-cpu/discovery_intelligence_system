@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -22,6 +22,21 @@ from system.services.prediction_service import predict_with_model
 from system.services.training_service import load_model_bundle
 
 
+ProgressCallback = Callable[[str, str, int], None]
+
+
+def _emit_progress(
+    progress_callback: ProgressCallback | None,
+    *,
+    stage: str,
+    message: str,
+    percent: int,
+) -> None:
+    if progress_callback is None:
+        return
+    progress_callback(stage, message, percent)
+
+
 def build_discovery_result(
     df: pd.DataFrame,
     summary: dict[str, Any],
@@ -31,9 +46,22 @@ def build_discovery_result(
     source_name: str,
     intent: str,
     scoring_mode: str,
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     labeled_df = labeled_subset(df)
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Building features from labeled rows for session training.",
+        percent=36,
+    )
     X_train, clean_labeled = build_features(labeled_df)
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Training a session-specific model from labeled rows.",
+        percent=44,
+    )
     model, feature_contract, bundle = train_modular_model(
         X_train,
         clean_labeled["biodegradable"].astype(int),
@@ -41,7 +69,19 @@ def build_discovery_result(
         random_state=seed,
     )
 
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Generating candidate suggestions from the uploaded dataset.",
+        percent=52,
+    )
     generated, processed = generate_candidate_artifacts(df, n=config.loop.candidates_per_round, config=config, seed=seed)
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Checking feasibility of generated candidates.",
+        percent=58,
+    )
     processed = annotate_feasibility(processed, config=config)
     feasible = processed[processed["is_feasible"]].copy()
 
@@ -56,12 +96,24 @@ def build_discovery_result(
         }
         return result, generated, processed, feasible, bundle
 
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Running model inference on feasible generated candidates.",
+        percent=64,
+    )
     candidate_features, feasible = build_features(feasible, feature_contract=feature_contract)
     confidence, uncertainty = predict(model, candidate_features, feature_contract, config=config)
 
     scored = feasible.copy()
     scored["confidence"] = confidence
     scored["uncertainty"] = uncertainty
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Ranking generated candidates for scientific review.",
+        percent=72,
+    )
     scored = score_candidates(scored, config=config)
     scored["experiment_value"] = scored.apply(lambda row: compute_experiment_value(row, config=config), axis=1)
     scored = select_candidates(scored, min(config.loop.candidates_per_round, len(scored)), config=config)
@@ -98,8 +150,15 @@ def build_prediction_result(
     intent: str,
     scoring_mode: str,
     allow_session_training: bool,
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, dict[str, Any] | None]:
     bundle = None
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Checking novelty and feasibility across uploaded molecules.",
+        percent=36,
+    )
     reference = reference_smiles_from_dataset()
     novelty_ready = candidate_similarity_table(df.copy(), reference_smiles=reference, config=config)
     novelty_ready = annotate_feasibility(novelty_ready, config=config)
@@ -118,12 +177,30 @@ def build_prediction_result(
 
     if allow_session_training:
         labeled_df = labeled_subset(df)
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Building features from labeled rows for session training.",
+            percent=46,
+        )
         X_train, clean_labeled = build_features(labeled_df)
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Training a session-specific model.",
+            percent=54,
+        )
         model, feature_contract, bundle = train_modular_model(
             X_train,
             clean_labeled["biodegradable"].astype(int),
             config=config,
             random_state=seed,
+        )
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Running model inference on uploaded molecules.",
+            percent=62,
         )
         candidate_features, feasible = build_features(feasible, feature_contract=feature_contract)
         confidence, uncertainty = predict(model, candidate_features, feature_contract, config=config)
@@ -136,10 +213,34 @@ def build_prediction_result(
             raise ValueError(
                 "Upload contains no usable labels for session training, and no trained model bundle was found at rf_model_v1.joblib."
             )
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Loading the baseline model bundle.",
+            percent=48,
+        )
         bundle = load_model_bundle(model_path)
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Preparing features for baseline model inference.",
+            percent=58,
+        )
         _, clean_features = build_features(feasible, feature_contract=bundle.get("features"))
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Running baseline model inference on uploaded molecules.",
+            percent=66,
+        )
         scored = predict_with_model(bundle, clean_features, config=bundle.get("config"))
 
+    _emit_progress(
+        progress_callback,
+        stage="scoring_candidates",
+        message="Ranking uploaded molecules for scientific review.",
+        percent=72,
+    )
     scored = score_candidates(scored, config=config)
     scored["experiment_value"] = scored.apply(lambda row: compute_experiment_value(row, config=config), axis=1)
     scored = decorate_candidates(scored, mode="prediction", source_name=source_name, bundle=bundle, intent=intent, scoring_mode=scoring_mode)

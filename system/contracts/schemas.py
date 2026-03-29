@@ -888,17 +888,38 @@ class JobState(ContractBaseModel):
     created_at: datetime
     updated_at: datetime
     job_type: str = ""
+    progress_stage: str = "queued"
+    progress_percent: int = Field(default=0, ge=0, le=100)
     progress_message: str = ""
     error: str = ""
     artifact_refs: dict[str, str] = Field(default_factory=dict)
 
-    @validator("job_id", "session_id", "workspace_id", "created_by_user_id", "job_type", "progress_message", "error", pre=True, always=True)
+    @validator(
+        "job_id",
+        "session_id",
+        "workspace_id",
+        "created_by_user_id",
+        "job_type",
+        "progress_stage",
+        "progress_message",
+        "error",
+        pre=True,
+        always=True,
+    )
     def _clean_job_text(cls, value: Any) -> str:
         return _clean_text(value)
 
     @validator("status", pre=True)
     def _clean_job_status(cls, value: Any) -> str:
         return _clean_text(value).lower()
+
+    @validator("progress_percent", pre=True)
+    def _clean_job_progress_percent(cls, value: Any) -> int:
+        try:
+            numeric = int(value)
+        except (TypeError, ValueError):
+            numeric = 0
+        return max(0, min(100, numeric))
 
     @validator("created_at", "updated_at", pre=True)
     def _coerce_job_datetime(cls, value: Any) -> Any:

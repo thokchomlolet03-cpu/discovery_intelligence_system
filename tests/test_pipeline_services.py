@@ -178,6 +178,67 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(result["discovery_url"], f"/discovery?session_id={session_id}")
         self.assertEqual(result["dashboard_url"], f"/dashboard?session_id={session_id}")
 
+    @patch("system.run_pipeline.build_discovery_result")
+    @patch("system.run_pipeline.persist_review_queue")
+    @patch("system.run_pipeline.build_prediction_result")
+    def test_run_pipeline_emits_stage_progress_updates(
+        self,
+        build_prediction_result_mock,
+        persist_review_queue_mock,
+        build_discovery_result_mock,
+    ):
+        session_id = "session_progress"
+        progress_events: list[tuple[str, str, int]] = []
+        scored = pd.DataFrame([{"smiles": "CCO", "confidence": 0.91, "uncertainty": 0.10, "novelty": 0.58}])
+        build_prediction_result_mock.return_value = (
+            {
+                "mode": "prediction",
+                "message": "Ranked uploaded molecules for review using the current scoring workflow.",
+                "summary": {"scored_candidates": 1},
+                "top_candidates": [],
+                "decision_output": canonical_decision_output(session_id),
+            },
+            scored,
+            None,
+        )
+        persist_review_queue_mock.return_value = {
+            "session_id": session_id,
+            "generated_at": "2026-03-25T12:05:00+00:00",
+            "summary": {"pending_review": 1, "approved": 0, "rejected": 0, "tested": 0, "ingested": 0, "counts": {}},
+            "groups": {},
+        }
+
+        run_pipeline(
+            pd.DataFrame([{"smiles": "CCO", "biodegradable": -1, "molecule_id": "mol_1", "source": "upload", "notes": ""}]),
+            persist_artifacts=False,
+            update_discovery_snapshot=False,
+            seed=42,
+            source_name="upload.csv",
+            analysis_options={
+                "session_id": session_id,
+                "input_type": "molecules_to_screen_only",
+                "intent": "rank_uploaded_molecules",
+                "scoring_mode": "balanced",
+                "consent_learning": False,
+                "column_mapping": {
+                    "smiles": "smiles",
+                    "biodegradable": "biodegradable",
+                    "molecule_id": "molecule_id",
+                    "source": "source",
+                    "notes": "notes",
+                },
+            },
+            progress_callback=lambda stage, message, percent: progress_events.append((stage, message, percent)),
+        )
+
+        self.assertGreaterEqual(len(progress_events), 5)
+        self.assertEqual(progress_events[0][0], "preparing_dataset")
+        self.assertEqual(progress_events[0][2], 12)
+        self.assertTrue(any(stage == "building_reports" for stage, _, _ in progress_events))
+        self.assertTrue(any(stage == "queueing_feedback" for stage, _, _ in progress_events))
+        self.assertEqual(progress_events[-1][0], "finalizing_artifacts")
+        self.assertEqual(progress_events[-1][2], 98)
+
 
 if __name__ == "__main__":
     unittest.main()

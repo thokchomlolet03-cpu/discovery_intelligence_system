@@ -15,6 +15,7 @@ from system.upload_parser import load_session_dataframe, load_session_metadata, 
 PipelineRunner = Callable[..., dict[str, Any]]
 logger = logging.getLogger(__name__)
 _PATH_RE = re.compile(r"(/[^\s]+|[A-Za-z]:\\[^\s]+)")
+DEFAULT_JOB_STAGE = "queued"
 
 
 def _utc_now() -> datetime:
@@ -38,6 +39,8 @@ class DatabaseJobStore:
         workspace_id: str | None = None,
         created_by_user_id: str | None = None,
         job_type: str = "analysis",
+        progress_stage: str = DEFAULT_JOB_STAGE,
+        progress_percent: int = 0,
         progress_message: str = "Queued for execution.",
         artifact_refs: dict[str, str] | None = None,
     ) -> dict[str, Any]:
@@ -52,6 +55,8 @@ class DatabaseJobStore:
             created_at=timestamp,
             updated_at=timestamp,
             job_type=job_type,
+            progress_stage=progress_stage,
+            progress_percent=progress_percent,
             progress_message=progress_message,
             error="",
             artifact_refs=artifact_refs or {},
@@ -107,6 +112,8 @@ class JobManager:
             workspace_id=workspace_id,
             created_by_user_id=created_by_user_id,
             job_type="analysis",
+            progress_stage=DEFAULT_JOB_STAGE,
+            progress_percent=0,
             progress_message="Queued for execution.",
         )
         self.session_repository.upsert_session(
@@ -148,9 +155,11 @@ class JobManager:
             "created_by_user_id": job.get("created_by_user_id") or None,
         }
 
-        self.store.update_job(
+        self._update_job_progress(
             job_id,
             status=JobStatus.running.value,
+            progress_stage="loading_session",
+            progress_percent=4,
             progress_message="Loading upload session data.",
             error="",
         )
@@ -175,20 +184,29 @@ class JobManager:
 
         try:
             dataframe = load_session_dataframe(session_id, workspace_id=workspace_id)
-            self.store.update_job(job_id, progress_message="Running scientific analysis pipeline.")
+            self._update_job_progress(
+                job_id,
+                progress_stage="preparing_dataset",
+                progress_percent=8,
+                progress_message="Upload session data loaded. Preparing analysis pipeline.",
+            )
             result = self.pipeline_runner(
                 dataframe,
                 persist_artifacts=True,
                 update_discovery_snapshot=False,
                 source_name=resolved_source_name,
                 analysis_options=options,
+                progress_callback=self._build_progress_callback(job_id),
             )
         except Exception as exc:
             logger.exception("Analysis job %s failed during pipeline execution", job_id)
             error_message = self._safe_job_error(exc)
-            self.store.update_job(
+            current_job = self.store.get_job(job_id)
+            self._update_job_progress(
                 job_id,
                 status=JobStatus.failed.value,
+                progress_stage=current_job.get("progress_stage") or "preparing_dataset",
+                progress_percent=int(current_job.get("progress_percent") or 0),
                 progress_message="Analysis failed.",
                 error=error_message,
                 artifact_refs={},
@@ -205,6 +223,12 @@ class JobManager:
             return None
 
         try:
+            self._update_job_progress(
+                job_id,
+                progress_stage="finalizing_artifacts",
+                progress_percent=98,
+                progress_message="Registering generated artifacts with the control plane.",
+            )
             self.artifact_repository.register_artifacts(
                 artifact_refs=result.get("artifacts") or {},
                 session_id=session_id,
@@ -215,9 +239,11 @@ class JobManager:
         except Exception as exc:
             logger.exception("Analysis job %s failed while registering artifacts", job_id)
             error_message = self._safe_job_error(exc)
-            self.store.update_job(
+            self._update_job_progress(
                 job_id,
                 status=JobStatus.failed.value,
+                progress_stage="finalizing_artifacts",
+                progress_percent=98,
                 progress_message="Analysis failed while finalizing artifacts.",
                 error=error_message,
                 artifact_refs={},
@@ -258,11 +284,50 @@ class JobManager:
         self.store.update_job(
             job_id,
             status=JobStatus.succeeded.value,
+            progress_stage="completed",
+            progress_percent=100,
             progress_message=str(result.get("message") or "Analysis completed."),
             error="",
             artifact_refs=artifact_refs,
         )
         return result
+
+    def _build_progress_callback(self, job_id: str) -> Callable[[str, str, int], None]:
+        def _progress_callback(stage: str, message: str, percent: int) -> None:
+            self._update_job_progress(
+                job_id,
+                progress_stage=stage,
+                progress_percent=percent,
+                progress_message=message,
+            )
+
+        return _progress_callback
+
+    def _update_job_progress(
+        self,
+        job_id: str,
+        *,
+        status: str | None = None,
+        progress_stage: str | None = None,
+        progress_percent: int | None = None,
+        progress_message: str | None = None,
+        error: str | None = None,
+        artifact_refs: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        changes: dict[str, Any] = {}
+        if status is not None:
+            changes["status"] = status
+        if progress_stage is not None:
+            changes["progress_stage"] = progress_stage
+        if progress_percent is not None:
+            changes["progress_percent"] = max(0, min(100, int(progress_percent)))
+        if progress_message is not None:
+            changes["progress_message"] = progress_message
+        if error is not None:
+            changes["error"] = error
+        if artifact_refs is not None:
+            changes["artifact_refs"] = artifact_refs
+        return self.store.update_job(job_id, **changes)
 
     @staticmethod
     def _safe_job_error(exc: Exception) -> str:

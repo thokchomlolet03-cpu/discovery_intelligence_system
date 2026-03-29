@@ -121,6 +121,57 @@ class JobManagerTest(DatabaseBackedTestCase):
         self.assertIn("result_json", {artifact["artifact_type"] for artifact in artifacts})
         self.assertEqual(session_metadata["summary_metadata"]["last_job_status"], "succeeded")
 
+    def test_job_lifecycle_ignores_directory_artifact_refs(self):
+        result_path = Path(self.tmpdir.name) / "result.json"
+        result_path.write_text(json.dumps({"message": "done"}))
+        run_dir = Path(self.tmpdir.name) / "session_dir"
+        run_dir.mkdir()
+
+        def runner(dataframe, **kwargs):
+            self.assertEqual(dataframe, "frame")
+            return {
+                "message": "Analysis complete.",
+                "mode": "prediction",
+                "summary": {"analyzed_rows": 3},
+                "warnings": [],
+                "analysis_report": {"warnings": []},
+                "upload_session_summary": {"session_id": "session_1"},
+                "artifacts": {
+                    "run_dir": str(run_dir),
+                    "result_json": str(result_path),
+                },
+                "discovery_url": "/discovery?session_id=session_1",
+                "dashboard_url": "/dashboard?session_id=session_1",
+            }
+
+        artifact_repository = ArtifactRepository()
+        manager = JobManager(store=DatabaseJobStore(), pipeline_runner=runner, artifact_repository=artifact_repository)
+        job = manager.store.create_job(
+            session_id="session_1",
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
+
+        with (
+            patch("system.job_manager.load_session_metadata", return_value={"filename": "upload.csv"}),
+            patch("system.job_manager.load_session_dataframe", return_value="frame"),
+        ):
+            manager.run_analysis_job(
+                job_id=job["job_id"],
+                source_name="upload.csv",
+                analysis_options={"intent": "rank_uploaded_molecules", "input_type": "experimental_results"},
+            )
+
+        stored = manager.get_job(job["job_id"], workspace_id=self.workspace["workspace_id"])
+        artifacts = artifact_repository.list_artifacts(
+            session_id="session_1",
+            job_id=job["job_id"],
+            workspace_id=self.workspace["workspace_id"],
+        )
+
+        self.assertEqual(stored["status"], "succeeded")
+        self.assertEqual({artifact["artifact_type"] for artifact in artifacts}, {"result_json"})
+
     def test_job_lifecycle_transitions_to_failed_and_persists_error(self):
         def failing_runner(dataframe, **kwargs):
             raise ValueError("bad input for scientific pipeline")

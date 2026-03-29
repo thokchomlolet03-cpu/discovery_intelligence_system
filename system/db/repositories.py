@@ -959,6 +959,12 @@ class ArtifactRepository:
             path_text = str(value or "").strip()
             if not path_text or artifact_type.endswith("_url") or "://" in path_text:
                 continue
+            try:
+                _normalize_path(path_text)
+            except ValueError as exc:
+                if str(exc) == "Artifact path must point to a file.":
+                    continue
+                raise
             saved.append(
                 self.register_artifact(
                     artifact_type=artifact_type,

@@ -3,6 +3,7 @@
 Discovery Intelligence is designed to run cleanly as a single-VM deployment on Google Cloud while you continue developing from your MacBook.
 
 For a command-by-command first-time setup, use [docs/google-cloud-vm-checklist.md](/Users/lolet/discovery_system/docs/google-cloud-vm-checklist.md).
+For the current budget-based VM auto-stop guardrail, use [docs/cost-control.md](/Users/lolet/discovery_system/docs/cost-control.md).
 
 This deployment mode uses:
 

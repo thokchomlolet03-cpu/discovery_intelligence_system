@@ -85,6 +85,7 @@ The repository now includes a single-VM Docker/GHCR deployment foundation for:
 - GitHub Actions CI/build/deploy from GitHub to the VM
 
 Operator-facing deployment instructions are in [docs/deployment.md](docs/deployment.md).
+For the exact first-time Google Cloud VM setup steps, use [docs/google-cloud-vm-checklist.md](docs/google-cloud-vm-checklist.md).
 
 ## Run Tests
 

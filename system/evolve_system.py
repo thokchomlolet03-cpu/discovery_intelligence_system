@@ -1,6 +1,7 @@
 import argparse
 import json
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -15,7 +16,7 @@ from filters.feasibility import annotate_feasibility
 from generation.guided_generator import generate_candidate_artifacts
 from models.predict import predict
 from models.train_model import train_model as train_modular_model
-from pipeline_utils import (
+from system.services.artifact_service import (
     DEFAULT_CANDIDATE_PATH,
     DEFAULT_DECISION_OUTPUT_PATH,
     DEFAULT_EVALUATION_PATH,
@@ -29,21 +30,25 @@ from pipeline_utils import (
     DEFAULT_RESULTS_PATH,
     DEFAULT_REVIEW_QUEUE_PATH,
     DEFAULT_RUN_CONFIG_PATH,
-    append_feedback_to_dataset,
-    labeled_subset,
-    load_dataset,
-    pseudo_label_candidates,
-    save_model_bundle,
-    selection_counts,
+    register_artifact_root,
     write_dataframe,
     write_evaluation_summary,
     write_iteration_history,
     write_json_log,
     write_run_config,
 )
+from system.services.data_service import labeled_subset, load_dataset
+from system.services.portfolio_service import (
+    append_feedback_to_dataset,
+    pseudo_label_candidates,
+    selection_counts,
+)
+from system.services.training_service import save_model_bundle
 from reasoning.explain import explain_prediction
 from selection.scorer import score_candidates
 from selection.selector import select_candidates
+from system.contracts import validate_decision_artifact
+from system.services.artifact_service import write_decision_artifact
 from utils.io import save_knowledge_entries
 
 
@@ -97,8 +102,11 @@ def build_knowledge_entries(df, iteration):
 
 
 def empty_decision_package(iteration, top_k):
-    return {
+    return validate_decision_artifact(
+        {
+        "session_id": "public",
         "iteration": int(iteration),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "top_k": int(top_k),
             "candidate_count": 0,
@@ -106,7 +114,8 @@ def empty_decision_package(iteration, top_k):
             "top_experiment_value": 0.0,
         },
         "top_experiments": [],
-    }
+        }
+    )
 
 
 def main(
@@ -120,6 +129,7 @@ def main(
 ):
     print("Starting modular discovery system")
     output_dir = Path(output_dir)
+    register_artifact_root(output_dir)
     config = default_system_config(seed=seed)
     config = replace(
         config,
@@ -157,6 +167,10 @@ def main(
             random_state=iteration_seed,
         )
 
+        bundle["artifact_refs"] = {
+            "model_bundle": str(output_path(output_dir, DEFAULT_MODEL_PATH)),
+            "evaluation_summary": str(output_path(output_dir, DEFAULT_EVALUATION_PATH)),
+        }
         save_model_bundle(bundle, output_path(output_dir, DEFAULT_MODEL_PATH))
         write_evaluation_summary(output_path(output_dir, DEFAULT_EVALUATION_PATH), bundle)
 
@@ -223,8 +237,8 @@ def main(
         write_dataframe(output_path(output_dir, DEFAULT_PREDICTED_CANDIDATE_PATH), scored)
         write_dataframe(output_path(output_dir, DEFAULT_LABELED_CANDIDATE_PATH), labeled)
         write_dataframe(output_path(output_dir, DEFAULT_RESULTS_PATH), feedback)
-        write_json_log(output_path(output_dir, DEFAULT_DECISION_OUTPUT_PATH), decision)
-        write_json_log(output_path(output_dir, DECISION_OUTPUT_PATH), decision)
+        write_decision_artifact(output_path(output_dir, DEFAULT_DECISION_OUTPUT_PATH), decision)
+        write_decision_artifact(output_path(output_dir, DECISION_OUTPUT_PATH), decision)
 
         review_frames.append(review_queue)
         combined_review = pd.concat(review_frames, ignore_index=True) if review_frames else review_queue.iloc[0:0].copy()

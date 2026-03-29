@@ -1,5 +1,5 @@
 from models.uncertainty import compute_uncertainty
-from pipeline_utils import resolve_system_config
+from system.services.runtime_config import resolve_system_config
 
 
 def score_candidates(df, config=None):
@@ -16,4 +16,3 @@ def score_candidates(df, config=None):
     )
     scored["final_score"] = scored["score"]
     return scored
-

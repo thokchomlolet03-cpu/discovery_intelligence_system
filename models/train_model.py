@@ -1,4 +1,6 @@
-from pipeline_utils import load_dataset, save_model_bundle, train_model as train_bundle_model, write_evaluation_summary
+from system.services.artifact_service import write_evaluation_summary
+from system.services.data_service import load_dataset
+from system.services.training_service import save_model_bundle, train_model as train_bundle_model
 
 
 def train_model(X, y, config=None, random_state=None):
@@ -19,4 +21,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

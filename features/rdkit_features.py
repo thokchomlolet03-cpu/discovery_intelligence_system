@@ -1,6 +1,6 @@
 from core.constants import DESCRIPTOR_COLUMNS
 from features.fingerprint_features import infer_fingerprint_columns
-from pipeline_utils import featurize_dataframe
+from system.services.data_service import featurize_dataframe
 
 
 def build_features(df, feature_contract=None):
@@ -12,4 +12,3 @@ def build_features(df, feature_contract=None):
     X = clean.reindex(columns=contract).fillna(0)
     X = X.loc[:, ~X.columns.duplicated()].copy()
     return X, clean
-

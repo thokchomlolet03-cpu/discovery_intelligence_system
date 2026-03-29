@@ -8,15 +8,22 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
+from system.db import resolve_artifact_path
 from system.review_manager import build_review_queue
 from utils.artifact_writer import REPO_ROOT, uploaded_session_dir
 
 
 DATASET_PATHS = ("uploaded_dataset.csv", "data/data.csv", "data.csv")
+DATASET_ARTIFACT_TYPES = ("upload_csv", "raw_upload_csv")
 CANDIDATE_PATHS = ("scored_candidates.csv", "predicted_candidates.csv", "candidates_results.csv")
+CANDIDATE_ARTIFACT_TYPES = ("scored_candidates_csv", "processed_candidates_csv")
 DECISION_PATHS = ("decision_output.json", "data/decision_output.json")
+DECISION_ARTIFACT_TYPES = ("decision_output_json",)
 ANALYSIS_REPORT_PATHS = ("analysis_report.json", "data/reports/latest_result.json", "data/uploads/latest_result.json")
+ANALYSIS_REPORT_ARTIFACT_TYPES = ("analysis_report_json", "analysis_report_copy_json", "latest_result_json")
 REVIEW_QUEUE_PATHS = ("review_queue.json", "data/review_queue.json")
+REVIEW_QUEUE_ARTIFACT_TYPES = ("review_queue_json",)
 EVOLUTION_PATHS = ("iteration_history.csv",)
 
 
@@ -26,9 +33,9 @@ def _run_root(session_id: str | None) -> Path:
     return REPO_ROOT
 
 
-def _find_artifact(run_root: Path, candidates: tuple[str, ...]) -> Path | None:
+def _find_artifact(run_root: Path, candidates: tuple[str, ...], *, include_repo_root: bool = True) -> Path | None:
     roots = [run_root]
-    if run_root.resolve() != REPO_ROOT.resolve():
+    if include_repo_root and run_root.resolve() != REPO_ROOT.resolve():
         roots.append(REPO_ROOT)
 
     for root in roots:
@@ -37,6 +44,32 @@ def _find_artifact(run_root: Path, candidates: tuple[str, ...]) -> Path | None:
             if target.exists():
                 return target
     return None
+
+
+def _resolve_run_artifact(
+    *,
+    session_id: str | None,
+    workspace_id: str | None,
+    run_root: Path,
+    artifact_types: tuple[str, ...],
+    fallback_candidates: tuple[str, ...],
+) -> Path | None:
+    fallback_path = _find_artifact(
+        run_root,
+        fallback_candidates,
+        include_repo_root=workspace_id is None,
+    )
+    if session_id is None and workspace_id is not None:
+        return None
+    if session_id is None:
+        return fallback_path
+    fallback_paths = [fallback_path] if fallback_path is not None else []
+    return resolve_artifact_path(
+        artifact_types=artifact_types,
+        session_id=session_id,
+        workspace_id=workspace_id,
+        fallback_paths=fallback_paths,
+    )
 
 
 def _load_csv(path: Path | None) -> pd.DataFrame:
@@ -90,18 +123,71 @@ def _chart_section(title: str, description: str, fig, include_js: bool) -> dict[
     }
 
 
-def build_dashboard_context(session_id: str | None = None) -> dict[str, Any]:
+def build_dashboard_context(session_id: str | None = None, workspace_id: str | None = None) -> dict[str, Any]:
     run_root = _run_root(session_id)
-    dataset = _load_csv(_find_artifact(run_root, DATASET_PATHS))
-    candidates = _normalize_candidates(_load_csv(_find_artifact(run_root, CANDIDATE_PATHS)))
-    decision_payload = _load_json(_find_artifact(run_root, DECISION_PATHS)) or {}
-    analysis_report = _load_json(_find_artifact(run_root, ANALYSIS_REPORT_PATHS)) or {}
-    review_payload = _load_json(_find_artifact(run_root, REVIEW_QUEUE_PATHS))
-    evolution = _load_csv(_find_artifact(run_root, EVOLUTION_PATHS))
+    dataset = _load_csv(
+        _resolve_run_artifact(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            run_root=run_root,
+            artifact_types=DATASET_ARTIFACT_TYPES,
+            fallback_candidates=DATASET_PATHS,
+        )
+    )
+    candidates = _normalize_candidates(
+        _load_csv(
+            _resolve_run_artifact(
+                session_id=session_id,
+                workspace_id=workspace_id,
+                run_root=run_root,
+                artifact_types=CANDIDATE_ARTIFACT_TYPES,
+                fallback_candidates=CANDIDATE_PATHS,
+            )
+        )
+    )
+    decision_payload = _load_json(
+        _resolve_run_artifact(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            run_root=run_root,
+            artifact_types=DECISION_ARTIFACT_TYPES,
+            fallback_candidates=DECISION_PATHS,
+        )
+    ) or {}
+    try:
+        decision_payload = normalize_loaded_decision_artifact(
+            decision_payload,
+            session_id=session_id,
+        )
+    except ContractValidationError:
+        decision_payload = {"summary": {"top_experiment_value": 0.0}, "top_experiments": []}
+    analysis_report = _load_json(
+        _resolve_run_artifact(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            run_root=run_root,
+            artifact_types=ANALYSIS_REPORT_ARTIFACT_TYPES,
+            fallback_candidates=ANALYSIS_REPORT_PATHS,
+        )
+    ) or {}
+    review_payload = _load_json(
+        _resolve_run_artifact(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            run_root=run_root,
+            artifact_types=REVIEW_QUEUE_ARTIFACT_TYPES,
+            fallback_candidates=REVIEW_QUEUE_PATHS,
+        )
+    )
+    evolution = _load_csv(
+        _find_artifact(run_root, EVOLUTION_PATHS, include_repo_root=workspace_id is None)
+        if session_id is not None or workspace_id is None
+        else None
+    )
 
     decision_rows = _decision_rows(decision_payload)
     if not isinstance(review_payload, dict):
-        review_payload = build_review_queue(decision_rows, session_id=session_id)
+        review_payload = build_review_queue(decision_rows, session_id=session_id, workspace_id=workspace_id)
 
     warnings = analysis_report.get("warnings", []) if isinstance(analysis_report, dict) else []
     cards = [

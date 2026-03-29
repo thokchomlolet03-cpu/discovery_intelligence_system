@@ -1,4 +1,4 @@
-from pipeline_utils import resolve_system_config
+from system.services.runtime_config import resolve_system_config
 
 
 def compute_experiment_value(row, config=None):

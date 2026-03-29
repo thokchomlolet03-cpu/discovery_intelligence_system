@@ -8,6 +8,7 @@
   const workbench = JSON.parse(dataNode.textContent || "{}");
   const config = window.discoveryWorkbenchConfig || {};
   const statusBox = document.getElementById("discovery-feedback");
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
   const resultCountNode = document.getElementById("results-count");
   const selectedCountNode = document.getElementById("selected-count");
   const summaryNodes = {
@@ -412,7 +413,10 @@
   async function submitReviews(items) {
     const response = await fetch(config.reviewsEndpoint || "/api/reviews", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
       body: JSON.stringify({
         session_id: config.sessionId || "",
         items,
@@ -474,6 +478,10 @@
   }
 
   function exportSelected() {
+    if (config.allowExport === false) {
+      showFeedback("Export requires the Pro plan.", "error");
+      return;
+    }
     const rows = selectedArray();
     if (!rows.length) {
       showFeedback("Select candidates before exporting.", "error");

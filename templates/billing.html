@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-compact">
+    <div class="eyebrow">Workspace billing</div>
+    <h1>Manage your workspace plan.</h1>
+    <p class="hero-copy">
+      Discovery Intelligence keeps plan enforcement inside the app. Paddle handles subscription purchase, tax, and billing management.
+    </p>
+  </section>
+
+  {% if billing_error %}
+    <section class="notice-panel">
+      <strong>Billing action could not be completed</strong>
+      <p>{{ billing_error }}</p>
+    </section>
+  {% endif %}
+
+  {% if billing_message %}
+    <section class="notice-panel">
+      <strong>Billing update</strong>
+      <p>{{ billing_message }}</p>
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>{{ workspace_plan.display_name }} Plan</h2>
+        <p class="helper-copy">Current plan status for {{ current_workspace.name if current_workspace else "this workspace" }}.</p>
+      </div>
+      <span class="pill">{{ workspace_plan.plan_status | upper }}</span>
+    </div>
+    <div class="card-grid metrics-grid">
+      <article class="panel">
+        <span class="panel-label">Effective access</span>
+        <strong>{{ workspace_plan.effective_plan_tier | upper }}</strong>
+      </article>
+      <article class="panel">
+        <span class="panel-label">Provider</span>
+        <strong>{{ workspace_plan.external_billing_provider | upper if workspace_plan.external_billing_provider else "App managed" }}</strong>
+      </article>
+      <article class="panel">
+        <span class="panel-label">Subscription ref</span>
+        <strong>{{ workspace_plan.external_subscription_ref if workspace_plan.external_subscription_ref else "Not linked" }}</strong>
+      </article>
+      <article class="panel">
+        <span class="panel-label">Current period ends</span>
+        <strong>{{ workspace_plan.current_period_ends_at if workspace_plan.current_period_ends_at else "Not scheduled" }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Included on this plan</h2>
+        <p class="helper-copy">These are the product limits currently enforced for this workspace.</p>
+      </div>
+    </div>
+    <div class="card-grid metrics-grid">
+      <article class="panel">
+        <span class="panel-label">Monthly analyses</span>
+        <strong>{{ workspace_plan.limits.monthly_analysis_jobs if workspace_plan.limits.monthly_analysis_jobs is not none else "Unlimited" }}</strong>
+      </article>
+      <article class="panel">
+        <span class="panel-label">Monthly generation runs</span>
+        <strong>{{ workspace_plan.limits.monthly_candidate_generation_jobs if workspace_plan.limits.monthly_candidate_generation_jobs is not none else "Unlimited" }}</strong>
+      </article>
+      <article class="panel">
+        <span class="panel-label">Max upload rows</span>
+        <strong>{{ workspace_plan.limits.max_upload_rows if workspace_plan.limits.max_upload_rows is not none else "Unlimited" }}</strong>
+      </article>
+      <article class="panel">
+        <span class="panel-label">Decision export</span>
+        <strong>{{ "Enabled" if workspace_plan.features.decision_export else "Pro only" }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Billing actions</h2>
+        <p class="helper-copy">Only workspace owners can start or manage a paid subscription.</p>
+      </div>
+    </div>
+    {% if billing_owner %}
+      <div class="cta-row">
+        {% if current_workspace and current_workspace.plan_tier != "internal" and paddle_checkout_available and not (current_workspace.plan_tier == "pro" and current_workspace.plan_status in ["active", "trialing"]) %}
+          <form method="post" action="/billing/checkout">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="button button-primary" type="submit">
+              {% if current_workspace.plan_status in ["canceled", "past_due"] %}Resume Pro{% else %}Upgrade To Pro{% endif %}
+            </button>
+          </form>
+        {% endif %}
+        {% if current_workspace and current_workspace.external_billing_provider == "paddle" and current_workspace.external_customer_ref and paddle_management_available %}
+          <form method="post" action="/billing/manage">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="button button-secondary" type="submit">Manage Billing In Paddle</button>
+          </form>
+        {% endif %}
+      </div>
+      <p class="helper-copy">Subscription state is finalized by Paddle webhook synchronization after checkout.</p>
+    {% else %}
+      <p class="helper-copy">You can view workspace billing state here, but only the workspace owner can start or manage billing.</p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -18,7 +18,11 @@
       </div>
       <div class="discovery-hero-actions">
         <a class="button button-secondary" href="{{ refresh_url }}">Refresh results</a>
-        <a class="button button-secondary" href="{{ download_url }}">Download current decision package</a>
+        {% if workspace_plan and workspace_plan.features.decision_export %}
+          <a class="button button-secondary" href="{{ download_url }}">Download current decision package</a>
+        {% else %}
+          <a class="button button-secondary" href="/billing">Decision export requires Pro</a>
+        {% endif %}
         <a class="button button-primary" href="{{ dashboard_url }}">Open dashboard</a>
       </div>
     </section>
@@ -201,7 +205,9 @@
           <button class="button button-secondary" type="button" data-bulk-action="approve">Mark approved</button>
           <button class="button button-secondary" type="button" data-bulk-action="reject">Mark rejected</button>
           <button class="button button-secondary" type="button" data-bulk-action="under_review">Add to review queue</button>
-          <button class="button button-secondary" type="button" data-bulk-action="export">Export selected</button>
+          {% if workspace_plan and workspace_plan.features.decision_export %}
+            <button class="button button-secondary" type="button" data-bulk-action="export">Export selected</button>
+          {% endif %}
         </div>
 
         <div id="discovery-feedback" class="status-box muted hidden"></div>
@@ -239,6 +245,15 @@
         </div>
       </section>
     {% elif workbench.state.kind == "empty" %}
+      <section class="panel discovery-filter-panel">
+        <div class="section-header">
+          <div>
+            <h2>Filter And Sort</h2>
+            <p class="helper-copy">Filters will become available once a recommendation set has been generated.</p>
+          </div>
+        </div>
+      </section>
+
       <section class="panel discovery-state-panel">
         <div class="state-icon">No results</div>
         <h2>No discovery results available yet.</h2>
@@ -246,6 +261,37 @@
         <div class="cta-row">
           <a class="button button-primary" href="/upload">Upload Data</a>
           <a class="button button-secondary" href="/">Go Home</a>
+        </div>
+      </section>
+
+      <section class="panel discovery-workflow-panel">
+        <div class="section-header">
+          <div>
+            <h2>Review Workflow Summary</h2>
+            <p class="helper-copy">Review-state counts will appear after candidates have been generated.</p>
+          </div>
+        </div>
+        <div class="workflow-grid">
+          <article class="workflow-card">
+            <span class="panel-label">Suggested</span>
+            <strong id="summary-suggested">{{ workbench.review_summary.suggested }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Under review</span>
+            <strong id="summary-under-review">{{ workbench.review_summary.under_review }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Approved</span>
+            <strong id="summary-approved">{{ workbench.review_summary.approved }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Rejected</span>
+            <strong id="summary-rejected">{{ workbench.review_summary.rejected }}</strong>
+          </article>
+          <article class="workflow-card">
+            <span class="panel-label">Tested</span>
+            <strong id="summary-tested">{{ workbench.review_summary.tested }}</strong>
+          </article>
         </div>
       </section>
     {% else %}
@@ -280,7 +326,8 @@
     window.discoveryWorkbenchConfig = {
       sessionId: {{ (session_id or "") | tojson }},
       reviewsEndpoint: "/api/reviews",
-      downloadUrl: {{ download_url | tojson }}
+      downloadUrl: {{ download_url | tojson }},
+      allowExport: {{ (workspace_plan.features.decision_export if workspace_plan else false) | tojson }}
     };
   </script>
   <script src="{{ url_for('static', path='/discovery.js') }}"></script>

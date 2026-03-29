@@ -1,5 +1,5 @@
 from core.constants import DESCRIPTOR_COLUMNS
-from pipeline_utils import canonicalize_smiles
+from system.services.data_service import canonicalize_smiles
 
 
 def validate_smiles(smiles):

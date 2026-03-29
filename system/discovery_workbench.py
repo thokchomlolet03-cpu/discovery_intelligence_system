@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from statistics import fmean
 from typing import Any
 
+from system.contracts import ContractValidationError, validate_decision_artifact, validate_review_event_record
 from system.review_manager import STATUS_ORDER, normalize_status
 
 
@@ -133,13 +134,17 @@ def normalize_review_history(history: Any) -> list[dict[str, Any]]:
     for item in history:
         if not isinstance(item, dict):
             continue
-        reviewed_at = _to_iso(item.get("reviewed_at") or item.get("timestamp"))
+        try:
+            record = validate_review_event_record(item)
+        except ValueError:
+            continue
+        reviewed_at = _to_iso(record.get("reviewed_at") or record.get("timestamp"))
         normalized.append(
             {
-                "action": str(item.get("action") or "later"),
-                "status": normalize_status(item.get("status"), action=item.get("action")),
-                "note": str(item.get("note") or "").strip(),
-                "reviewer": str(item.get("reviewer") or "unassigned"),
+                "action": str(record.get("action") or "later"),
+                "status": normalize_status(record.get("status"), action=record.get("action")),
+                "note": str(record.get("note") or "").strip(),
+                "reviewer": str(record.get("reviewer") or "unassigned"),
                 "reviewed_at": reviewed_at,
                 "reviewed_at_label": humanize_timestamp(reviewed_at),
             }
@@ -195,7 +200,8 @@ def resolve_model_version(
                 return name
 
     for candidate in candidates:
-        label = str(candidate.get("model_version") or "").strip()
+        metadata = candidate.get("model_metadata") if isinstance(candidate, dict) else {}
+        label = str((metadata or {}).get("version") or candidate.get("model_version") or "").strip()
         if label:
             return label
     return f"system-{system_version}"
@@ -225,30 +231,33 @@ def normalize_candidate(
     uncertainty = _clamp_score(candidate.get("uncertainty"))
     novelty = _clamp_score(candidate.get("novelty"))
     experiment_value = _clamp_score(candidate.get("experiment_value"))
-    bucket = derive_bucket(candidate.get("bucket") or candidate.get("selection_bucket"), confidence, uncertainty, novelty)
-    risk = derive_risk(confidence, uncertainty, candidate.get("risk") or candidate.get("risk_level"))
-    raw_status = str(candidate.get("status") or "").strip().lower().replace("_", " ")
-    status = raw_status if raw_status in STATUS_ORDER else "suggested"
-    explanations = normalize_explanations(candidate.get("explanation") or candidate.get("short_explanation"), bucket, confidence, uncertainty, novelty, risk)
-    provenance_text = str(candidate.get("provenance") or "Not available")
-    source_type = infer_source_type(candidate, provenance_text)
-    parent_molecule = str(candidate.get("source_smiles") or candidate.get("source") or candidate.get("molecule_id") or "").strip()
-    candidate_id = str(
-        candidate.get("candidate_id")
-        or candidate.get("molecule_id")
-        or candidate.get("polymer")
-        or f"candidate_{position}"
-    )
+    bucket = str(candidate["bucket"])
+    risk = str(candidate["risk"])
+    status = normalize_status(candidate["status"])
+    explanations = _clean_explanation_lines(candidate.get("explanation"))
+    if not explanations:
+        explanations = ["Recommendation details unavailable."]
+    provenance = candidate.get("provenance") if isinstance(candidate.get("provenance"), dict) else {}
+    provenance_text = str(provenance.get("text") or "Not available")
+    source_type = str(provenance.get("source_type") or "").strip() or infer_source_type(candidate, provenance_text)
+    parent_molecule = str(provenance.get("parent_molecule") or candidate.get("source_smiles") or candidate.get("source") or candidate.get("molecule_id") or "").strip()
+    candidate_id = str(candidate["candidate_id"])
+    review_summary = candidate.get("review_summary") if isinstance(candidate.get("review_summary"), dict) else {}
     review_history = normalize_review_history(candidate.get("review_history"))
-    reviewed_at = _to_iso(candidate.get("reviewed_at") or candidate.get("timestamp"))
+    reviewed_at = _to_iso(candidate.get("reviewed_at") or review_summary.get("reviewed_at"))
+    reviewer = str(candidate.get("reviewer") or review_summary.get("reviewer") or "unassigned")
+    review_note = str(candidate.get("review_note") or review_summary.get("note") or "").strip()
+    model_metadata = candidate.get("model_metadata") if isinstance(candidate.get("model_metadata"), dict) else {}
 
     return {
         "rank": int(candidate.get("rank") or position),
         "candidate_id": candidate_id,
         "smiles": str(candidate.get("smiles") or "Not available"),
+        "canonical_smiles": str(candidate.get("canonical_smiles") or candidate.get("smiles") or "Not available"),
         "confidence": confidence,
         "uncertainty": uncertainty,
         "novelty": novelty,
+        "acquisition_score": _clamp_score(candidate.get("acquisition_score")),
         "experiment_value": experiment_value,
         "bucket": bucket,
         "risk": risk,
@@ -260,11 +269,11 @@ def normalize_candidate(
         "source_type": source_type,
         "parent_molecule": parent_molecule or "Not available",
         "iteration": int(candidate.get("iteration") or iteration or 0),
-        "model_version": str(candidate.get("model_version") or model_version),
+        "model_version": str(model_metadata.get("version") or candidate.get("model_version") or model_version),
         "dataset_version": str(candidate.get("dataset_version") or dataset_version),
         "status_label": status.title(),
-        "review_note": str(candidate.get("review_note") or "").strip(),
-        "reviewer": str(candidate.get("reviewer") or "unassigned"),
+        "review_note": review_note,
+        "reviewer": reviewer,
         "reviewed_at": reviewed_at,
         "reviewed_at_label": humanize_timestamp(reviewed_at),
         "review_history": review_history,
@@ -309,11 +318,82 @@ def build_discovery_workbench(
     evaluation_summary: dict[str, Any] | None,
     system_version: str,
 ) -> dict[str, Any]:
-    raw_candidates = decision_output.get("top_experiments", [])
-    candidates_input = raw_candidates if isinstance(raw_candidates, list) else []
+    artifact_state = str(decision_output.get("artifact_state") or "ok")
+    if artifact_state == "error":
+        state = {
+            "kind": "error",
+            "message": str(decision_output.get("load_error") or "Current decision artifact could not be loaded. Please rerun the pipeline or check output integrity."),
+        }
+        return {
+            "state": state,
+            "session_id": session_id,
+            "source_path": decision_output.get("source_path") or "decision_output.json",
+            "summary": {
+                "iteration": int(decision_output.get("iteration") or 0),
+                "candidates_displayed": 0,
+                "top_experiment_value": 0.0,
+                "average_confidence": 0.0,
+                "average_uncertainty": 0.0,
+                "model_version": f"system-{system_version}",
+                "dataset_version": resolve_dataset_version(session_id, decision_output),
+            },
+            "review_summary": {status.replace(" ", "_") if " " in status else status: 0 for status in STATUS_ORDER},
+            "warnings": list((analysis_report or {}).get("warnings", [])) if isinstance(analysis_report, dict) else [],
+            "recommendation_summary": str((analysis_report or {}).get("top_level_recommendation_summary") or "").strip(),
+            "last_updated_label": humanize_timestamp(decision_output.get("source_updated_at")),
+            "last_updated": _to_iso(decision_output.get("source_updated_at")),
+            "system_version": system_version,
+            "candidates": [],
+            "interpretation": [
+                {"label": "Confidence", "text": "Model belief strength for the current candidate."},
+                {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
+                {"label": "Novelty", "text": "How different the candidate is from known reference chemistry."},
+                {"label": "Experiment Value", "text": "Combined prioritization score for what to test next."},
+                {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, learn reduces uncertainty."},
+            ],
+        }
+
+    if artifact_state == "missing":
+        candidates_input: list[dict[str, Any]] = []
+        validated_output = decision_output
+    else:
+        try:
+            validated_output = validate_decision_artifact(decision_output)
+        except ContractValidationError as exc:
+            return {
+                "state": {"kind": "error", "message": f"Decision artifact contract error: {exc.detail}"},
+                "session_id": session_id,
+                "source_path": decision_output.get("source_path") or "decision_output.json",
+                "summary": {
+                    "iteration": int(decision_output.get("iteration") or 0),
+                    "candidates_displayed": 0,
+                    "top_experiment_value": 0.0,
+                    "average_confidence": 0.0,
+                    "average_uncertainty": 0.0,
+                    "model_version": f"system-{system_version}",
+                    "dataset_version": resolve_dataset_version(session_id, decision_output),
+                },
+                "review_summary": {"suggested": 0, "under_review": 0, "approved": 0, "rejected": 0, "tested": 0, "ingested": 0},
+                "warnings": list((analysis_report or {}).get("warnings", [])) if isinstance(analysis_report, dict) else [],
+                "recommendation_summary": str((analysis_report or {}).get("top_level_recommendation_summary") or "").strip(),
+                "last_updated_label": humanize_timestamp(decision_output.get("source_updated_at")),
+                "last_updated": _to_iso(decision_output.get("source_updated_at")),
+                "system_version": system_version,
+                "candidates": [],
+                "interpretation": [
+                    {"label": "Confidence", "text": "Model belief strength for the current candidate."},
+                    {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
+                    {"label": "Novelty", "text": "How different the candidate is from known reference chemistry."},
+                    {"label": "Experiment Value", "text": "Combined prioritization score for what to test next."},
+                    {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, learn reduces uncertainty."},
+                ],
+            }
+        raw_candidates = validated_output.get("top_experiments", [])
+        candidates_input = raw_candidates if isinstance(raw_candidates, list) else []
+
     model_version = resolve_model_version(evaluation_summary, candidates_input, system_version)
-    dataset_version = resolve_dataset_version(session_id, decision_output)
-    iteration = int(decision_output.get("iteration") or 0)
+    dataset_version = resolve_dataset_version(session_id, validated_output)
+    iteration = int(validated_output.get("iteration") or 0)
 
     candidates = [
         normalize_candidate(
@@ -333,14 +413,8 @@ def build_discovery_workbench(
     if not isinstance(counts, dict):
         counts = review_summary_from_candidates(candidates)
 
-    artifact_state = str(decision_output.get("artifact_state") or "ok")
     has_candidates = bool(candidates)
-    if artifact_state == "error":
-        state = {
-            "kind": "error",
-            "message": "Current decision artifact could not be loaded. Please rerun the pipeline or check output integrity.",
-        }
-    elif not has_candidates:
+    if not has_candidates:
         state = {
             "kind": "empty",
             "message": "No discovery results available yet. Run analysis or upload a dataset to generate recommendations.",
@@ -348,7 +422,7 @@ def build_discovery_workbench(
     else:
         state = {"kind": "ready", "message": ""}
 
-    last_updated = decision_output.get("source_updated_at") or max(
+    last_updated = validated_output.get("source_updated_at") or max(
         [candidate.get("reviewed_at") for candidate in candidates if candidate.get("reviewed_at")],
         default="",
     )
@@ -356,7 +430,7 @@ def build_discovery_workbench(
     return {
         "state": state,
         "session_id": session_id,
-        "source_path": decision_output.get("source_path") or "decision_output.json",
+        "source_path": validated_output.get("source_path") or "decision_output.json",
         "summary": {
             "iteration": iteration,
             **summary,

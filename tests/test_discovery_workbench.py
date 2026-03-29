@@ -1,32 +1,72 @@
 import unittest
+import os
+import re
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 import app as discovery_app
+from system.auth import hash_password
+from system.db import ensure_database_ready, reset_database_state
+from system.db.repositories import SessionRepository, UserRepository, WorkspaceRepository
 from system.discovery_workbench import build_discovery_workbench
 
 
-class DiscoveryWorkbenchTest(unittest.TestCase):
-    def test_build_discovery_workbench_derives_missing_fields(self):
-        decision_output = {
-            "iteration": 3,
-            "artifact_state": "ok",
-            "source_path": "data/decision_output.json",
-            "source_updated_at": "2026-03-25T12:00:00+00:00",
-            "top_experiments": [
-                {
-                    "smiles": "CCO",
-                    "confidence": 0.91,
-                    "uncertainty": 0.1,
-                    "novelty": 0.58,
-                    "experiment_value": 0.72,
-                }
-            ],
-        }
+def canonical_decision_output() -> dict:
+    return {
+        "session_id": "session_1",
+        "iteration": 3,
+        "generated_at": "2026-03-25T12:00:00+00:00",
+        "artifact_state": "ok",
+        "source_path": "data/decision_output.json",
+        "source_updated_at": "2026-03-25T12:00:00+00:00",
+        "summary": {
+            "top_k": 1,
+            "candidate_count": 1,
+            "risk_counts": {"low": 1},
+            "top_experiment_value": 0.72,
+        },
+        "top_experiments": [
+            {
+                "session_id": "session_1",
+                "rank": 1,
+                "candidate_id": "cand_1",
+                "smiles": "CCO",
+                "canonical_smiles": "CCO",
+                "confidence": 0.91,
+                "uncertainty": 0.1,
+                "novelty": 0.58,
+                "acquisition_score": 0.77,
+                "experiment_value": 0.72,
+                "bucket": "exploit",
+                "risk": "low",
+                "status": "suggested",
+                "explanation": ["High confidence makes this a practical exploit candidate for review."],
+                "provenance": {
+                    "text": "Scored directly from user-uploaded dataset upload.csv. Model version: rf_isotonic:isotonic.",
+                    "source_name": "upload.csv",
+                    "source_type": "uploaded",
+                    "parent_molecule": "",
+                    "model_version": "rf_isotonic:isotonic",
+                },
+                "feasibility": {"is_feasible": True, "reason": ""},
+                "created_at": "2026-03-25T12:00:00+00:00",
+                "model_metadata": {
+                    "version": "rf_isotonic:isotonic",
+                    "family": "random_forest",
+                    "calibration_method": "isotonic",
+                },
+            }
+        ],
+    }
 
+
+class DiscoveryWorkbenchTest(unittest.TestCase):
+    def test_build_discovery_workbench_loads_canonical_artifact(self):
         workbench = build_discovery_workbench(
-            decision_output=decision_output,
+            decision_output=canonical_decision_output(),
             analysis_report={"warnings": [], "top_level_recommendation_summary": "Start with the top candidate."},
             review_queue={},
             session_id=None,
@@ -39,12 +79,43 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(workbench["summary"]["dataset_version"], "data_decision_output.json")
 
         candidate = workbench["candidates"][0]
-        self.assertEqual(candidate["candidate_id"], "candidate_1")
+        self.assertEqual(candidate["candidate_id"], "cand_1")
         self.assertEqual(candidate["bucket"], "exploit")
         self.assertEqual(candidate["risk"], "low")
         self.assertEqual(candidate["status"], "suggested")
-        self.assertEqual(candidate["provenance"], "Not available")
-        self.assertTrue(candidate["explanation_lines"])
+        self.assertIn("upload.csv", candidate["provenance"])
+        self.assertEqual(candidate["canonical_smiles"], "CCO")
+        self.assertEqual(candidate["model_version"], "rf_isotonic:isotonic")
+        self.assertEqual(candidate["acquisition_score"], 0.77)
+
+    def test_build_discovery_workbench_reports_contract_error_for_missing_required_fields(self):
+        invalid_decision_output = {
+            "iteration": 3,
+            "generated_at": "2026-03-25T12:00:00+00:00",
+            "summary": {"top_k": 1, "candidate_count": 1, "risk_counts": {}, "top_experiment_value": 0.72},
+            "top_experiments": [
+                {
+                    "candidate_id": "cand_1",
+                    "smiles": "CCO",
+                    "confidence": 0.91,
+                    "uncertainty": 0.1,
+                    "novelty": 0.58,
+                    "experiment_value": 0.72,
+                }
+            ],
+        }
+
+        workbench = build_discovery_workbench(
+            decision_output=invalid_decision_output,
+            analysis_report={"warnings": [], "top_level_recommendation_summary": "Start with the top candidate."},
+            review_queue={},
+            session_id=None,
+            evaluation_summary={"selected_model": {"name": "rf_isotonic", "calibration_method": "isotonic"}},
+            system_version="2.0.0",
+        )
+
+        self.assertEqual(workbench["state"]["kind"], "error")
+        self.assertIn("contract", workbench["state"]["message"].lower())
 
     def test_build_discovery_workbench_reports_error_state(self):
         workbench = build_discovery_workbench(
@@ -61,7 +132,51 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
 
 class DiscoveryRouteTest(unittest.TestCase):
     def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        os.environ["DISCOVERY_ALLOWED_ARTIFACT_ROOTS"] = self.tmpdir.name
+        reset_database_state(f"sqlite:///{Path(self.tmpdir.name) / 'control_plane.db'}")
+        ensure_database_ready()
+        self.user = UserRepository().create_user(
+            email="owner@example.com",
+            password_hash=hash_password("secret123"),
+            display_name="Owner",
+        )
+        self.workspace = WorkspaceRepository().create_workspace(
+            name="Workspace A",
+            owner_user_id=self.user["user_id"],
+        )
+        WorkspaceRepository().add_membership(
+            workspace_id=self.workspace["workspace_id"],
+            user_id=self.user["user_id"],
+            role="owner",
+        )
         self.client = TestClient(discovery_app.app)
+        login_page = self.client.get("/login")
+        csrf_token = self._extract_csrf_token(login_page.text)
+        response = self.client.post(
+            "/login",
+            data={"email": self.user["email"], "password": "secret123", "csrf_token": csrf_token, "next": "/discovery"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+    def tearDown(self):
+        reset_database_state()
+        os.environ.pop("DISCOVERY_ALLOWED_ARTIFACT_ROOTS", None)
+        self.tmpdir.cleanup()
+
+    def _extract_csrf_token(self, text: str) -> str:
+        match = re.search(r'name="csrf_token" value="([^"]+)"', text)
+        if match:
+            return match.group(1)
+        meta = re.search(r'<meta name="csrf-token" content="([^"]*)"', text)
+        self.assertIsNotNone(meta)
+        return meta.group(1)
+
+    def _authenticated_csrf(self, path: str = "/discovery") -> str:
+        response = self.client.get(path)
+        self.assertEqual(response.status_code, 200)
+        return self._extract_csrf_token(response.text)
 
     def test_discovery_page_renders_workbench_sections(self):
         response = self.client.get("/discovery")
@@ -72,6 +187,11 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("Review Workflow Summary", response.text)
 
     def test_reviews_api_accepts_bulk_payload(self):
+        SessionRepository().upsert_session(
+            session_id="session_1",
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
         reviews = [
             {
                 "candidate_id": "cand_1",
@@ -87,7 +207,11 @@ class DiscoveryRouteTest(unittest.TestCase):
         with (
             patch.object(discovery_app, "record_review_actions", return_value=reviews) as mock_record,
             patch.object(discovery_app, "load_decision_output", return_value={"top_experiments": [{"candidate_id": "cand_1", "smiles": "CCO"}]}),
-            patch.object(discovery_app, "annotate_candidates_with_reviews", side_effect=lambda candidates, session_id=None: candidates),
+            patch.object(
+                discovery_app,
+                "annotate_candidates_with_reviews",
+                side_effect=lambda candidates, session_id=None, workspace_id=None: candidates,
+            ),
             patch.object(discovery_app, "persist_review_queue", return_value={"summary": {"counts": {"approved": 1}}}),
         ):
             response = self.client.post(
@@ -96,6 +220,7 @@ class DiscoveryRouteTest(unittest.TestCase):
                     "session_id": "session_1",
                     "items": [{"candidate_id": "cand_1", "smiles": "CCO", "action": "approve", "status": "approved"}],
                 },
+                headers={"X-CSRF-Token": self._authenticated_csrf()},
             )
 
         self.assertEqual(response.status_code, 200)

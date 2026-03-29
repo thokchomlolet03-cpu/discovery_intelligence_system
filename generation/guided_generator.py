@@ -1,4 +1,5 @@
-from pipeline_utils import generate_candidate_pool, process_candidate_dataframe, resolve_system_config
+from system.services.candidate_service import generate_candidate_pool, process_candidate_dataframe
+from system.services.runtime_config import resolve_system_config
 
 
 def generate_candidates(df, n, config=None, seed=None):
@@ -29,4 +30,3 @@ def generate_candidate_artifacts(df, n, config=None, seed=None):
     )
     generated, processed = process_candidate_dataframe(raw_candidates, df, config=cfg)
     return generated, processed
-

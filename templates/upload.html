@@ -10,6 +10,38 @@
     </p>
   </section>
 
+  {% if workspace_plan %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>{{ workspace_plan.display_name }} Plan</h2>
+          <p class="helper-copy">Current workspace limits are enforced server-side for uploads, analyses, and premium generation.</p>
+        </div>
+        <a class="button button-secondary" href="/billing">
+          {% if current_membership and current_membership.role == "owner" %}Manage billing{% else %}View plan{% endif %}
+        </a>
+      </div>
+      <div class="card-grid metrics-grid">
+        <article class="panel">
+          <span class="panel-label">Monthly analyses</span>
+          <strong>{{ workspace_plan.usage.analysis_jobs_this_month }} / {{ workspace_plan.limits.monthly_analysis_jobs if workspace_plan.limits.monthly_analysis_jobs is not none else "Unlimited" }}</strong>
+        </article>
+        <article class="panel">
+          <span class="panel-label">Max upload rows</span>
+          <strong>{{ workspace_plan.limits.max_upload_rows if workspace_plan.limits.max_upload_rows is not none else "Unlimited" }}</strong>
+        </article>
+        <article class="panel">
+          <span class="panel-label">Stored sessions</span>
+          <strong>{{ workspace_plan.usage.stored_sessions }} / {{ workspace_plan.limits.max_stored_sessions if workspace_plan.limits.max_stored_sessions is not none else "Unlimited" }}</strong>
+        </article>
+        <article class="panel">
+          <span class="panel-label">Candidate generation</span>
+          <strong>{{ "Enabled" if workspace_plan.features.candidate_generation else "Pro only" }}</strong>
+        </article>
+      </div>
+    </section>
+  {% endif %}
+
   <section class="step-shell">
     <article class="panel">
       <div class="step-header">
@@ -120,10 +152,16 @@
           <strong>Rank by test value</strong>
           <span>Prioritize uploaded molecules using the decision-support scores.</span>
         </label>
-        <label class="choice-card">
-          <input type="radio" name="intent" value="generate_candidates" />
+        <label class="choice-card {% if workspace_plan and not workspace_plan.features.candidate_generation %}muted{% endif %}">
+          <input type="radio" name="intent" value="generate_candidates" {% if workspace_plan and not workspace_plan.features.candidate_generation %}disabled{% endif %} />
           <strong>Generate suggestions</strong>
-          <span>Create new candidate suggestions when the upload has enough label coverage.</span>
+          <span>
+            {% if workspace_plan and not workspace_plan.features.candidate_generation %}
+              Requires the Pro plan.
+            {% else %}
+              Create new candidate suggestions when the upload has enough label coverage.
+            {% endif %}
+          </span>
         </label>
         <label class="choice-card">
           <input type="radio" name="intent" value="explore_uncertain" />
@@ -230,6 +268,8 @@
       sessionId: null,
       previewRows: [],
       columns: [],
+      jobId: null,
+      jobPollHandle: null,
     };
 
     const inspectButton = document.getElementById("inspect-button");
@@ -261,12 +301,27 @@
       ["source", "map-source"],
       ["notes", "map-notes"],
     ];
+    const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || "";
 
     const selectValue = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
     const mappingPayload = () => Object.fromEntries(mappingFields.map(([field, id]) => [field, document.getElementById(id).value || null]));
     const formatNumber = (value) => {
       const numeric = Number(value ?? 0);
       return Number.isFinite(numeric) ? numeric.toFixed(3) : "-";
+    };
+    const upgradeAwareMessage = (body, fallback) => {
+      const base = body?.message || body?.detail || fallback;
+      return body?.upgrade_required ? `${base} Open Billing to upgrade this workspace.` : base;
+    };
+    const setAnalysisStatus = (message, tone = "") => {
+      analysisStatus.textContent = message;
+      analysisStatus.className = tone ? `status-box ${tone}` : "status-box";
+    };
+    const clearJobPoll = () => {
+      if (state.jobPollHandle) {
+        window.clearTimeout(state.jobPollHandle);
+        state.jobPollHandle = null;
+      }
     };
 
     const showWorkflow = () => {
@@ -329,7 +384,7 @@
       if (!state.sessionId) return;
       const response = await fetch("/api/upload/validate", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken()},
         body: JSON.stringify({
           session_id: state.sessionId,
           mapping: mappingPayload(),
@@ -355,11 +410,12 @@
       const payload = new FormData();
       payload.append("file", fileInput.files[0]);
       payload.append("input_type", selectValue("input_type") || "molecules_to_screen_only");
+      payload.append("csrf_token", csrfToken());
 
       const response = await fetch("/api/upload/inspect", {method: "POST", body: payload});
       const body = await response.json();
       if (!response.ok) {
-        inspectStatus.textContent = body.detail || "File inspection failed.";
+        inspectStatus.textContent = upgradeAwareMessage(body, "File inspection failed.");
         inspectStatus.className = "status-box error";
         return;
       }
@@ -422,15 +478,73 @@
       `).join("");
     };
 
-    analyzeButton.addEventListener("click", async () => {
-      if (!state.sessionId) {
-        analysisStatus.textContent = "Inspect a file before analysis.";
-        analysisStatus.className = "status-box error";
+    const renderCompletedResult = (body, jobBody = {}) => {
+      resultMode.textContent = body.mode;
+      renderResultSummary(body);
+      renderResultWarnings(body.warnings || []);
+      renderResultTable(body.top_candidates || []);
+      resultJson.textContent = JSON.stringify(body, null, 2);
+      discoveryLink.href = body.discovery_url || jobBody.discovery_url || "#";
+      dashboardLink.href = body.dashboard_url || jobBody.dashboard_url || "#";
+      discoveryLink.classList.toggle("hidden", !discoveryLink.href || discoveryLink.href === "#");
+      dashboardLink.classList.toggle("hidden", !dashboardLink.href || dashboardLink.href === "#");
+      resultShell.classList.remove("hidden");
+    };
+
+    const fetchAndRenderResult = async (jobBody) => {
+      const response = await fetch(jobBody.result_url);
+      const body = await response.json();
+      if (!response.ok) {
+        setAnalysisStatus(body.detail || "Analysis result could not be loaded.", "error");
+        resultShell.classList.add("hidden");
+        return;
+      }
+      setAnalysisStatus(body.message || jobBody.progress_message || "Analysis completed.", "success");
+      renderCompletedResult(body, jobBody);
+    };
+
+    const pollJob = async (jobUrl) => {
+      const response = await fetch(jobUrl);
+      const body = await response.json();
+      if (!response.ok) {
+        setAnalysisStatus(body.detail || "Job status could not be loaded.", "error");
+        resultShell.classList.add("hidden");
+        clearJobPoll();
         return;
       }
 
-      analysisStatus.textContent = "Running analysis...";
-      analysisStatus.className = "status-box";
+      state.jobId = body.job_id;
+      state.sessionId = body.session_id || state.sessionId;
+      if (body.status === "queued" || body.status === "running") {
+        setAnalysisStatus(body.progress_message || "Analysis is running...");
+        state.jobPollHandle = window.setTimeout(() => pollJob(jobUrl), 1200);
+        return;
+      }
+
+      clearJobPoll();
+      if (body.status === "failed") {
+        setAnalysisStatus(body.error || "Analysis failed.", "error");
+        resultShell.classList.add("hidden");
+        return;
+      }
+
+      if (body.status === "succeeded") {
+        await fetchAndRenderResult(body);
+        return;
+      }
+
+      setAnalysisStatus(`Unexpected job status: ${body.status}`, "error");
+      resultShell.classList.add("hidden");
+    };
+
+    analyzeButton.addEventListener("click", async () => {
+      if (!state.sessionId) {
+        setAnalysisStatus("Inspect a file before analysis.", "error");
+        return;
+      }
+
+      clearJobPoll();
+      setAnalysisStatus("Creating analysis job...");
       await refreshValidation();
 
       const payload = new FormData();
@@ -445,28 +559,21 @@
       payload.append("molecule_id_column", mapping.molecule_id || "");
       payload.append("source_column", mapping.source || "");
       payload.append("notes_column", mapping.notes || "");
+      payload.append("csrf_token", csrfToken());
 
       const response = await fetch("/upload", {method: "POST", body: payload});
       const body = await response.json();
       if (!response.ok) {
-        analysisStatus.textContent = body.detail || "Analysis failed.";
-        analysisStatus.className = "status-box error";
+        setAnalysisStatus(upgradeAwareMessage(body, "Analysis failed."), "error");
         resultShell.classList.add("hidden");
         return;
       }
 
-      analysisStatus.textContent = body.message;
-      analysisStatus.className = "status-box success";
-      resultMode.textContent = body.mode;
-      renderResultSummary(body);
-      renderResultWarnings(body.warnings || []);
-      renderResultTable(body.top_candidates || []);
-      resultJson.textContent = JSON.stringify(body, null, 2);
-      discoveryLink.href = body.discovery_url;
-      dashboardLink.href = body.dashboard_url;
-      discoveryLink.classList.remove("hidden");
-      dashboardLink.classList.remove("hidden");
-      resultShell.classList.remove("hidden");
+      state.jobId = body.job_id;
+      state.sessionId = body.session_id || state.sessionId;
+      setAnalysisStatus(body.progress_message || `Job ${body.job_id} queued.`);
+      resultShell.classList.add("hidden");
+      await pollJob(body.job_url);
     });
   </script>
 {% endblock %}

@@ -9,6 +9,7 @@ from pipeline_utils import (
     write_evaluation_summary,
     write_run_config,
 )
+from system.services.artifact_service import register_artifact_root
 from system_config import default_system_config
 
 
@@ -23,6 +24,7 @@ def parse_args():
 def main():
     args = parse_args()
     output_dir = Path(args.output_dir)
+    register_artifact_root(output_dir)
     config = default_system_config(seed=args.seed)
     dataset = load_dataset(args.data_path)
     bundle = train_model(dataset, random_state=args.seed, config=config)

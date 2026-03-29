@@ -4,7 +4,7 @@ from typing import Any
 
 import pandas as pd
 
-from pipeline_utils import canonicalize_smiles
+from system.services.data_service import canonicalize_smiles
 from utils.validation import ensure_no_duplicate_columns
 
 
@@ -84,6 +84,14 @@ def validation_summary(df: pd.DataFrame, mapping: dict[str, str | None]) -> dict
             "duplicate_count": 0,
             "rows_with_labels": 0,
             "rows_without_labels": total_rows,
+            "positive_label_count": 0,
+            "negative_label_count": 0,
+            "unlabeled_label_count": total_rows,
+            "label_counts": {
+                "positive": 0,
+                "negative": 0,
+                "unlabeled": total_rows,
+            },
             "missing_fields": ["smiles"],
             "warnings": ["Map a SMILES column before analysis can run."],
             "can_run_analysis": False,
@@ -97,8 +105,14 @@ def validation_summary(df: pd.DataFrame, mapping: dict[str, str | None]) -> dict
     if label_column and label_column in normalized.columns:
         labels = normalized[label_column].apply(coerce_label)
         rows_with_labels = int(labels.isin([0, 1]).sum())
+        positive_label_count = int(labels.eq(1).sum())
+        negative_label_count = int(labels.eq(0).sum())
     else:
         rows_with_labels = 0
+        positive_label_count = 0
+        negative_label_count = 0
+
+    unlabeled_label_count = int(max(total_rows - rows_with_labels, 0))
 
     missing_fields = [field for field in ("smiles",) if not mapping.get(field)]
     warnings: list[str] = []
@@ -116,6 +130,14 @@ def validation_summary(df: pd.DataFrame, mapping: dict[str, str | None]) -> dict
         "duplicate_count": duplicate_count,
         "rows_with_labels": rows_with_labels,
         "rows_without_labels": int(total_rows - rows_with_labels),
+        "positive_label_count": positive_label_count,
+        "negative_label_count": negative_label_count,
+        "unlabeled_label_count": unlabeled_label_count,
+        "label_counts": {
+            "positive": positive_label_count,
+            "negative": negative_label_count,
+            "unlabeled": unlabeled_label_count,
+        },
         "missing_fields": missing_fields,
         "warnings": warnings,
         "can_run_analysis": not missing_fields and valid_smiles_count > 0,

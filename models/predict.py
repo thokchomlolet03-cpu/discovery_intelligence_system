@@ -1,5 +1,7 @@
 from models.uncertainty import compute_uncertainty
-from pipeline_utils import align_features, clip_probabilities, resolve_system_config
+from system.services.prediction_service import align_features
+from system.services.runtime_config import resolve_system_config
+from system.services.training_service import clip_probabilities
 
 
 def predict(model, X, feature_contract, config=None):
@@ -8,4 +10,3 @@ def predict(model, X, feature_contract, config=None):
     probs = clip_probabilities(model.predict_proba(aligned)[:, 1], cfg.model.probability_clip)
     uncertainty = compute_uncertainty(probs)
     return probs, uncertainty
-

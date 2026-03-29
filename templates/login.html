@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-compact">
+    <div class="eyebrow">Workspace access</div>
+    <h1>Sign in to Discovery Intelligence.</h1>
+    <p class="hero-copy">
+      Authenticated access is now required for uploads, jobs, discovery review, dashboards, and review actions.
+    </p>
+  </section>
+
+  <section class="step-shell">
+    <article class="panel" style="max-width: 32rem; margin: 0 auto;">
+      <div class="step-header">
+        <span class="step-number">1</span>
+        <div>
+          <h2>Login</h2>
+          <p>Use a workspace-backed account to continue.</p>
+        </div>
+      </div>
+      {% if error %}
+        <div class="notice-panel">{{ error }}</div>
+      {% endif %}
+      <form class="form-grid" method="post" action="/login">
+        <input type="hidden" name="next" value="{{ next_target }}" />
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <label>
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="username" required />
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <button class="button button-primary" type="submit">Sign in</button>
+      </form>
+      <p class="helper-copy" style="margin-top: 1rem;">
+        Local bootstrap account defaults to <code>admin@example.com</code> / <code>change-me-now</code> unless overridden by environment variables.
+      </p>
+    </article>
+  </section>
+{% endblock %}

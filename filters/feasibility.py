@@ -4,7 +4,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-from pipeline_utils import resolve_system_config
+from system.services.runtime_config import resolve_system_config
 
 
 def feasibility_reason(smiles, config=None) -> str:

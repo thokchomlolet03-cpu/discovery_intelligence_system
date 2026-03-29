@@ -58,16 +58,33 @@ The web layer now includes:
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Start the web app:
 
 ```bash
-uvicorn app:app --reload
+python -m uvicorn app:app --reload
+```
+
+If you are using the checked-in virtual environment:
+
+```bash
+venv/bin/python -m uvicorn app:app --reload
 ```
 
 Open `http://127.0.0.1:8000`.
+
+## Production Deployment
+
+The repository now includes a single-VM Docker/GHCR deployment foundation for:
+
+- FastAPI app container
+- PostgreSQL container on the same VM
+- bind-mounted persistent artifact storage
+- GitHub Actions CI/build/deploy from GitHub to the VM
+
+Operator-facing deployment instructions are in [docs/deployment.md](docs/deployment.md).
 
 ## Run Tests
 
@@ -93,21 +110,6 @@ venv/bin/python -m unittest discover -s tests -v
 - Each web run is archived under `data/uploads/<timestamp>/`.
 - Each session writes `upload_session_summary.json`, `analysis_report.json`, `decision_output.json`, and `review_queue.json`.
 - Session-specific pages are available at `/discovery?session_id=<id>` and `/dashboard?session_id=<id>`.
-
-## Deploy On Render
-
-Use these Render settings:
-
-- Build command: `pip install -r requirements.txt`
-- Start command: `uvicorn app:app --host 0.0.0.0 --port 10000`
-
-Render should expose the FastAPI service directly. The dashboard is now integrated into the same FastAPI app, so no second dashboard service is required.
-
-## Connect A Custom Domain
-
-For the FastAPI app, attach your root or app subdomain in Render and point DNS for `imagewiz.info` or a chosen subdomain to the Render service.
-
-If you still want to keep the legacy Streamlit dashboard around for internal use, it can remain separate, but the website no longer depends on it.
 
 ## Notes
 

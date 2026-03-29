@@ -1,0 +1,56 @@
+name: discovery-intelligence
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DISCOVERY_POSTGRES_DB:-discovery}
+      POSTGRES_USER: ${DISCOVERY_POSTGRES_USER:-discovery}
+      POSTGRES_PASSWORD: ${DISCOVERY_POSTGRES_PASSWORD:?Set DISCOVERY_POSTGRES_PASSWORD}
+    volumes:
+      - type: bind
+        source: ${DISCOVERY_POSTGRES_DATA_DIR:-./postgres}
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DISCOVERY_POSTGRES_USER:-discovery} -d ${DISCOVERY_POSTGRES_DB:-discovery}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    image: ${DISCOVERY_IMAGE_REPOSITORY:?Set DISCOVERY_IMAGE_REPOSITORY}:${DISCOVERY_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DISCOVERY_APP_ENV: ${DISCOVERY_APP_ENV:-production}
+      DISCOVERY_AUTO_APPLY_MIGRATIONS: ${DISCOVERY_AUTO_APPLY_MIGRATIONS:-false}
+      DISCOVERY_DATABASE_URL: ${DISCOVERY_DATABASE_URL:?Set DISCOVERY_DATABASE_URL}
+      DISCOVERY_SESSION_SECRET: ${DISCOVERY_SESSION_SECRET:?Set DISCOVERY_SESSION_SECRET}
+      DISCOVERY_SESSION_SECURE: ${DISCOVERY_SESSION_SECURE:-true}
+      DISCOVERY_SESSION_SAME_SITE: ${DISCOVERY_SESSION_SAME_SITE:-strict}
+      DISCOVERY_ALLOWED_ARTIFACT_ROOTS: ${DISCOVERY_ALLOWED_ARTIFACT_ROOTS:-/app/data}
+      PORT: ${PORT:-8000}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+    ports:
+      - "${DISCOVERY_HOST_PORT:-8000}:8000"
+    volumes:
+      - type: bind
+        source: ${DISCOVERY_PERSISTENT_DATA_DIR:-./data}
+        target: /app/data
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

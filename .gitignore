@@ -12,6 +12,9 @@ htmlcov/
 venv/
 env/
 ENV/
+.env
+.env.*
+!.env.example
 
 generated_candidates.csv
 predicted_candidates.csv
@@ -32,3 +35,5 @@ data/decision_output.json
 data/logs.json
 data/reviews.json
 data/user_feedback.csv
+data/.session_secret
+data/*.db

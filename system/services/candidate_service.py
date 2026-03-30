@@ -20,6 +20,9 @@ from system.services.runtime_config import resolve_system_config
 from system.services.training_service import log_distribution
 
 
+OUT_OF_DOMAIN_SAMPLE_LIMIT = 512
+
+
 def mol_weight_in_range(mol, config=None):
     cfg = resolve_system_config(config)
     mw = float(Descriptors.MolWt(mol))
@@ -54,7 +57,7 @@ def max_similarity_to_reference(candidate_fp, reference_fingerprints):
     return max(similarities, default=0.0)
 
 
-def candidate_similarity_table(df, reference_smiles, config=None):
+def candidate_similarity_table(df, reference_smiles, config=None, enforce_batch_diversity: bool = True):
     cfg = resolve_system_config(config)
     n_bits = len(infer_fingerprint_columns(df))
     reference_fingerprints = build_reference_fingerprints(reference_smiles, n_bits=n_bits)
@@ -84,8 +87,25 @@ def candidate_similarity_table(df, reference_smiles, config=None):
         prepared["max_similarity"] = float(max_similarity)
         prepared["novelty"] = float(max(0.0, 1.0 - max_similarity))
         prepared["novel_to_dataset"] = int(max_similarity < 1.0)
+        if not enforce_batch_diversity:
+            prepared["passes_reference_filter"] = bool(
+                max_similarity <= cfg.generator.reference_similarity_threshold
+            )
+            prepared["passes_batch_filter"] = True
+            prepared["passes_diversity_filter"] = True
+            prepared["candidate_status"] = "accepted"
+            prepared["acceptance_reason"] = "retained_for_uploaded_screening"
+            prepared["rejection_reason"] = ""
+            prepared_rows.append(prepared)
+            continue
         prepared["_fingerprint"] = candidate_fp
         prepared_rows.append(prepared)
+
+    if not enforce_batch_diversity:
+        ordered_rows = sorted(prepared_rows, key=lambda item: item["original_index"])
+        for row in ordered_rows:
+            row.pop("original_index", None)
+        return pd.DataFrame(ordered_rows)
 
     ranked_rows = sorted(
         prepared_rows,
@@ -331,10 +351,27 @@ def out_of_domain_ratio(df: pd.DataFrame, config) -> float | None:
     reference = reference_smiles_from_dataset()
     if not reference or df.empty:
         return None
-    novelty_frame = candidate_similarity_table(df[["smiles"]].copy(), reference_smiles=reference, config=config)
-    if "max_similarity" not in novelty_frame.columns or novelty_frame.empty:
+    sample = df[["smiles"]].dropna().drop_duplicates(subset=["smiles"]).reset_index(drop=True)
+    if sample.empty:
         return None
-    similarities = pd.to_numeric(novelty_frame["max_similarity"], errors="coerce").fillna(0.0)
+    if len(sample) > OUT_OF_DOMAIN_SAMPLE_LIMIT:
+        sample = sample.sample(n=OUT_OF_DOMAIN_SAMPLE_LIMIT, random_state=0).reset_index(drop=True)
+
+    n_bits = len(infer_fingerprint_columns(df))
+    reference_fingerprints = build_reference_fingerprints(reference, n_bits=n_bits)
+    if not reference_fingerprints:
+        return None
+
+    similarities: list[float] = []
+    for smiles in sample["smiles"].tolist():
+        _, candidate_fp = molecule_fingerprint(smiles, n_bits=n_bits)
+        if candidate_fp is None:
+            continue
+        similarities.append(float(max_similarity_to_reference(candidate_fp, reference_fingerprints)))
+
+    if not similarities:
+        return None
+    similarities = pd.to_numeric(pd.Series(similarities), errors="coerce").fillna(0.0)
     return float((similarities < 0.25).mean())
 
 

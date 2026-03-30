@@ -160,7 +160,12 @@ def build_prediction_result(
         percent=36,
     )
     reference = reference_smiles_from_dataset()
-    novelty_ready = candidate_similarity_table(df.copy(), reference_smiles=reference, config=config)
+    novelty_ready = candidate_similarity_table(
+        df.copy(),
+        reference_smiles=reference,
+        config=config,
+        enforce_batch_diversity=False,
+    )
     novelty_ready = annotate_feasibility(novelty_ready, config=config)
     feasible = novelty_ready[novelty_ready["is_feasible"]].copy()
 

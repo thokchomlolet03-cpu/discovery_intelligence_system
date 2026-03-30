@@ -143,11 +143,24 @@ def run_pipeline(
     consent_learning = bool(options.get("consent_learning"))
     product_tier = str(options.get("product_tier") or "standard")
 
+    _emit_progress(
+        progress_callback,
+        stage="preparing_dataset",
+        message="Estimating domain overlap against the reference dataset.",
+        percent=30,
+    )
     domain_gap = out_of_domain_ratio(prepared, config=config)
     labeled = labeled_subset(prepared)
     class_count = int(labeled["biodegradable"].nunique()) if not labeled.empty else 0
     min_class_count = int(labeled["biodegradable"].value_counts().min()) if not labeled.empty else 0
     session_training_available = class_count >= 2 and min_class_count >= 2
+
+    _emit_progress(
+        progress_callback,
+        stage="preparing_dataset",
+        message="Selecting the scoring workflow for this upload.",
+        percent=34,
+    )
 
     if intent == "generate_candidates" and session_training_available:
         result, generated, processed, scored, bundle = build_discovery_result(

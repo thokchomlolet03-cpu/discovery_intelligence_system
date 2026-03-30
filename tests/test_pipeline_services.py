@@ -5,6 +5,11 @@ import pandas as pd
 
 from system.contracts import validate_decision_artifact
 from system.run_pipeline import run_pipeline
+from system.services.candidate_service import (
+    OUT_OF_DOMAIN_SAMPLE_LIMIT,
+    candidate_similarity_table,
+    out_of_domain_ratio,
+)
 from system.services.data_service import prepare_analysis_dataframe
 from system.services.decision_service import decorate_candidates
 
@@ -114,6 +119,64 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertIn("upload.csv", candidate["provenance"])
         self.assertTrue(candidate["short_explanation"])
         self.assertIn(candidate["risk"], {"low", "medium", "high"})
+
+    @patch("system.services.candidate_service.max_similarity_to_reference", return_value=0.1)
+    @patch("system.services.candidate_service.build_reference_fingerprints", return_value=[("ref", object())])
+    @patch(
+        "system.services.candidate_service.molecule_fingerprint",
+        side_effect=lambda smiles, n_bits=2048: (str(smiles), object()),
+    )
+    @patch("system.services.candidate_service.reference_smiles_from_dataset", return_value=["CCO"])
+    def test_out_of_domain_ratio_samples_large_inputs(
+        self,
+        reference_smiles_mock,
+        molecule_fingerprint_mock,
+        build_reference_fingerprints_mock,
+        max_similarity_mock,
+    ):
+        frame = pd.DataFrame({"smiles": [f"candidate_{idx}" for idx in range(OUT_OF_DOMAIN_SAMPLE_LIMIT + 300)]})
+
+        ratio = out_of_domain_ratio(frame, config=None)
+
+        self.assertEqual(ratio, 1.0)
+        self.assertEqual(build_reference_fingerprints_mock.call_count, 1)
+        self.assertEqual(molecule_fingerprint_mock.call_count, OUT_OF_DOMAIN_SAMPLE_LIMIT)
+        self.assertEqual(max_similarity_mock.call_count, OUT_OF_DOMAIN_SAMPLE_LIMIT)
+        reference_smiles_mock.assert_called_once()
+
+    @patch("system.services.candidate_service.max_similarity_to_reference", return_value=0.1)
+    @patch("system.services.candidate_service.build_reference_fingerprints", return_value=[("ref", object())])
+    @patch(
+        "system.services.candidate_service.molecule_fingerprint",
+        side_effect=lambda smiles, n_bits=2048: (str(smiles), object()),
+    )
+    @patch(
+        "system.services.candidate_service.tanimoto_similarity",
+        side_effect=AssertionError("Batch diversity should be skipped for uploaded molecule ranking."),
+    )
+    def test_candidate_similarity_table_can_skip_batch_diversity(
+        self,
+        tanimoto_similarity_mock,
+        molecule_fingerprint_mock,
+        build_reference_fingerprints_mock,
+        max_similarity_mock,
+    ):
+        frame = pd.DataFrame({"smiles": ["candidate_a", "candidate_b", "candidate_c"]})
+
+        scored = candidate_similarity_table(
+            frame,
+            reference_smiles=["CCO"],
+            config=None,
+            enforce_batch_diversity=False,
+        )
+
+        self.assertEqual(scored["smiles"].tolist(), ["candidate_a", "candidate_b", "candidate_c"])
+        self.assertTrue(scored["passes_diversity_filter"].all())
+        self.assertTrue(scored["passes_batch_filter"].all())
+        self.assertEqual(molecule_fingerprint_mock.call_count, 3)
+        self.assertEqual(build_reference_fingerprints_mock.call_count, 1)
+        self.assertEqual(max_similarity_mock.call_count, 3)
+        tanimoto_similarity_mock.assert_not_called()
 
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")

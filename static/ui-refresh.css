@@ -585,6 +585,34 @@ textarea::placeholder {
   gap: 18px;
 }
 
+.upload-outcome-panel {
+  gap: 22px;
+}
+
+.upload-outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.upload-outcome-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(124, 153, 177, 0.14);
+  border-radius: 20px;
+  background: rgba(8, 17, 26, 0.78);
+}
+
+.upload-top-candidate {
+  display: grid;
+  gap: 6px;
+}
+
+.compact-list {
+  gap: 8px;
+}
+
 .job-progress {
   gap: 18px;
   border-radius: 24px;
@@ -659,6 +687,41 @@ tbody tr:hover {
   border-radius: 20px;
   border-color: rgba(124, 153, 177, 0.14);
   background: rgba(4, 10, 16, 0.94);
+}
+
+.technical-details {
+  overflow: hidden;
+}
+
+.technical-details summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.technical-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.technical-details summary::after {
+  content: "Show";
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.technical-details[open] summary::after {
+  content: "Hide";
+}
+
+.technical-details .helper-copy {
+  margin-top: 14px;
+}
+
+.technical-details .json-view {
+  margin-top: 16px;
 }
 
 .chart-panel {

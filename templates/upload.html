@@ -250,36 +250,36 @@
       <div class="step-header">
         <span class="step-number">5</span>
         <div>
-          <h2>User Intent</h2>
-          <p>Select the outcome you want from this run.</p>
+          <h2>What do you need from this run?</h2>
+          <p>Choose the kind of recommendation you want the system to optimize for.</p>
         </div>
       </div>
       <div class="choice-grid" id="intent-options">
         <label class="choice-card active">
           <input type="radio" name="intent" value="predict_labels" checked />
-          <strong>Predict labels</strong>
-          <span>Use the current workflow to estimate likely labels for uploaded molecules.</span>
+          <strong>Estimate likely labels</strong>
+          <span>Use when you want the system to focus on label confidence for the uploaded molecules.</span>
         </label>
         <label class="choice-card">
           <input type="radio" name="intent" value="rank_uploaded_molecules" />
-          <strong>Rank by test value</strong>
-          <span>Prioritize uploaded molecules using the decision-support scores.</span>
+          <strong>Prioritize what to test next</strong>
+          <span>Use the current ranking workflow to surface the most useful uploaded molecules for review or testing.</span>
         </label>
         <label class="choice-card {% if workspace_plan and not workspace_plan.features.candidate_generation %}muted{% endif %}">
           <input type="radio" name="intent" value="generate_candidates" {% if workspace_plan and not workspace_plan.features.candidate_generation %}disabled{% endif %} />
-          <strong>Generate suggestions</strong>
+          <strong>Propose new candidates</strong>
           <span>
             {% if workspace_plan and not workspace_plan.features.candidate_generation %}
               Requires the Pro plan.
             {% else %}
-              Create new candidate suggestions when the upload has enough label coverage.
+              Generate new candidate suggestions when the upload has enough label coverage to support it.
             {% endif %}
           </span>
         </label>
         <label class="choice-card">
           <input type="radio" name="intent" value="explore_uncertain" />
-          <strong>Explore uncertain molecules</strong>
-          <span>Prioritize molecules that are more useful for learning and review.</span>
+          <strong>Learn from uncertainty</strong>
+          <span>Prioritize molecules that are more useful for reducing blind spots and guiding later decisions.</span>
         </label>
       </div>
     </article>
@@ -288,25 +288,25 @@
       <div class="step-header">
         <span class="step-number">6</span>
         <div>
-          <h2>Scoring Mode</h2>
-          <p>Adjust ranking emphasis to match your current review strategy.</p>
+          <h2>Ranking emphasis</h2>
+          <p>Adjust how strongly the shortlist favors confidence, exploration, or learning value.</p>
         </div>
       </div>
       <div class="choice-grid" id="mode-options">
         <label class="choice-card">
           <input type="radio" name="scoring_mode" value="conservative" />
-          <strong>Conservative</strong>
-          <span>Higher emphasis on confidence and lower emphasis on exploratory behavior.</span>
+          <strong>Favor safer shortlist choices</strong>
+          <span>Put more weight on model confidence and less on exploratory behavior.</span>
         </label>
         <label class="choice-card active">
           <input type="radio" name="scoring_mode" value="balanced" checked />
-          <strong>Balanced</strong>
-          <span>Balanced ranking across confidence, uncertainty, novelty, and test value.</span>
+          <strong>Balance confidence and learning</strong>
+          <span>Keep a balanced mix of confidence, uncertainty, novelty, and test value.</span>
         </label>
         <label class="choice-card">
           <input type="radio" name="scoring_mode" value="exploratory" />
-          <strong>Exploratory</strong>
-          <span>Higher emphasis on novelty and uncertainty for broader learning.</span>
+          <strong>Favor exploration</strong>
+          <span>Put more weight on novelty and uncertainty when broadening the search is more important.</span>
         </label>
       </div>
     </article>
@@ -332,13 +332,13 @@
         </label>
       </div>
       <div id="consent-guidance" class="status-box muted hidden"></div>
-      <button class="button button-primary" id="analyze-button" type="button">Run analysis</button>
-      <div id="analysis-status" class="status-box muted">Inspect a file before analysis.</div>
+      <button class="button button-primary" id="analyze-button" type="button">Generate recommendation</button>
+      <div id="analysis-status" class="status-box muted">Inspect a file before generating a recommendation.</div>
       <section id="job-progress-shell" class="job-progress hidden" aria-live="polite">
         <div class="section-header">
           <div>
             <h2>Execution Progress</h2>
-            <p class="helper-copy">Track the current pipeline stage while the analysis job runs.</p>
+            <p class="helper-copy">Track the current pipeline stage while the recommendation job runs.</p>
           </div>
           <span id="job-progress-percent" class="pill">0%</span>
         </div>
@@ -347,7 +347,7 @@
         </div>
         <div class="job-progress-copy">
           <strong id="job-progress-stage">Queued</strong>
-          <p id="job-progress-message" class="helper-copy">A new analysis job will appear here once it starts.</p>
+          <p id="job-progress-message" class="helper-copy">A new recommendation job will appear here once it starts.</p>
         </div>
         <div id="job-stage-list" class="job-stage-list"></div>
       </section>
@@ -355,19 +355,47 @@
   </section>
 
   <section id="result-shell" class="result-shell hidden">
+    <div class="panel upload-outcome-panel">
+      <div class="section-header">
+        <div>
+          <span class="panel-label">Run outcome</span>
+          <h2 id="result-headline">Recommended next step</h2>
+          <p id="result-recommendation" class="helper-copy">Generate a recommendation to surface the best next step for this upload.</p>
+        </div>
+        <span id="result-mode" class="pill"></span>
+      </div>
+      <div class="upload-outcome-grid">
+        <article class="upload-outcome-card">
+          <span class="panel-label">Top recommendation</span>
+          <div id="result-top-candidate" class="upload-top-candidate">
+            <strong>No shortlist yet.</strong>
+            <p>The strongest candidate from the current run will appear here.</p>
+          </div>
+        </article>
+        <article class="upload-outcome-card">
+          <span class="panel-label">Why this shortlist matters</span>
+          <p id="result-why">The primary recommendation summary will appear here after the run completes.</p>
+        </article>
+        <article class="upload-outcome-card">
+          <span class="panel-label">What to do next</span>
+          <ul id="result-next-actions" class="bullet-list compact-list">
+            <li>Generate a recommendation to produce next-step guidance.</li>
+          </ul>
+        </article>
+      </div>
+      <div class="cta-row">
+        <a class="button button-secondary hidden" id="discovery-link" href="#">Open session results</a>
+        <a class="button button-secondary hidden" id="dashboard-link" href="#">Open session dashboard</a>
+      </div>
+    </div>
     <div class="card-grid metrics-grid" id="summary-grid"></div>
     <div id="warnings-shell" class="warning-stack"></div>
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2>Prioritized Candidates</h2>
-          <p class="helper-copy">Review these as recommendations for testing or further expert review.</p>
+          <h2>Shortlist for review</h2>
+          <p class="helper-copy">Use this table as the supporting shortlist behind the recommended next step.</p>
         </div>
-        <span id="result-mode" class="pill"></span>
-      </div>
-      <div class="cta-row">
-        <a class="button button-secondary hidden" id="discovery-link" href="#">Open session results</a>
-        <a class="button button-secondary hidden" id="dashboard-link" href="#">Open session dashboard</a>
       </div>
       <div class="table-wrap">
         <table id="result-table">
@@ -388,10 +416,11 @@
         </table>
       </div>
     </div>
-    <div class="panel">
-      <h2>Raw Result</h2>
+    <details class="panel technical-details">
+      <summary>Technical result details</summary>
+      <p class="helper-copy">Use this only when you need the full payload for debugging, reproducibility, or implementation checks.</p>
       <pre id="result-json" class="json-view"></pre>
-    </div>
+    </details>
   </section>
 
   <script>
@@ -436,8 +465,14 @@
     const summaryGrid = document.getElementById("summary-grid");
     const warningsShell = document.getElementById("warnings-shell");
     const resultMode = document.getElementById("result-mode");
+    const resultHeadline = document.getElementById("result-headline");
+    const resultRecommendation = document.getElementById("result-recommendation");
+    const resultWhy = document.getElementById("result-why");
+    const resultNextActions = document.getElementById("result-next-actions");
+    const resultTopCandidate = document.getElementById("result-top-candidate");
     const resultTableBody = document.querySelector("#result-table tbody");
     const resultJson = document.getElementById("result-json");
+    const technicalDetails = document.querySelector(".technical-details");
     const discoveryLink = document.getElementById("discovery-link");
     const dashboardLink = document.getElementById("dashboard-link");
     const privateConsentRadio = document.querySelector('input[name="consent_choice"][value="private"]');
@@ -478,6 +513,12 @@
     const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || "";
 
     const selectValue = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
+    const escapeHtml = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
     const setChoiceValue = (name, value, containerId) => {
       if (!value) return;
       const target = document.querySelector(`input[name="${name}"][value="${value}"]`);
@@ -496,6 +537,7 @@
       const numeric = Number(value ?? 0);
       return Number.isFinite(numeric) ? numeric.toFixed(3) : "-";
     };
+    const titleCase = (value) => String(value || "").replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
     const clampPercent = (value) => {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) return 0;
@@ -534,7 +576,7 @@
       progressPercent.textContent = "0%";
       progressFill.style.width = "0%";
       progressStage.textContent = "Queued";
-      progressMessage.textContent = "A new analysis job will appear here once it starts.";
+      progressMessage.textContent = "A new recommendation job will appear here once it starts.";
       jobStageList.innerHTML = "";
     };
     const renderJobProgress = (job) => {
@@ -547,7 +589,7 @@
       progressPercent.textContent = `${percent}%`;
       progressFill.style.width = `${percent}%`;
       progressStage.textContent = jobStageLabels[stage] || stage;
-      progressMessage.textContent = job?.progress_message || "Analysis is running...";
+      progressMessage.textContent = job?.progress_message || "Recommendation is running...";
       jobStageList.innerHTML = jobStageOrder.map((stageName, index) => {
         let tone = "pending";
         let marker = "•";
@@ -635,6 +677,58 @@
 
     const showWorkflow = () => {
       [mappingPanel, validationPanel, labelBuilderPanel, intentPanel, modePanel, consentPanel].forEach((panel) => panel.classList.remove("hidden"));
+    };
+
+    const intentLabel = (value) => ({
+      predict_labels: "Estimate likely labels",
+      rank_uploaded_molecules: "Prioritize what to test next",
+      generate_candidates: "Propose new candidates",
+      explore_uncertain: "Learn from uncertainty",
+    }[value] || titleCase(value || "run"));
+
+    const scoringModeLabel = (value) => ({
+      conservative: "Favor safer shortlist choices",
+      balanced: "Balance confidence and learning",
+      exploratory: "Favor exploration",
+    }[value] || titleCase(value || "balanced"));
+
+    const semanticModeLabel = (value) => ({
+      measurement_dataset: "Measurement dataset",
+      labeled_tabular_dataset: "Labeled dataset",
+      structure_only_screening: "Structure-only screening",
+    }[value] || titleCase(value || "dataset"));
+
+    const firstExplanationLine = (candidate) => {
+      if (!candidate) return "";
+      if (Array.isArray(candidate.explanation) && candidate.explanation.length) return candidate.explanation[0];
+      if (typeof candidate.explanation === "string" && candidate.explanation.trim()) return candidate.explanation.trim();
+      return "";
+    };
+
+    const nextActionItems = (body, topCandidate) => {
+      const actions = [];
+      const bucket = String(topCandidate?.bucket || topCandidate?.selection_bucket || "").toLowerCase();
+      const risk = String(topCandidate?.risk || topCandidate?.risk_level || "").toLowerCase();
+      const uncertainty = Number(topCandidate?.uncertainty ?? 0);
+
+      if (bucket === "exploit" && risk !== "high") {
+        actions.push("Shortlist the top exploit candidate for near-term experimental review.");
+      } else if (bucket === "explore") {
+        actions.push("Treat the top recommendation as an exploration candidate and confirm the rationale in Discovery.");
+      } else if (bucket === "learn" || uncertainty >= 0.65) {
+        actions.push("Use the top recommendation to reduce uncertainty before committing more confident bench work.");
+      } else {
+        actions.push("Review the top candidate first before committing to a testing queue.");
+      }
+
+      actions.push("Open Discovery to inspect the full shortlist, decision queue, and candidate-level rationale.");
+      actions.push("Open Dashboard to sanity-check evidence coverage, ranking diagnostics, and out-of-domain caution.");
+
+      if ((body?.warnings || []).length) {
+        actions.push("Read the warnings from this run before making a final testing decision.");
+      }
+
+      return actions;
     };
 
     const renderChoices = (containerId) => {
@@ -740,14 +834,14 @@
 
       if (context.latest_job?.status === "queued" || context.latest_job?.status === "running") {
         renderJobProgress(context.latest_job);
-        setAnalysisStatus(context.latest_job.progress_message || "Analysis is running...");
+        setAnalysisStatus(context.latest_job.progress_message || "Recommendation is running...");
         await pollJob(context.latest_job.job_url);
         return;
       }
 
       if (context.latest_job?.status === "failed") {
         renderJobProgress(context.latest_job);
-        setAnalysisStatus(context.latest_job.error || "The latest analysis failed.", "error");
+        setAnalysisStatus(context.latest_job.error || "The latest recommendation run failed.", "error");
       } else if (context.result) {
         renderCompletedResult(context.result, context.latest_job || {});
         if (context.latest_job) {
@@ -758,9 +852,9 @@
             progress_percent: 100,
           });
         }
-        setAnalysisStatus(context.latest_job?.progress_message || context.result.message || "Restored the latest completed analysis.", "success");
+        setAnalysisStatus(context.latest_job?.progress_message || context.result.message || "Restored the latest completed recommendation run.", "success");
       } else {
-        setAnalysisStatus("Session restored. You can adjust the mapping or run analysis again.");
+        setAnalysisStatus("Session restored. You can adjust the mapping or generate a new recommendation.");
       }
     };
 
@@ -792,6 +886,7 @@
       clearJobPoll();
       resetJobProgress();
       resultShell.classList.add("hidden");
+      if (technicalDetails) technicalDetails.open = false;
       inspectStatus.textContent = "Inspecting uploaded file...";
       inspectStatus.className = "status-box";
 
@@ -841,24 +936,58 @@
       warnings.forEach((warning) => {
         const node = document.createElement("div");
         node.className = "warning-card";
-        node.innerHTML = `<strong>Warning</strong><p>${warning}</p>`;
+        node.innerHTML = `<strong>Warning</strong><p>${escapeHtml(warning)}</p>`;
         warningsShell.appendChild(node);
       });
     };
 
     const renderResultSummary = (body) => {
+      const validation = body.upload_session_summary?.validation_summary || {};
       const items = [
-        ["Mode", body.scoring_mode],
-        ["Intent", body.intent],
+        ["Evidence mode", semanticModeLabel(validation.semantic_mode || body.input_type)],
+        ["Run goal", intentLabel(body.intent)],
+        ["Ranking emphasis", scoringModeLabel(body.scoring_mode)],
         ["Analyzed rows", body.summary.analyzed_rows || body.summary.valid_rows || body.summary.valid_smiles_count],
-        ["Queued feedback", body.feedback_store.queued_rows],
+        ["Shortlist size", (body.top_candidates || []).length],
+        ["Queued feedback", body.feedback_store?.queued_rows ?? 0],
       ];
       summaryGrid.innerHTML = items.map(([label, value]) => `
         <article class="stat-card">
-          <span class="panel-label">${label}</span>
-          <strong>${value}</strong>
+          <span class="panel-label">${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
         </article>
       `).join("");
+    };
+
+    const renderOutcomeSummary = (body) => {
+      const topCandidate = (body.top_candidates || [])[0];
+      const recommendationSummary = body.analysis_report?.top_level_recommendation_summary || body.message || "Run complete.";
+      const explanation = firstExplanationLine(topCandidate) || "Inspect the shortlist in Discovery for the full rationale.";
+      const nextActions = nextActionItems(body, topCandidate);
+
+      resultHeadline.textContent = topCandidate
+        ? `Recommended next step: ${topCandidate.candidate_id || topCandidate.molecule_id || "review the top candidate"}`
+        : "Recommended next step";
+      resultRecommendation.textContent = recommendationSummary;
+      resultWhy.textContent = explanation;
+      resultNextActions.innerHTML = nextActions.map((item) => `<li>${item}</li>`).join("");
+
+      if (!topCandidate) {
+        resultTopCandidate.innerHTML = `
+          <strong>No shortlist was returned.</strong>
+          <p>This run completed without prioritized candidates. Review the warnings and validation notes before rerunning.</p>
+        `;
+        return;
+      }
+
+      resultTopCandidate.innerHTML = `
+        <strong>${escapeHtml(topCandidate.candidate_id || topCandidate.molecule_id || "Top candidate")}</strong>
+        <p>
+          ${escapeHtml(titleCase(topCandidate.bucket || topCandidate.selection_bucket || "review"))} queue,
+          ${escapeHtml(titleCase(topCandidate.risk || topCandidate.risk_level || "unknown"))} risk,
+          experiment value ${escapeHtml(formatNumber(topCandidate.experiment_value))}.
+        </p>
+      `;
     };
 
     const renderResultTable = (rows) => {
@@ -868,21 +997,22 @@
       }
       resultTableBody.innerHTML = rows.map((row) => `
         <tr>
-          <td>${row.candidate_id || row.molecule_id || row.polymer || "-"}</td>
-          <td class="smiles-cell">${row.smiles || "-"}</td>
-          <td>${formatNumber(row.confidence)}</td>
-          <td>${formatNumber(row.uncertainty)}</td>
-          <td>${formatNumber(row.novelty)}</td>
-          <td>${formatNumber(row.experiment_value)}</td>
-          <td>${row.bucket || row.selection_bucket || "-"}</td>
-          <td>${row.risk || row.risk_level || "-"}</td>
-          <td>${row.status || "-"}</td>
+          <td>${escapeHtml(row.candidate_id || row.molecule_id || row.polymer || "-")}</td>
+          <td class="smiles-cell">${escapeHtml(row.smiles || "-")}</td>
+          <td>${escapeHtml(formatNumber(row.confidence))}</td>
+          <td>${escapeHtml(formatNumber(row.uncertainty))}</td>
+          <td>${escapeHtml(formatNumber(row.novelty))}</td>
+          <td>${escapeHtml(formatNumber(row.experiment_value))}</td>
+          <td>${escapeHtml(row.bucket || row.selection_bucket || "-")}</td>
+          <td>${escapeHtml(row.risk || row.risk_level || "-")}</td>
+          <td>${escapeHtml(row.status || "-")}</td>
         </tr>
       `).join("");
     };
 
     const renderCompletedResult = (body, jobBody = {}) => {
-      resultMode.textContent = body.mode;
+      resultMode.textContent = titleCase(body.mode || "result");
+      renderOutcomeSummary(body);
       renderResultSummary(body);
       renderResultWarnings(body.warnings || []);
       renderResultTable(body.top_candidates || []);
@@ -898,8 +1028,9 @@
       const response = await fetch(jobBody.result_url);
       const body = await response.json();
       if (!response.ok) {
-        setAnalysisStatus(body.detail || "Analysis result could not be loaded.", "error");
+        setAnalysisStatus(body.detail || "The recommendation result could not be loaded.", "error");
         resultShell.classList.add("hidden");
+        if (technicalDetails) technicalDetails.open = false;
         return;
       }
       renderJobProgress({
@@ -907,9 +1038,9 @@
         status: "succeeded",
         progress_stage: "completed",
         progress_percent: 100,
-        progress_message: body.message || jobBody.progress_message || "Analysis completed.",
+        progress_message: body.message || jobBody.progress_message || "Recommendation completed.",
       });
-      setAnalysisStatus(body.message || jobBody.progress_message || "Analysis completed.", "success");
+      setAnalysisStatus(body.message || jobBody.progress_message || "Recommendation completed.", "success");
       renderCompletedResult(body, jobBody);
     };
 
@@ -927,7 +1058,7 @@
       state.sessionId = body.session_id || state.sessionId;
       renderJobProgress(body);
       if (body.status === "queued" || body.status === "running") {
-        setAnalysisStatus(body.progress_message || "Analysis is running...");
+        setAnalysisStatus(body.progress_message || "Recommendation is running...");
         state.jobPollHandle = window.setTimeout(() => pollJob(jobUrl), 1200);
         return;
       }
@@ -935,8 +1066,9 @@
       clearJobPoll();
       if (body.status === "failed") {
         renderJobProgress(body);
-        setAnalysisStatus(body.error || "Analysis failed.", "error");
+        setAnalysisStatus(body.error || "Recommendation failed.", "error");
         resultShell.classList.add("hidden");
+        if (technicalDetails) technicalDetails.open = false;
         return;
       }
 
@@ -951,16 +1083,16 @@
 
     analyzeButton.addEventListener("click", async () => {
       if (!state.sessionId) {
-        setAnalysisStatus("Inspect a file before analysis.", "error");
+        setAnalysisStatus("Inspect a file before generating a recommendation.", "error");
         return;
       }
 
       clearJobPoll();
       resetJobProgress();
-      setAnalysisStatus("Creating analysis job...");
+      setAnalysisStatus("Creating recommendation job...");
       await refreshValidation();
       if (analyzeButton.disabled) {
-        setAnalysisStatus("Resolve the validation issues before analysis can run.", "error");
+        setAnalysisStatus("Resolve the validation issues before a recommendation can run.", "error");
         return;
       }
 
@@ -990,7 +1122,7 @@
       const response = await fetch("/upload", {method: "POST", body: payload});
       const body = await response.json();
       if (!response.ok) {
-        setAnalysisStatus(upgradeAwareMessage(body, "Analysis failed."), "error");
+        setAnalysisStatus(upgradeAwareMessage(body, "Recommendation failed."), "error");
         resultShell.classList.add("hidden");
         return;
       }
@@ -1000,6 +1132,7 @@
       renderJobProgress(body);
       setAnalysisStatus(body.progress_message || `Job ${body.job_id} queued.`);
       resultShell.classList.add("hidden");
+      if (technicalDetails) technicalDetails.open = false;
       await pollJob(body.job_url);
     });
 

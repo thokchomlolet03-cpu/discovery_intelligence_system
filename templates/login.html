@@ -1,16 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero hero-compact">
-    <div class="eyebrow">Workspace access</div>
-    <h1>Sign in to Discovery Intelligence.</h1>
-    <p class="hero-copy">
-      Authenticated access is now required for uploads, jobs, discovery review, dashboards, and review actions.
-    </p>
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Workspace access</span>
+          <span class="context-chip">Authenticated scientific workflow</span>
+        </div>
+        <h1>Sign in to reopen sessions and continue decisions.</h1>
+        <p class="hero-copy">
+          Authenticated access is required for uploads, jobs, discovery review, dashboards, review actions, and
+          workspace-aware billing state. The sign-in surface is intentionally minimal so the workbench stays the focus.
+        </p>
+      </div>
+      <aside class="hero-side-card">
+        <span class="panel-label">Protected actions</span>
+        <ul class="bullet-list">
+          <li>Run uploads and analyses inside a workspace context.</li>
+          <li>Reopen discovery sessions and review dashboard artifacts.</li>
+          <li>Access workspace billing state and plan-limited capabilities.</li>
+        </ul>
+      </aside>
+    </div>
   </section>
 
-  <section class="step-shell">
-    <article class="panel" style="max-width: 32rem; margin: 0 auto;">
+  <section class="auth-shell">
+    <article class="panel auth-card">
       <div class="step-header">
         <span class="step-number">1</span>
         <div>
@@ -34,9 +50,30 @@
         </label>
         <button class="button button-primary" type="submit">Sign in</button>
       </form>
-      <p class="helper-copy" style="margin-top: 1rem;">
+      <p class="helper-copy">
         Local bootstrap account defaults to <code>admin@example.com</code> / <code>change-me-now</code> unless overridden by environment variables.
       </p>
     </article>
+    <aside class="panel auth-aside">
+      <div class="section-stack">
+        <div>
+          <span class="panel-label">Why access is gated</span>
+          <h2>Session-backed review needs identity and workspace scope.</h2>
+          <p>
+            The system now carries upload state, discovery artifacts, dashboard summaries, and billing enforcement
+            through authenticated workspaces rather than treating the web app as a stateless demo.
+          </p>
+        </div>
+        <div class="surface-divider"></div>
+        <div>
+          <span class="panel-label">Good sign-in outcome</span>
+          <ul class="bullet-list">
+            <li>You land back on the page you originally requested.</li>
+            <li>Navigation restores the active session when one exists.</li>
+            <li>Upload, Discovery, and Dashboard behave like one continuous workbench.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
   </section>
 {% endblock %}

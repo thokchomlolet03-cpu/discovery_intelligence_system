@@ -1,13 +1,33 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero hero-compact">
-    <div class="eyebrow">Guided upload</div>
-    <h1>Upload and analyze molecular data safely.</h1>
-    <p class="hero-copy">
-      This workflow is designed to reduce format mistakes, clarify intent, and make it explicit whether your upload
-      should stay private or be allowed to improve the system.
-    </p>
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Guided upload</span>
+          <span class="context-chip">Universal ingestion surface</span>
+        </div>
+        <h1>Upload and analyze molecular evidence without losing context.</h1>
+        <p class="hero-copy">
+          This workflow is designed to reduce format mistakes, detect the semantic shape of the upload, preserve
+          session state across pages, and make it explicit whether your data stays private or contributes to learning.
+        </p>
+        <div class="supporting-tags">
+          <span class="context-chip">CSV / TSV / TXT / SDF</span>
+          <span class="context-chip">Measurement-aware mapping</span>
+          <span class="context-chip">Session restoration</span>
+        </div>
+      </div>
+      <aside class="hero-side-card">
+        <span class="panel-label">What this page should do well</span>
+        <ul class="bullet-list">
+          <li>Interpret scientific data before analysis starts.</li>
+          <li>Show you exactly how the system will use each column.</li>
+          <li>Restore the latest session instead of making results feel lost.</li>
+        </ul>
+      </aside>
+    </div>
   </section>
 
   {% if workspace_plan %}
@@ -22,19 +42,19 @@
         </a>
       </div>
       <div class="card-grid metrics-grid">
-        <article class="panel">
+        <article class="stat-card">
           <span class="panel-label">Monthly analyses</span>
           <strong>{{ workspace_plan.usage.analysis_jobs_this_month }} / {{ workspace_plan.limits.monthly_analysis_jobs if workspace_plan.limits.monthly_analysis_jobs is not none else "Unlimited" }}</strong>
         </article>
-        <article class="panel">
+        <article class="stat-card">
           <span class="panel-label">Max upload rows</span>
           <strong>{{ workspace_plan.limits.max_upload_rows if workspace_plan.limits.max_upload_rows is not none else "Unlimited" }}</strong>
         </article>
-        <article class="panel">
+        <article class="stat-card">
           <span class="panel-label">Stored sessions</span>
           <strong>{{ workspace_plan.usage.stored_sessions }} / {{ workspace_plan.limits.max_stored_sessions if workspace_plan.limits.max_stored_sessions is not none else "Unlimited" }}</strong>
         </article>
-        <article class="panel">
+        <article class="stat-card">
           <span class="panel-label">Candidate generation</span>
           <strong>{{ "Enabled" if workspace_plan.features.candidate_generation else "Pro only" }}</strong>
         </article>
@@ -43,7 +63,7 @@
   {% endif %}
 
   {% if upload_session_context %}
-    <section class="panel">
+    <section class="session-banner">
       <div class="state-icon">Session {{ upload_session_context.session_id }}</div>
       <h2>
         {% if session_view.selection_reason == "requested" %}
@@ -65,6 +85,29 @@
       </div>
     </section>
   {% endif %}
+
+  <section class="workflow-stepper" aria-label="Upload workflow overview">
+    <article class="workflow-step workflow-step-active">
+      <strong>1. Inspect</strong>
+      <span>Detect format, semantic mode, and likely scientific roles.</span>
+    </article>
+    <article class="workflow-step workflow-step-active">
+      <strong>2. Map</strong>
+      <span>Confirm identifiers, SMILES, measurements, labels, and context fields.</span>
+    </article>
+    <article class="workflow-step workflow-step-active">
+      <strong>3. Validate</strong>
+      <span>Check row counts, SMILES validity, duplicates, and preview data quality.</span>
+    </article>
+    <article class="workflow-step workflow-step-muted">
+      <strong>4. Configure</strong>
+      <span>Decide whether to derive labels, how to rank, and whether learning is allowed.</span>
+    </article>
+    <article class="workflow-step workflow-step-muted">
+      <strong>5. Run</strong>
+      <span>Watch pipeline progress and reopen the saved session anywhere in the app.</span>
+    </article>
+  </section>
 
   <section class="step-shell">
     <article class="panel">
@@ -95,6 +138,7 @@
       <div class="upload-form">
         <label class="file-picker" for="dataset-file">
           <span>Select data file</span>
+          <small>Supported formats: CSV, TSV, TXT SMILES lists, and SDF structure files.</small>
           <input id="dataset-file" name="file" type="file" accept=".csv,.tsv,.txt,.sdf" required />
         </label>
         <button class="button button-primary" id="inspect-button" type="button">Inspect upload</button>
@@ -629,7 +673,7 @@
         ["Rows without labels", summary.rows_without_labels],
       ];
       validationGrid.innerHTML = items.map(([label, value]) => `
-        <article class="panel">
+        <article class="stat-card">
           <span class="panel-label">${label}</span>
           <strong>${value}</strong>
         </article>
@@ -810,7 +854,7 @@
         ["Queued feedback", body.feedback_store.queued_rows],
       ];
       summaryGrid.innerHTML = items.map(([label, value]) => `
-        <article class="panel">
+        <article class="stat-card">
           <span class="panel-label">${label}</span>
           <strong>${value}</strong>
         </article>

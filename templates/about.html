@@ -1,16 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero hero-compact">
-    <div class="eyebrow">Method and limitations</div>
-    <h1>What the system means, and what it does not mean.</h1>
-    <p class="hero-copy">
-      Discovery Intelligence is a decision-support product for helping researchers prioritize molecules for testing.
-      It is not a replacement for experiments or domain expertise.
-    </p>
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Method and limitations</span>
+          <span class="context-chip">Interpretation guide</span>
+        </div>
+        <h1>What the system means, and what it still does not mean.</h1>
+        <p class="hero-copy">
+          Discovery Intelligence is a session-backed decision-support system for helping researchers prioritize
+          molecules for testing, review, and learning. It does not replace experiments, domain expertise, or
+          scientific accountability.
+        </p>
+      </div>
+      <aside class="hero-side-card">
+        <span class="panel-label">Best use</span>
+        <ul class="bullet-list">
+          <li>Compare candidate sets before limited wet-lab capacity is spent.</li>
+          <li>Inspect novelty, uncertainty, and confidence together instead of separately.</li>
+          <li>Use the workbench to plan what to test next, not to claim experimental truth.</li>
+        </ul>
+      </aside>
+    </div>
   </section>
 
-  <section class="card-grid">
+  <section class="bento-grid">
     <article class="panel">
       <h2>Current Pipeline</h2>
       <p>
@@ -52,6 +68,25 @@
       <p>
         Use the system to prioritize review and testing queues, compare candidate lists, and identify where the model
         sees high-value follow-up work. It should support planning, not replace lab validation.
+      </p>
+    </article>
+  </section>
+
+  <section class="split-card-grid">
+    <article class="panel">
+      <span class="panel-label">Session model</span>
+      <h2>The web product now works through durable sessions.</h2>
+      <p>
+        Upload, Discovery, and Dashboard are designed to reopen saved artifacts, scientific summaries, and review
+        state so a run can be returned to rather than disappearing after one page load.
+      </p>
+    </article>
+    <article class="panel">
+      <span class="panel-label">Measurement-aware evidence</span>
+      <h2>Quantitative scientific values matter.</h2>
+      <p>
+        When measurements such as pIC50 or other assay values are present, the system treats them as evidence about
+        the dataset structure and can use them to support ranking diagnostics, label derivation, and interpretation.
       </p>
     </article>
   </section>

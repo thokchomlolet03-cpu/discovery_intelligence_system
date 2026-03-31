@@ -1,86 +1,127 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero">
-    <div class="eyebrow">Decision-support system</div>
-    <h1>Prioritize which molecules are worth testing next.</h1>
-    <p class="hero-copy">
-      Discovery Intelligence helps researchers use confidence, uncertainty, novelty, and experiment value
-      to rank molecules for review and testing. It is designed to guide decisions, not replace experimental work.
-    </p>
-    <div class="cta-row">
-      <a class="button button-primary" href="/upload">Upload Data</a>
-      <a class="button button-secondary" href="/discovery">View Discovery Results</a>
-      <a class="button button-secondary" href="/dashboard">Open Dashboard</a>
+  <section class="hero hero-showcase">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Scientific decision workbench</span>
+          <span class="context-chip">Session-aware molecular review</span>
+        </div>
+        <h1>Turn molecular evidence into the next actions worth defending.</h1>
+        <p class="hero-copy">
+          Discovery Intelligence helps researchers move from uploaded chemistry to guided testing decisions using
+          confidence, uncertainty, novelty, measurement context, and experiment value. It is built to support
+          chemists and R&amp;D teams, not to replace bench validation.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="/upload">Start an analysis</a>
+          <a class="button button-secondary" href="/discovery">Open discovery workbench</a>
+          <a class="button button-secondary" href="/dashboard">Review dashboard</a>
+        </div>
+        <div class="supporting-tags">
+          <span class="context-chip">Guided ingestion</span>
+          <span class="context-chip">Decision guidance</span>
+          <span class="context-chip">Session-backed artifacts</span>
+        </div>
+      </div>
+      <aside class="hero-stat-stack">
+        <article class="stat-card">
+          <span class="panel-label">Current top K</span>
+          <strong>{{ decision_output.summary.top_k }}</strong>
+          <p>Shortlist size currently surfaced in the decision output.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Candidate count</span>
+          <strong>{{ decision_output.summary.candidate_count }}</strong>
+          <p>Total ranked candidates in the current stored decision set.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Top experiment value</span>
+          <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
+          <p>Highest current prioritization signal across the visible recommendation set.</p>
+        </article>
+        <article class="accent-card">
+          <span class="panel-label">Current snapshot</span>
+          <strong class="text-break">{{ decision_output.source_path or "No stored snapshot" }}</strong>
+          <p>The homepage highlights the latest available stored decision package rather than acting as a live session page.</p>
+        </article>
+      </aside>
     </div>
   </section>
 
-  <section class="card-grid metrics-grid">
-    <article class="panel">
-      <span class="panel-label">Current Top K</span>
-      <strong>{{ decision_output.summary.top_k }}</strong>
+  <section class="feature-grid">
+    <article class="panel feature-card">
+      <h2>Guide decisions, not just rankings</h2>
+      <p>
+        The workbench turns uploaded chemistry into review queues, next-step guidance, and session-backed reasoning
+        so teams can decide what to test now, what to learn from, and what to deprioritize.
+      </p>
     </article>
-    <article class="panel">
-      <span class="panel-label">Current Candidate Count</span>
-      <strong>{{ decision_output.summary.candidate_count }}</strong>
+    <article class="panel feature-card">
+      <h2>Use evidence-shaped ingestion</h2>
+      <p>
+        The upload flow supports screening sets, labeled datasets, and measurement-backed scientific data so the
+        system can interpret what kind of evidence you are providing before analysis begins.
+      </p>
     </article>
-    <article class="panel">
-      <span class="panel-label">Current Top Experiment Value</span>
-      <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
-    </article>
-    <article class="panel">
-      <span class="panel-label">Current Snapshot</span>
-      <strong>{{ decision_output.source_path or "No stored snapshot" }}</strong>
+    <article class="panel feature-card">
+      <h2>Work across durable sessions</h2>
+      <p>
+        Upload, discovery, and dashboard views can all reopen saved sessions, artifacts, and decision summaries
+        instead of behaving like a one-off scoring script.
+      </p>
     </article>
   </section>
 
-  <section class="card-grid">
+  <section class="split-card-grid">
     <article class="panel">
-      <h2>What This System Does</h2>
-      <p>
-        It helps researchers review uploaded molecules, score them, and surface candidates that are most useful
-        to test next based on confidence, uncertainty, novelty, and experiment value.
-      </p>
-    </article>
-    <article class="panel">
-      <h2>How It Works</h2>
+      <h2>How the product works</h2>
       <p class="pipeline-line">Upload data → validate columns → score or generate → rank → review</p>
       <p>
-        The current pipeline uses RDKit features, calibrated classification, and structured ranking logic.
+        The current pipeline uses RDKit features, calibrated classification, novelty-aware ranking, and decision
+        guidance layers that turn raw scores into experimental next steps.
       </p>
     </article>
     <article class="panel">
-      <h2>What You Can Upload</h2>
+      <h2>What you can upload</h2>
       <p>
-        CSV files with a <code>smiles</code> column and optional fields such as labels, molecule IDs, source, and notes.
-        The guided upload flow helps map columns before analysis begins.
+        Session-guided ingestion accepts tabular datasets and structure files with SMILES plus optional measurements,
+        labels, molecule IDs, target context, assay names, source, and notes.
       </p>
     </article>
     <article class="panel">
-      <h2>What Outputs You Receive</h2>
+      <h2>What you receive back</h2>
       <p>
-        Ranked candidates, review-ready statuses, explanations, warnings, provenance, and structured JSON artifacts
-        for discovery output, analysis reports, and review queues.
+        Ranked candidates, decision queues, explanations, review-ready statuses, warnings, provenance, and structured
+        artifacts for discovery output, analysis reports, and review workflow summaries.
       </p>
     </article>
     <article class="panel">
-      <h2>Who It Is For</h2>
+      <h2>Who it is for</h2>
       <p>
         This interface is for researchers who want support deciding which molecules deserve testing or review next,
         especially when screening or comparing candidate sets.
       </p>
     </article>
     <article class="panel">
-      <h2>Current Limitations</h2>
+      <h2>Current limitations</h2>
       <p>
         Predictions are model-guided recommendations, not experimental truth. Performance is strongest for chemistry
         similar to the training data, and low-quality or weakly labeled uploads reduce recommendation quality.
       </p>
     </article>
+    <article class="panel">
+      <h2>What to do next</h2>
+      <p>
+        Start with Upload / Analyze, let the system inspect the evidence structure, then use Discovery for decision
+        guidance and Dashboard for session-wide interpretation.
+      </p>
+    </article>
   </section>
 
   <section class="notice-panel">
-    <strong>What it does not claim</strong>
+    <strong>What this product does not claim</strong>
     <p>
       This is not a truth engine, simulator, autonomous invention platform, or replacement for chemists.
       It should be used to prioritize testing and review, not to replace experiments.

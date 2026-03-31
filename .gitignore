@@ -30,6 +30,7 @@ candidates_results.csv
 uncertainty_ranked.csv
 
 data/uploads/
+data/uploaded_sessions/
 data/latest_result.json
 data/decision_output.json
 data/logs.json

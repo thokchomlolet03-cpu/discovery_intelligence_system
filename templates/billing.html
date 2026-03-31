@@ -1,12 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero hero-compact">
-    <div class="eyebrow">Workspace billing</div>
-    <h1>Manage your workspace plan.</h1>
-    <p class="hero-copy">
-      Discovery Intelligence keeps plan enforcement inside the app. Paddle handles subscription purchase, tax, and billing management.
-    </p>
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Workspace billing</span>
+          <span class="context-chip">Operational control plane</span>
+        </div>
+        <h1>Manage workspace access, limits, and subscription state.</h1>
+        <p class="hero-copy">
+          Discovery Intelligence keeps plan enforcement inside the app so uploads, analyses, exports, and storage
+          limits are visible alongside scientific workflow state. Paddle handles purchase, tax, and billing management
+          when an external subscription is active.
+        </p>
+      </div>
+      <aside class="hero-stat-stack">
+        <article class="stat-card">
+          <span class="panel-label">Plan</span>
+          <strong>{{ workspace_plan.display_name }}</strong>
+          <p>Current billing surface for {{ current_workspace.name if current_workspace else "this workspace" }}.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Status</span>
+          <strong>{{ workspace_plan.plan_status | upper }}</strong>
+          <p>Effective access remains enforced even when external billing is not linked.</p>
+        </article>
+        <article class="accent-card">
+          <span class="panel-label">Provider</span>
+          <strong>{{ workspace_plan.external_billing_provider | upper if workspace_plan.external_billing_provider else "App managed" }}</strong>
+          <p>Internal plans keep the workspace operational until an external provider is attached.</p>
+        </article>
+      </aside>
+    </div>
   </section>
 
   {% if billing_error %}
@@ -32,19 +58,19 @@
       <span class="pill">{{ workspace_plan.plan_status | upper }}</span>
     </div>
     <div class="card-grid metrics-grid">
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Effective access</span>
         <strong>{{ workspace_plan.effective_plan_tier | upper }}</strong>
       </article>
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Provider</span>
         <strong>{{ workspace_plan.external_billing_provider | upper if workspace_plan.external_billing_provider else "App managed" }}</strong>
       </article>
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Subscription ref</span>
-        <strong>{{ workspace_plan.external_subscription_ref if workspace_plan.external_subscription_ref else "Not linked" }}</strong>
+        <strong class="text-break">{{ workspace_plan.external_subscription_ref if workspace_plan.external_subscription_ref else "Not linked" }}</strong>
       </article>
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Current period ends</span>
         <strong>{{ workspace_plan.current_period_ends_at if workspace_plan.current_period_ends_at else "Not scheduled" }}</strong>
       </article>
@@ -59,19 +85,19 @@
       </div>
     </div>
     <div class="card-grid metrics-grid">
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Monthly analyses</span>
         <strong>{{ workspace_plan.limits.monthly_analysis_jobs if workspace_plan.limits.monthly_analysis_jobs is not none else "Unlimited" }}</strong>
       </article>
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Monthly generation runs</span>
         <strong>{{ workspace_plan.limits.monthly_candidate_generation_jobs if workspace_plan.limits.monthly_candidate_generation_jobs is not none else "Unlimited" }}</strong>
       </article>
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Max upload rows</span>
         <strong>{{ workspace_plan.limits.max_upload_rows if workspace_plan.limits.max_upload_rows is not none else "Unlimited" }}</strong>
       </article>
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">Decision export</span>
         <strong>{{ "Enabled" if workspace_plan.features.decision_export else "Pro only" }}</strong>
       </article>

@@ -1,13 +1,28 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero hero-compact">
-    <div class="eyebrow">Integrated dashboard</div>
-    <h1>Understand system behavior and recommendation patterns.</h1>
-    <p class="hero-copy">
-      This dashboard runs inside the website itself. It summarizes dataset state, recommendation distributions,
-      and review workflow activity for the current public snapshot or a specific upload session.
-    </p>
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Integrated dashboard</span>
+          <span class="context-chip">Session interpretation surface</span>
+        </div>
+        <h1>Understand recommendation behavior, evidence shape, and review momentum.</h1>
+        <p class="hero-copy">
+          The dashboard summarizes dataset structure, ranking diagnostics, recommendation distributions, and workflow
+          activity for the current session. It is the system’s interpretation surface, not just a chart page.
+        </p>
+      </div>
+      <aside class="hero-side-card">
+        <span class="panel-label">What you should get here</span>
+        <ul class="bullet-list">
+          <li>Clear scientific run context for the active session.</li>
+          <li>Contained charts that compare distributions without visual spillover.</li>
+          <li>A compact reading of what the recommendation set is actually doing.</li>
+        </ul>
+      </aside>
+    </div>
   </section>
 
   <section class="panel">
@@ -52,7 +67,7 @@
 
   <section class="card-grid metrics-grid">
     {% for card in dashboard.cards %}
-      <article class="panel">
+      <article class="stat-card">
         <span class="panel-label">{{ card.label }}</span>
         <strong>{{ card.value }}</strong>
       </article>
@@ -70,43 +85,43 @@
       </div>
       <div class="card-grid metrics-grid">
         {% if dashboard.analysis_report.measurement_summary %}
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Semantic mode</span>
             <strong>{{ dashboard.analysis_report.measurement_summary.semantic_mode or "Not detected" }}</strong>
           </article>
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Value column</span>
             <strong>{{ dashboard.analysis_report.measurement_summary.value_column or "Not mapped" }}</strong>
           </article>
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Rows with values</span>
             <strong>{{ dashboard.analysis_report.measurement_summary.rows_with_values or 0 }}</strong>
           </article>
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Label source</span>
             <strong>{{ dashboard.analysis_report.measurement_summary.label_source or "Missing" }}</strong>
           </article>
         {% endif %}
         {% if ranking_policy.get("primary_score_label") %}
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Primary score</span>
             <strong>{{ ranking_policy.get("primary_score_label") }}</strong>
           </article>
         {% endif %}
         {% if ranking_policy.get("formula_label") %}
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Ranking formula</span>
             <strong>{{ ranking_policy.get("formula_label") }}</strong>
           </article>
         {% endif %}
         {% if dashboard.analysis_report.ranking_diagnostics.spearman_rank_correlation is not none %}
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Rank correlation</span>
             <strong>{{ "%.3f"|format(dashboard.analysis_report.ranking_diagnostics.spearman_rank_correlation or 0) }}</strong>
           </article>
         {% endif %}
         {% if dashboard.analysis_report.ranking_diagnostics.out_of_domain_rate is not none %}
-          <article class="panel">
+          <article class="stat-card">
             <span class="panel-label">Out-of-domain rate</span>
             <strong>{{ "%.1f"|format((dashboard.analysis_report.ranking_diagnostics.out_of_domain_rate or 0) * 100) }}%</strong>
           </article>

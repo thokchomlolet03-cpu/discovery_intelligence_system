@@ -6,55 +6,70 @@
     <meta name="csrf-token" content="{{ csrf_token or '' }}" />
     <title>{{ title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/ui-refresh.css') }}" />
     {% block extra_head %}{% endblock %}
   </head>
   <body>
     <div class="page-shell">
       <header class="site-header">
-        <div>
-          <a class="brand" href="/">Discovery Intelligence</a>
-          <p class="brand-subtitle">Scientific decision-support for prioritizing molecules worth testing next</p>
-        </div>
-        <nav class="site-nav">
-          <a href="/" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+        <div class="site-header-top">
+          <a class="brand-lockup" href="/">
+            <span class="brand-mark">DI</span>
+            <span class="brand-copy">
+              <span class="brand">Discovery Intelligence</span>
+              <span class="brand-subtitle">Scientific decision-support for prioritizing molecules worth testing next</span>
+            </span>
+          </a>
           {% if current_user %}
-            <a href="/upload" class="{% if active_page == 'upload' %}active{% endif %}">Upload / Analyze</a>
-            <a href="{{ nav_discovery_url }}" class="{% if active_page == 'discovery' %}active{% endif %}">Discovery</a>
-            <a href="{{ nav_dashboard_url }}" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
-            <a href="/billing" class="{% if active_page == 'billing' %}active{% endif %}">Billing</a>
-          {% endif %}
-          <a href="/about" class="{% if active_page == 'about' %}active{% endif %}">About</a>
-        </nav>
-        <div class="site-nav">
-          {% if current_user %}
-            <span>{{ current_user.display_name or current_user.email }}</span>
-            {% if current_workspace %}
-              <span>{{ current_workspace.name }}</span>
-              <span class="pill">{{ (current_workspace.plan_tier or "free") | upper }}</span>
-              {% if active_session_id %}
-                <a class="pill" href="{{ nav_discovery_url }}">Session {{ active_session_id }}</a>
+            <div class="site-context">
+              <span class="context-chip">Signed in as {{ current_user.display_name or current_user.email }}</span>
+              {% if current_workspace %}
+                <span class="context-chip">{{ current_workspace.name }}</span>
+                <span class="context-chip context-chip-accent">{{ (current_workspace.plan_tier or "free") | upper }}</span>
               {% endif %}
-            {% endif %}
-            {% if workspace_options|length > 1 %}
-              <form method="post" action="/workspaces/switch">
-                <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" />
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                <select name="workspace_id" onchange="this.form.submit()">
-                  {% for workspace in workspace_options %}
-                    <option value="{{ workspace.workspace_id }}" {% if current_workspace and workspace.workspace_id == current_workspace.workspace_id %}selected{% endif %}>
-                      {{ workspace.name }}
-                    </option>
-                  {% endfor %}
-                </select>
-              </form>
-            {% endif %}
-            <form method="post" action="/logout">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-              <button class="button button-secondary" type="submit">Logout</button>
-            </form>
-          {% else %}
-            <a href="/login" class="{% if active_page == 'login' %}active{% endif %}">Login</a>
+              {% if active_session_id %}
+                <a class="context-chip" href="{{ nav_discovery_url }}">Session {{ active_session_id }}</a>
+              {% endif %}
+            </div>
           {% endif %}
+        </div>
+        <div class="site-header-bottom">
+          <nav class="site-nav">
+            <a href="/" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+            {% if current_user %}
+              <a href="/upload" class="{% if active_page == 'upload' %}active{% endif %}">Upload / Analyze</a>
+              <a href="{{ nav_discovery_url }}" class="{% if active_page == 'discovery' %}active{% endif %}">Discovery</a>
+              <a href="{{ nav_dashboard_url }}" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+              <a href="/billing" class="{% if active_page == 'billing' %}active{% endif %}">Billing</a>
+            {% endif %}
+            <a href="/about" class="{% if active_page == 'about' %}active{% endif %}">About</a>
+          </nav>
+          <div class="site-actions">
+            {% if current_user %}
+              {% if workspace_options|length > 1 %}
+                <form class="workspace-switch" method="post" action="/workspaces/switch">
+                  <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" />
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <label>
+                    <span>Workspace</span>
+                    <select name="workspace_id" onchange="this.form.submit()">
+                      {% for workspace in workspace_options %}
+                        <option value="{{ workspace.workspace_id }}" {% if current_workspace and workspace.workspace_id == current_workspace.workspace_id %}selected{% endif %}>
+                          {{ workspace.name }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </form>
+              {% endif %}
+              <form method="post" action="/logout">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <button class="button button-secondary" type="submit">Logout</button>
+              </form>
+            {% else %}
+              <a class="button button-secondary" href="/login">Login</a>
+            {% endif %}
+          </div>
         </div>
       </header>
 

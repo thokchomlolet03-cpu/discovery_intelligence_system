@@ -110,13 +110,18 @@ class AuthWorkspaceTest(unittest.TestCase):
 
         self.assertEqual(page_response.status_code, 200)
         self.assertIn("Structured phase manager", page_response.text)
+        self.assertIn("North-star goal", page_response.text)
+        self.assertIn("Current iteration", page_response.text)
         self.assertIn("Trust Contract and Explanation Upgrade", page_response.text)
         self.assertIn("Neutral Scientific Core", page_response.text)
 
         self.assertEqual(api_response.status_code, 200)
         body = api_response.json()
+        self.assertIn("goal", body)
+        self.assertIn("active_iteration", body)
         self.assertEqual(body["recommended_phase"]["phase_id"], "trust_contract_explanations")
         self.assertEqual(body["next_up_phase"]["phase_id"], "neutral_scientific_core")
+        self.assertEqual(body["active_iteration"]["phase_id"], "trust_contract_explanations")
 
     def test_repositories_scope_control_plane_records_by_workspace(self):
         self.session_repository.upsert_session(

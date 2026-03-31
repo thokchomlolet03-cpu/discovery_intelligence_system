@@ -92,10 +92,31 @@ class AuthWorkspaceTest(unittest.TestCase):
     def test_authenticated_routes_require_login(self):
         page_response = self.client.get("/upload", follow_redirects=False)
         api_response = self.client.post("/api/upload/validate", json={"session_id": "missing", "mapping": {}}, follow_redirects=False)
+        roadmap_response = self.client.get("/roadmap", follow_redirects=False)
+        roadmap_api_response = self.client.get("/api/roadmap", follow_redirects=False)
 
         self.assertEqual(page_response.status_code, 303)
         self.assertIn("/login", page_response.headers["location"])
         self.assertEqual(api_response.status_code, 401)
+        self.assertEqual(roadmap_response.status_code, 303)
+        self.assertIn("/login", roadmap_response.headers["location"])
+        self.assertEqual(roadmap_api_response.status_code, 401)
+
+    def test_authenticated_user_can_view_structured_roadmap(self):
+        self._login(self.user_a["email"])
+
+        page_response = self.client.get("/roadmap")
+        api_response = self.client.get("/api/roadmap")
+
+        self.assertEqual(page_response.status_code, 200)
+        self.assertIn("Structured phase manager", page_response.text)
+        self.assertIn("Trust Contract and Explanation Upgrade", page_response.text)
+        self.assertIn("Neutral Scientific Core", page_response.text)
+
+        self.assertEqual(api_response.status_code, 200)
+        body = api_response.json()
+        self.assertEqual(body["recommended_phase"]["phase_id"], "trust_contract_explanations")
+        self.assertEqual(body["next_up_phase"]["phase_id"], "neutral_scientific_core")
 
     def test_repositories_scope_control_plane_records_by_workspace(self):
         self.session_repository.upsert_session(

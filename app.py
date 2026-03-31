@@ -34,6 +34,7 @@ from system.contracts import (
 from system.db import ensure_database_ready, resolve_session_artifact_path
 from system.db.repositories import SessionRepository
 from system.discovery_workbench import build_discovery_workbench
+from system.phase_manager import build_phase_manager_context
 from system.payments import (
     PaddleConfigurationError,
     PaddleIntegrationError,
@@ -691,6 +692,26 @@ async def about_page(request: Request) -> HTMLResponse:
         title="About / Method / Limitations",
         active_page="about",
     )
+
+
+@app.get("/roadmap", response_class=HTMLResponse)
+async def roadmap_page(request: Request) -> Response:
+    auth = _page_auth_or_redirect(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    return _render_template(
+        request,
+        "roadmap.html",
+        title="Roadmap / Phase Manager",
+        active_page="roadmap",
+        roadmap=build_phase_manager_context(),
+    )
+
+
+@app.get("/api/roadmap")
+async def roadmap_api(request: Request) -> JSONResponse:
+    require_auth_context(request)
+    return JSONResponse(build_phase_manager_context())
 
 
 @app.get("/login", response_class=HTMLResponse)

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Structured phase manager</span>
+          <span class="context-chip context-chip-accent">Internal execution roadmap</span>
+        </div>
+        <h1>Upgrade the system in a controlled sequence instead of layering disconnected features.</h1>
+        <p class="hero-copy">
+          This roadmap turns the current architecture diagnosis into an ordered execution program. It keeps the
+          product honest about what is already strong, what is active now, and what later phases depend on.
+        </p>
+        <div class="hero-actions">
+          {% if roadmap.recommended_phase %}
+            <a class="button button-primary" href="#phase-{{ roadmap.recommended_phase.phase_id }}">Open current phase</a>
+          {% endif %}
+          {% if roadmap.next_up_phase %}
+            <a class="button button-secondary" href="#phase-{{ roadmap.next_up_phase.phase_id }}">Inspect next phase</a>
+          {% endif %}
+          <a class="button button-secondary" href="/about">Open interpretation guide</a>
+        </div>
+      </div>
+      <aside class="hero-stat-stack">
+        <article class="accent-card">
+          <span class="panel-label">Current focus</span>
+          <strong>{{ roadmap.program_summary.current_focus }}</strong>
+          <p>{{ roadmap.program_summary.current_focus_reason }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Completed phases</span>
+          <strong>{{ roadmap.counts.completed }}</strong>
+          <p>{{ roadmap.counts.total }} total phases in the current execution program.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Active or ready</span>
+          <strong>{{ roadmap.counts.active + roadmap.counts.ready }}</strong>
+          <p>Phases that can move immediately without redesigning the whole system.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Program completion</span>
+          <strong>{{ "%.0f"|format((roadmap.program_summary.completion_ratio or 0) * 100) }}%</strong>
+          <p>Current progress against the structured roadmap baseline.</p>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Current system baseline</h2>
+        <p class="helper-copy">These capabilities are already strong enough that they should be treated as the baseline, not the next roadmap target.</p>
+      </div>
+    </div>
+    <div class="info-grid">
+      {% for item in roadmap.capability_snapshot %}
+        <article class="panel compact-panel">
+          <span class="panel-label">{{ item.title }}</span>
+          <h3>{{ item.summary }}</h3>
+          <p>{{ item.evidence }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Execution principles</h2>
+        <p class="helper-copy">These rules keep the roadmap systematic instead of letting infrastructure or UI work outrun scientific truth.</p>
+      </div>
+    </div>
+    <ul class="insight-list">
+      {% for item in roadmap.execution_principles %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Phase sequence</h2>
+        <p class="helper-copy">The order below encodes dependency flow, not just a feature wishlist.</p>
+      </div>
+    </div>
+    <div class="workflow-stepper">
+      {% for phase in roadmap.phases %}
+        <article class="workflow-step {% if phase.status == 'active' %}workflow-step-active{% elif phase.status == 'completed' %}{% else %}workflow-step-muted{% endif %}">
+          <strong>{{ phase.order_label }}</strong>
+          <span>{{ phase.name }}</span>
+          <span>{{ phase.status_label }}</span>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if roadmap.recommended_phase %}
+    <section class="session-banner">
+      <div class="eyebrow-row">
+        <span class="state-icon">{{ roadmap.recommended_phase.order_label }}</span>
+        <span class="context-chip context-chip-accent">{{ roadmap.recommended_phase.status_label }}</span>
+        <span class="context-chip">{{ roadmap.recommended_phase.track }}</span>
+      </div>
+      <h2>{{ roadmap.recommended_phase.name }}</h2>
+      <p>{{ roadmap.recommended_phase.objective }}</p>
+      {% if roadmap.next_up_phase %}
+        <div class="mini-callout">
+          <span class="panel-label">Next after this</span>
+          <p>{{ roadmap.next_up_phase.name }} will make sense after the current focus phase is stable enough to unblock it.</p>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <div class="section-stack">
+    {% for phase in roadmap.phases %}
+      <section class="panel" id="phase-{{ phase.phase_id }}">
+        <div class="section-header">
+          <div>
+            <div class="eyebrow-row">
+              <span class="eyebrow">{{ phase.order_label }}</span>
+              <span class="context-chip">{{ phase.track }}</span>
+              {% if phase.status in ["active", "ready"] %}
+                <span class="context-chip context-chip-accent">{{ phase.status_label }}</span>
+              {% else %}
+                <span class="context-chip">{{ phase.status_label }}</span>
+              {% endif %}
+            </div>
+            <h2>{{ phase.name }}</h2>
+            <p class="helper-copy">{{ phase.outcome }}</p>
+          </div>
+        </div>
+
+        <div class="split-card-grid">
+          <article class="panel compact-panel">
+            <span class="panel-label">Objective</span>
+            <p>{{ phase.objective }}</p>
+          </article>
+          <article class="panel compact-panel">
+            <span class="panel-label">Why now</span>
+            <p>{{ phase.why_now }}</p>
+          </article>
+          <article class="panel compact-panel">
+            <span class="panel-label">Entry criteria</span>
+            {% if phase.entry_criteria %}
+              <ul class="compact-list">
+                {% for item in phase.entry_criteria %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>This phase is already part of the current system baseline.</p>
+            {% endif %}
+          </article>
+          <article class="panel compact-panel">
+            <span class="panel-label">Exit criteria</span>
+            <ul class="compact-list">
+              {% for item in phase.exit_criteria %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </article>
+        </div>
+
+        <div class="split-card-grid">
+          <article class="panel compact-panel">
+            <span class="panel-label">Deliverables</span>
+            <ul class="compact-list">
+              {% for item in phase.deliverables %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </article>
+          <article class="panel compact-panel">
+            <span class="panel-label">Dependencies</span>
+            {% if phase.dependency_details %}
+              <ul class="compact-list">
+                {% for dependency in phase.dependency_details %}
+                  <li>
+                    {{ dependency.name }}
+                    {% if dependency.satisfied %}
+                      ({{ dependency.status_label }})
+                    {% else %}
+                      (not complete yet)
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>This phase does not depend on any earlier roadmap phase.</p>
+            {% endif %}
+          </article>
+          <article class="panel compact-panel">
+            <span class="panel-label">Target files</span>
+            <ul class="compact-list">
+              {% for item in phase.target_files %}
+                <li><code>{{ item }}</code></li>
+              {% endfor %}
+            </ul>
+          </article>
+          <article class="panel compact-panel">
+            <span class="panel-label">Key risks</span>
+            {% if phase.risks %}
+              <ul class="compact-list">
+                {% for item in phase.risks %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>No special phase risks are currently tracked for this baseline item.</p>
+            {% endif %}
+          </article>
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -770,6 +770,11 @@ class DecisionArtifactRow(ContractBaseModel):
     feasibility: FeasibilityInfo = Field(default_factory=FeasibilityInfo)
     created_at: datetime
     model_metadata: ModelMetadata
+    priority_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    max_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    observed_value: float | None = None
+    assay: str = ""
+    target: str = ""
     review_summary: CandidateReviewSummary | None = None
     selection_reason: str = ""
     review_note: str = ""
@@ -777,7 +782,7 @@ class DecisionArtifactRow(ContractBaseModel):
     reviewed_at: datetime | None = None
     review_history: list[ReviewEventRecord] = Field(default_factory=list)
 
-    @validator("session_id", "candidate_id", "smiles", "canonical_smiles", "selection_reason", "review_note", pre=True, always=True)
+    @validator("session_id", "candidate_id", "smiles", "canonical_smiles", "selection_reason", "review_note", "assay", "target", pre=True, always=True)
     def _clean_row_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -830,6 +835,15 @@ class DecisionArtifactRow(ContractBaseModel):
     @validator("reviewed_at", pre=True)
     def _coerce_reviewed_at(cls, value: Any) -> Any:
         return _coerce_datetime(value)
+
+    @validator("priority_score", "max_similarity", "observed_value", pre=True)
+    def _coerce_optional_float(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     @validator("model_metadata", pre=True)
     def _coerce_model_metadata(cls, value: Any) -> Any:
@@ -1115,6 +1129,11 @@ def _canonical_decision_row(
         },
         "created_at": row.get("created_at") or row.get("timestamp") or generated_at,
         "model_metadata": row.get("model_metadata") or _legacy_model_metadata(row.get("model_version")),
+        "priority_score": row.get("priority_score"),
+        "max_similarity": row.get("max_similarity"),
+        "observed_value": row.get("observed_value", row.get("value")),
+        "assay": row.get("assay") or "",
+        "target": row.get("target") or "",
         "review_summary": review_summary,
         "selection_reason": row.get("selection_reason") or "",
         "review_note": row.get("review_note") or "",

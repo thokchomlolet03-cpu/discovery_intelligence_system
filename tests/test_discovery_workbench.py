@@ -40,9 +40,14 @@ def canonical_decision_output() -> dict:
                 "novelty": 0.58,
                 "acquisition_score": 0.77,
                 "experiment_value": 0.72,
+                "priority_score": 0.78,
                 "bucket": "exploit",
                 "risk": "low",
                 "status": "suggested",
+                "max_similarity": 0.63,
+                "observed_value": 6.4,
+                "assay": "screen_a",
+                "target": "target_a",
                 "explanation": ["High confidence makes this a practical exploit candidate for review."],
                 "provenance": {
                     "text": "Scored directly from user-uploaded dataset upload.csv. Model version: rf_isotonic:isotonic.",
@@ -87,6 +92,16 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["canonical_smiles"], "CCO")
         self.assertEqual(candidate["model_version"], "rf_isotonic:isotonic")
         self.assertEqual(candidate["acquisition_score"], 0.77)
+        self.assertEqual(candidate["decision_category"], "test_now")
+        self.assertEqual(candidate["decision_label"], "Recommended for immediate testing")
+        self.assertEqual(candidate["priority_score"], 0.78)
+        self.assertEqual(candidate["primary_score_name"], "priority_score")
+        self.assertEqual(candidate["domain_status"], "in_domain")
+        self.assertEqual(candidate["observed_value"], 6.4)
+        self.assertEqual(candidate["assay"], "screen_a")
+        self.assertEqual(candidate["target"], "target_a")
+        self.assertTrue(workbench["ranking_policy"]["weight_breakdown"])
+        self.assertEqual(workbench["decision_overview"]["groups"][0]["key"], "test_now")
 
     def test_build_discovery_workbench_reports_contract_error_for_missing_required_fields(self):
         invalid_decision_output = {
@@ -317,6 +332,9 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("Viewing the latest completed session", response.text)
         self.assertIn("session_latest", response.text)
         self.assertIn("cand_1", response.text)
+        self.assertIn("Decision Guidance", response.text)
+        self.assertIn("Priority score", response.text)
+        self.assertIn("Recommended for immediate testing", response.text)
 
     def test_discovery_page_can_reopen_session_from_nested_result_payload(self):
         self._store_result_only_session("session_result_only")
@@ -346,6 +364,7 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("session_dashboard_result_only", response.text)
         self.assertIn("measurement_dataset", response.text)
+        self.assertIn("Priority Score", response.text)
 
     def test_discovery_page_backfills_measurement_context_from_upload_metadata(self):
         self._store_legacy_measurement_session("session_legacy_discovery")

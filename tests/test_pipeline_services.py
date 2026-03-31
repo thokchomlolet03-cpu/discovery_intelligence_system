@@ -361,8 +361,10 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(measurement_summary["value_column"], "pic50")
         self.assertEqual(int(measurement_summary["rows_with_values"]), 2)
         self.assertEqual(result["analysis_report"]["measurement_summary"]["file_type"], "csv")
-        self.assertEqual(result["analysis_report"]["ranking_diagnostics"]["score_basis"], "experiment_value")
+        self.assertEqual(result["analysis_report"]["ranking_diagnostics"]["score_basis"], "priority_score")
         self.assertEqual(int(result["analysis_report"]["ranking_diagnostics"]["measurement_rows_evaluated"]), 2)
+        self.assertEqual(result["analysis_report"]["ranking_policy"]["primary_score"], "priority_score")
+        self.assertIn("weights", result["analysis_report"]["ranking_policy"])
 
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")

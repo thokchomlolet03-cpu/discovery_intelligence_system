@@ -22,7 +22,7 @@
   const state = {
     candidates: Array.isArray(workbench.candidates) ? workbench.candidates.slice() : [],
     view: "table",
-    sortBy: "experiment_value",
+    sortBy: config.defaultSort || workbench?.ranking_policy?.primary_score || "experiment_value",
     selected: new Set(),
     filters: {
       search: "",
@@ -107,6 +107,33 @@
     return `<article class="score-card">${metricHtml(label, value, tone)}</article>`;
   }
 
+  function scoreBreakdownHtml(candidate) {
+    const breakdown = Array.isArray(candidate.score_breakdown) ? candidate.score_breakdown : [];
+    if (!breakdown.length) {
+      return "<p class=\"helper-copy\">Score contributions are not available for this candidate.</p>";
+    }
+    return `
+      <div class="score-breakdown-list">
+        ${breakdown
+          .map(
+            (item) => `
+              <article class="score-breakdown-item">
+                <div class="score-breakdown-head">
+                  <strong>${escapeHtml(item.label)}</strong>
+                  <span>${escapeHtml(`${formatNumber(item.contribution)} contribution`)}</span>
+                </div>
+                <div class="score-breakdown-meta">
+                  <span class="data-chip">Raw ${escapeHtml(formatNumber(item.raw_value))}</span>
+                  <span class="data-chip">Weight ${escapeHtml(`${formatNumber((Number(item.weight || 0) * 100) / 100)} (${Number(item.weight_percent || 0).toFixed(1)}%)`)}</span>
+                </div>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
   function buildStatusSelect(candidate) {
     return `
       <select data-status-select="${escapeHtml(candidate.candidate_id)}">
@@ -183,14 +210,21 @@
             <td>
               <button class="link-button" type="button" data-view-details="${escapeHtml(candidate.candidate_id)}">${escapeHtml(candidate.candidate_id)}</button>
               <div class="table-subtle">Rank ${escapeHtml(candidate.rank)}</div>
+              <div class="table-subtle">${escapeHtml(candidate.primary_score_label)} ${escapeHtml(formatNumber(candidate.primary_score_value))}</div>
             </td>
             <td>
               <button class="smiles-trigger" type="button" data-view-details="${escapeHtml(candidate.candidate_id)}" title="${escapeHtml(candidate.smiles)}">${escapeHtml(truncateSmiles(candidate.smiles, 32))}</button>
             </td>
+            <td>
+              ${badgeHtml("decision", candidate.decision_category)}
+              <div class="table-subtle">${escapeHtml(candidate.decision_label)}</div>
+            </td>
             <td>${metricHtml("Confidence", candidate.confidence, "confidence")}</td>
             <td>${metricHtml("Uncertainty", candidate.uncertainty, "uncertainty")}</td>
             <td>${metricHtml("Novelty", candidate.novelty, "novelty")}</td>
+            <td>${metricHtml("Priority Score", candidate.priority_score, "priority")}</td>
             <td>${metricHtml("Experiment Value", candidate.experiment_value, "experiment")}</td>
+            <td>${badgeHtml("domain", candidate.domain_status)}</td>
             <td>${badgeHtml("bucket", candidate.bucket)}</td>
             <td>${badgeHtml("risk", candidate.risk)}</td>
             <td>${badgeHtml("status", candidate.status)}</td>
@@ -220,10 +254,13 @@
               <th>Select</th>
               <th>Candidate ID</th>
               <th>SMILES</th>
+              <th>Decision</th>
               <th>Confidence</th>
               <th>Uncertainty</th>
               <th>Novelty</th>
+              <th>Priority Score</th>
               <th>Experiment Value</th>
+              <th>Domain</th>
               <th>Bucket</th>
               <th>Risk</th>
               <th>Status</th>
@@ -256,9 +293,11 @@
                     <strong>${escapeHtml(candidate.candidate_id)}</strong>
                   </div>
                   <div class="card-badge-row">
+                    ${badgeHtml("decision", candidate.decision_category)}
                     ${badgeHtml("bucket", candidate.bucket)}
                     ${badgeHtml("risk", candidate.risk)}
                     ${badgeHtml("status", candidate.status)}
+                    ${badgeHtml("domain", candidate.domain_status)}
                   </div>
                 </header>
 
@@ -275,7 +314,14 @@
                   ${metricCardHtml("Confidence", candidate.confidence, "confidence")}
                   ${metricCardHtml("Uncertainty", candidate.uncertainty, "uncertainty")}
                   ${metricCardHtml("Novelty", candidate.novelty, "novelty")}
+                  ${metricCardHtml("Priority Score", candidate.priority_score, "priority")}
                   ${metricCardHtml("Experiment Value", candidate.experiment_value, "experiment")}
+                </section>
+
+                <section class="decision-summary-block">
+                  <span class="panel-label">Decision guidance</span>
+                  <strong>${escapeHtml(candidate.decision_label)}</strong>
+                  <p>${escapeHtml(candidate.decision_summary)}</p>
                 </section>
 
                 <section class="reasoning-block">
@@ -283,6 +329,11 @@
                   <ul>
                     ${candidate.explanation_lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
                   </ul>
+                </section>
+
+                <section class="reasoning-block">
+                  <span class="panel-label">Score contributions</span>
+                  ${scoreBreakdownHtml(candidate)}
                 </section>
 
                 <section class="provenance-block">
@@ -487,7 +538,19 @@
       showFeedback("Select candidates before exporting.", "error");
       return;
     }
-    const headers = ["candidate_id", "smiles", "bucket", "risk", "status", "confidence", "uncertainty", "novelty", "experiment_value"];
+    const headers = [
+      "candidate_id",
+      "smiles",
+      "decision_label",
+      "bucket",
+      "risk",
+      "status",
+      "confidence",
+      "uncertainty",
+      "novelty",
+      "priority_score",
+      "experiment_value",
+    ];
     const csv = [
       headers.join(","),
       ...rows.map((candidate) =>
@@ -569,15 +632,17 @@
           <h3>${escapeHtml(candidate.candidate_id)}</h3>
         </div>
         <div class="card-badge-row">
+          ${badgeHtml("decision", candidate.decision_category)}
           ${badgeHtml("bucket", candidate.bucket)}
           ${badgeHtml("risk", candidate.risk)}
           ${badgeHtml("status", candidate.status)}
+          ${badgeHtml("domain", candidate.domain_status)}
         </div>
         <div class="card-smiles">
           <span class="panel-label">Full SMILES</span>
           <code>${escapeHtml(candidate.smiles)}</code>
         </div>
-        <p>${escapeHtml(candidate.suggested_next_action)}</p>
+        <p>${escapeHtml(candidate.decision_summary)}</p>
       </section>
 
       <section class="detail-section">
@@ -586,8 +651,40 @@
           <article class="detail-item">${metricHtml("Confidence", candidate.confidence, "confidence")}</article>
           <article class="detail-item">${metricHtml("Uncertainty", candidate.uncertainty, "uncertainty")}</article>
           <article class="detail-item">${metricHtml("Novelty", candidate.novelty, "novelty")}</article>
+          <article class="detail-item">${metricHtml("Priority score", candidate.priority_score, "priority")}</article>
           <article class="detail-item">${metricHtml("Experiment Value", candidate.experiment_value, "experiment")}</article>
         </div>
+      </section>
+
+      <section class="detail-section">
+        <span class="panel-label">Decision policy</span>
+        <div class="detail-grid">
+          <article class="detail-item">
+            <span class="panel-label">Recommended action</span>
+            <strong>${escapeHtml(candidate.decision_label)}</strong>
+            <p>${escapeHtml(candidate.suggested_next_action)}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Primary score</span>
+            <strong>${escapeHtml(candidate.primary_score_label)} ${escapeHtml(formatNumber(candidate.primary_score_value))}</strong>
+            <p>${escapeHtml(candidate.decision_summary)}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Domain status</span>
+            <strong>${escapeHtml(candidate.domain_label || "Unavailable")}</strong>
+            <p>${escapeHtml(candidate.domain_summary || "Reference-similarity diagnostics are not available.")}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Observed value</span>
+            <strong>${candidate.observed_value == null ? "Not available" : escapeHtml(formatNumber(candidate.observed_value))}</strong>
+            <p>${escapeHtml([candidate.assay, candidate.target].filter(Boolean).join(" / ") || "No assay or target metadata recorded.")}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <span class="panel-label">Score contributions</span>
+        ${scoreBreakdownHtml(candidate)}
       </section>
 
       <section class="detail-section">
@@ -646,9 +743,8 @@
       </section>
 
       <section class="detail-section">
-        <span class="panel-label">Future-safe placeholders</span>
-        <div class="detail-placeholder">Feature contributions and SHAP explanation will appear here.</div>
-        <div class="detail-placeholder">Experiment history and linked source molecules will appear here.</div>
+        <span class="panel-label">Further analysis</span>
+        <div class="detail-placeholder">Feature-level explanation and experiment history can extend this panel later without changing the saved artifact contract.</div>
       </section>
     `;
 
@@ -674,6 +770,9 @@
       const node = document.getElementById(id);
       if (!node) {
         return;
+      }
+      if (key === "sortBy" && node instanceof HTMLSelectElement) {
+        node.value = state.sortBy;
       }
       const eventName = node.tagName === "SELECT" ? "change" : "input";
       node.addEventListener(eventName, () => {

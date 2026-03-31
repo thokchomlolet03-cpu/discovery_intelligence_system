@@ -123,10 +123,16 @@
               <p>{{ workbench.measurement_summary.label_source or "Missing" }}</p>
             </article>
           {% endif %}
-          {% if workbench.ranking_diagnostics.score_basis %}
+          {% if workbench.ranking_policy.primary_score_label %}
             <article class="interpretation-card">
-              <strong>Ranking basis</strong>
-              <p>{{ workbench.ranking_diagnostics.score_basis }}</p>
+              <strong>Primary score</strong>
+              <p>{{ workbench.ranking_policy.primary_score_label }}</p>
+            </article>
+          {% endif %}
+          {% if workbench.ranking_policy.formula_label %}
+            <article class="interpretation-card">
+              <strong>Ranking formula</strong>
+              <p>{{ workbench.ranking_policy.formula_label }}</p>
             </article>
           {% endif %}
           {% if workbench.ranking_diagnostics.spearman_rank_correlation is not none %}
@@ -146,6 +152,80 @@
     {% endif %}
 
     {% if workbench.state.kind == "ready" %}
+      <section class="panel discovery-decision-panel">
+        <div class="section-header">
+          <div>
+            <h2>Decision Guidance</h2>
+            <p class="helper-copy">Move from ranked output to next-action choices you can defend in review.</p>
+          </div>
+          <div class="discovery-results-meta">
+            <span class="data-chip">Primary score: {{ workbench.ranking_policy.primary_score_label }}</span>
+            <span class="data-chip">Headline: {{ workbench.decision_overview.headline }}</span>
+          </div>
+        </div>
+
+        {% if workbench.recommendation_summary %}
+          <div class="recommendation-callout">
+            <span class="panel-label">Current recommendation</span>
+            <p>{{ workbench.recommendation_summary }}</p>
+          </div>
+        {% endif %}
+
+        <div class="decision-policy-callout">
+          <span class="panel-label">Ranking policy</span>
+          <p>{{ workbench.ranking_policy.formula_summary }}</p>
+          <p class="helper-copy">{{ workbench.ranking_policy.formula_text }}</p>
+        </div>
+
+        {% if workbench.ranking_policy.weight_breakdown %}
+          <div class="decision-weight-grid">
+            {% for item in workbench.ranking_policy.weight_breakdown %}
+              <article class="decision-weight-card">
+                <span class="panel-label">{{ item.label }}</span>
+                <strong>{{ "%.1f"|format(item.weight_percent) }}%</strong>
+                <p>Contribution weight in the current priority formula.</p>
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if workbench.decision_overview.groups %}
+          <div class="decision-overview-grid">
+            {% for group in workbench.decision_overview.groups %}
+              <article class="decision-overview-card">
+                <div class="decision-overview-head">
+                  <div>
+                    <span class="panel-label">{{ group.label }}</span>
+                    <strong>{{ group.count }}</strong>
+                  </div>
+                  <span class="data-chip">{{ group.key.replace("_", " ") }}</span>
+                </div>
+                <p>{{ group.description }}</p>
+                {% if group.candidates %}
+                  <div class="decision-candidate-list">
+                    {% for candidate in group.candidates %}
+                      <article class="decision-candidate-item">
+                        <div>
+                          <strong>{{ candidate.candidate_id }}</strong>
+                          <span class="table-subtle">Rank {{ candidate.rank }}</span>
+                        </div>
+                        <div class="decision-candidate-meta">
+                          <span class="data-chip">Priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
+                          <span class="data-chip">{{ workbench.ranking_policy.primary_score_label }} {{ "%.3f"|format(candidate.primary_score_value or 0) }}</span>
+                        </div>
+                        <p>{{ candidate.summary }}</p>
+                      </article>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <p class="helper-copy">No candidates currently fall into this queue.</p>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
       <section class="panel discovery-filter-panel">
         <div class="section-header">
           <div>
@@ -194,6 +274,7 @@
           <label class="control-field">
             <span>Sort</span>
             <select id="sort-by">
+              <option value="priority_score">Priority score</option>
               <option value="experiment_value">Experiment value</option>
               <option value="confidence">Confidence</option>
               <option value="uncertainty">Uncertainty</option>
@@ -243,12 +324,6 @@
             </article>
           {% endfor %}
         </div>
-        {% if workbench.recommendation_summary %}
-          <div class="recommendation-callout">
-            <span class="panel-label">Current recommendation</span>
-            <p>{{ workbench.recommendation_summary }}</p>
-          </div>
-        {% endif %}
         {% if workbench.warnings %}
           <div class="warning-chip-row">
             {% for warning in workbench.warnings %}
@@ -423,6 +498,7 @@
       sessionId: {{ (session_id or "") | tojson }},
       reviewsEndpoint: "/api/reviews",
       downloadUrl: {{ download_url | tojson }},
+      defaultSort: {{ (workbench.ranking_policy.primary_score if workbench.ranking_policy else "experiment_value") | tojson }},
       allowExport: {{ (workspace_plan.features.decision_export if workspace_plan else false) | tojson }}
     };
   </script>

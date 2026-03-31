@@ -57,6 +57,33 @@ def _normalized_priority_weights(intent: str, scoring_mode: str) -> dict[str, fl
     return {key: max(value, 0.0) / total for key, value in weights.items()}
 
 
+def ranking_policy(intent: str, scoring_mode: str) -> dict[str, Any]:
+    cleaned_intent = (intent or "rank_uploaded_molecules").strip().lower()
+    weights = _normalized_priority_weights(cleaned_intent, scoring_mode)
+
+    if cleaned_intent == "predict_labels":
+        primary_score = "confidence"
+        sort_order = ["confidence", "priority_score", "novelty"]
+        summary = "Candidate order prioritizes model confidence first, then the weighted priority score and novelty."
+    elif cleaned_intent == "explore_uncertain":
+        primary_score = "uncertainty"
+        sort_order = ["uncertainty", "novelty", "priority_score"]
+        summary = "Candidate order prioritizes uncertainty first so the shortlist focuses on reducing model blind spots."
+    else:
+        primary_score = "priority_score"
+        sort_order = ["priority_score", "experiment_value", "novelty"]
+        summary = "Candidate order prioritizes the weighted priority score first, then experiment value and novelty."
+
+    return {
+        "primary_score": primary_score,
+        "sort_order": sort_order,
+        "weights": weights,
+        "formula_label": "priority_score",
+        "formula_summary": summary,
+        "formula_text": "priority_score combines confidence, uncertainty, novelty, and experiment value using the current scoring mode and intent.",
+    }
+
+
 def apply_priority_scores(df: pd.DataFrame, intent: str, scoring_mode: str) -> pd.DataFrame:
     prioritized = df.copy()
     for column in ("confidence", "uncertainty", "novelty", "experiment_value"):
@@ -64,20 +91,22 @@ def apply_priority_scores(df: pd.DataFrame, intent: str, scoring_mode: str) -> p
             prioritized[column] = 0.0
         prioritized[column] = pd.to_numeric(prioritized[column], errors="coerce").fillna(0.0)
 
-    weights = _normalized_priority_weights(intent, scoring_mode)
+    policy = ranking_policy(intent, scoring_mode)
+    weights = policy["weights"]
+
+    prioritized["priority_component_confidence"] = prioritized["confidence"] * weights["confidence"]
+    prioritized["priority_component_uncertainty"] = prioritized["uncertainty"] * weights["uncertainty"]
+    prioritized["priority_component_novelty"] = prioritized["novelty"] * weights["novelty"]
+    prioritized["priority_component_experiment_value"] = prioritized["experiment_value"] * weights["experiment_value"]
     prioritized["priority_score"] = (
-        (prioritized["confidence"] * weights["confidence"])
-        + (prioritized["uncertainty"] * weights["uncertainty"])
-        + (prioritized["novelty"] * weights["novelty"])
-        + (prioritized["experiment_value"] * weights["experiment_value"])
+        prioritized["priority_component_confidence"]
+        + prioritized["priority_component_uncertainty"]
+        + prioritized["priority_component_novelty"]
+        + prioritized["priority_component_experiment_value"]
     )
 
-    cleaned_intent = (intent or "rank_uploaded_molecules").strip().lower()
-    if cleaned_intent == "predict_labels":
-        return prioritized.sort_values(["confidence", "priority_score", "novelty"], ascending=[False, False, False])
-    if cleaned_intent == "explore_uncertain":
-        return prioritized.sort_values(["uncertainty", "novelty", "priority_score"], ascending=[False, False, False])
-    return prioritized.sort_values(["priority_score", "experiment_value", "novelty"], ascending=[False, False, False])
+    sort_order = list(policy["sort_order"])
+    return prioritized.sort_values(sort_order, ascending=[False] * len(sort_order))
 
 
 def build_warnings(
@@ -152,13 +181,15 @@ def _bucket_counts(frame: pd.DataFrame | None) -> dict[str, int]:
     return {str(key): int(value) for key, value in counts.items()}
 
 
-def _ranking_diagnostics(frame: pd.DataFrame | None) -> dict[str, Any]:
+def _ranking_diagnostics(frame: pd.DataFrame | None, *, intent: str, scoring_mode: str) -> dict[str, Any]:
     if frame is None or frame.empty:
         return {}
 
+    policy = ranking_policy(intent, scoring_mode)
     diagnostics: dict[str, Any] = {
         "scored_candidates": int(len(frame)),
         "bucket_counts": _bucket_counts(frame),
+        "score_basis": str(policy["primary_score"]),
     }
 
     if "max_similarity" in frame.columns:
@@ -184,7 +215,7 @@ def _ranking_diagnostics(frame: pd.DataFrame | None) -> dict[str, Any]:
     diagnostics["mean_observed_value"] = float(observed_value[valid].mean())
 
     score_column = ""
-    for candidate in ("experiment_value", "priority_score", "confidence"):
+    for candidate in [str(policy["primary_score"])] + [item for item in ("priority_score", "experiment_value", "confidence") if item != policy["primary_score"]]:
         if candidate in frame.columns:
             score_column = candidate
             break
@@ -206,7 +237,6 @@ def _ranking_diagnostics(frame: pd.DataFrame | None) -> dict[str, Any]:
     diagnostics["top_k_measurement_lift"] = float(
         diagnostics["top_k_measurement_mean"] - diagnostics["overall_measurement_mean"]
     )
-    diagnostics["score_basis"] = score_column
     return diagnostics
 
 
@@ -258,7 +288,8 @@ def build_analysis_report(
         "consent_learning": consent_learning,
         "top_candidates_returned": int(len(top_candidates)),
         "measurement_summary": _measurement_summary(validation),
-        "ranking_diagnostics": _ranking_diagnostics(scored_frame),
+        "ranking_diagnostics": _ranking_diagnostics(scored_frame, intent=intent, scoring_mode=scoring_mode),
+        "ranking_policy": ranking_policy(intent, scoring_mode),
         "warnings": warnings,
         "top_level_recommendation_summary": recommendation_summary(top_candidates, intent),
     }

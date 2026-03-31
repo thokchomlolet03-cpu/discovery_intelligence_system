@@ -60,6 +60,7 @@
   </section>
 
   {% if dashboard.analysis_report.measurement_summary or dashboard.analysis_report.ranking_diagnostics %}
+    {% set ranking_policy = dashboard.analysis_report.get("ranking_policy", {}) %}
     <section class="panel">
       <div class="section-header">
         <div>
@@ -86,10 +87,16 @@
             <strong>{{ dashboard.analysis_report.measurement_summary.label_source or "Missing" }}</strong>
           </article>
         {% endif %}
-        {% if dashboard.analysis_report.ranking_diagnostics.score_basis %}
+        {% if ranking_policy.get("primary_score_label") %}
           <article class="panel">
-            <span class="panel-label">Ranking basis</span>
-            <strong>{{ dashboard.analysis_report.ranking_diagnostics.score_basis }}</strong>
+            <span class="panel-label">Primary score</span>
+            <strong>{{ ranking_policy.get("primary_score_label") }}</strong>
+          </article>
+        {% endif %}
+        {% if ranking_policy.get("formula_label") %}
+          <article class="panel">
+            <span class="panel-label">Ranking formula</span>
+            <strong>{{ ranking_policy.get("formula_label") }}</strong>
           </article>
         {% endif %}
         {% if dashboard.analysis_report.ranking_diagnostics.spearman_rank_correlation is not none %}
@@ -126,26 +133,34 @@
   {% endif %}
 
   <section class="panel">
-    <div class="section-header">
-      <div>
-        <h2>Top Experiment Candidates</h2>
-        <p class="helper-copy">These are the current highest-priority molecules for review or testing.</p>
+      <div class="section-header">
+        <div>
+          <h2>Top Experiment Candidates</h2>
+          <p class="helper-copy">These are the current highest-priority molecules for review or testing.</p>
+        </div>
       </div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Candidate</th>
-            <th>SMILES</th>
-            <th>Confidence</th>
-            <th>Uncertainty</th>
-            <th>Novelty</th>
-            <th>Experiment Value</th>
-            <th>Bucket</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+      {% set ranking_policy = dashboard.analysis_report.get("ranking_policy", {}) %}
+      {% if ranking_policy.get("formula_summary") %}
+        <div class="recommendation-callout">
+          <span class="panel-label">Ranking policy</span>
+          <p>{{ ranking_policy.get("formula_summary") }}</p>
+        </div>
+      {% endif %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>SMILES</th>
+              <th>Confidence</th>
+              <th>Uncertainty</th>
+              <th>Novelty</th>
+              <th>Priority Score</th>
+              <th>Experiment Value</th>
+              <th>Bucket</th>
+              <th>Status</th>
+            </tr>
+          </thead>
         <tbody>
           {% for candidate in dashboard.top_candidates %}
             <tr>
@@ -154,13 +169,14 @@
               <td>{{ "%.3f"|format(candidate.confidence) }}</td>
               <td>{{ "%.3f"|format(candidate.uncertainty) }}</td>
               <td>{{ "%.3f"|format(candidate.novelty) }}</td>
+              <td>{{ "%.3f"|format(candidate.priority_score or 0) }}</td>
               <td>{{ "%.3f"|format(candidate.experiment_value) }}</td>
               <td>{{ candidate.bucket or candidate.selection_bucket }}</td>
               <td>{{ candidate.status or "suggested" }}</td>
             </tr>
           {% else %}
             <tr>
-              <td colspan="8" class="empty-cell">{{ dashboard.state.message }}</td>
+              <td colspan="9" class="empty-cell">{{ dashboard.state.message }}</td>
             </tr>
           {% endfor %}
         </tbody>

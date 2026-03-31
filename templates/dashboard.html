@@ -255,17 +255,34 @@
               <span class="data-chip">Priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
               <span class="data-chip">Experiment value {{ "%.3f"|format(candidate.experiment_value or 0) }}</span>
               <span class="data-chip">Status {{ candidate.status }}</span>
+              {% if candidate.trust_label %}
+                <span class="data-chip">{{ candidate.trust_label }}</span>
+              {% endif %}
             </div>
+            {% if candidate.rationale_summary %}
+              <p>{{ candidate.rationale_summary }}</p>
+            {% endif %}
             <p class="helper-copy">
               Confidence {{ "%.3f"|format(candidate.confidence or 0) }},
               uncertainty {{ "%.3f"|format(candidate.uncertainty or 0) }},
               novelty {{ "%.3f"|format(candidate.novelty or 0) }}.
             </p>
+            {% if candidate.primary_driver or candidate.domain_label %}
+              <p class="helper-copy">
+                {% if candidate.primary_driver %}Main driver: {{ candidate.primary_driver }}.{% endif %}
+                {% if candidate.domain_label %} {{ candidate.domain_label }}.{% endif %}
+              </p>
+            {% endif %}
             {% if candidate.observed_value is not none or candidate.context %}
               <p class="helper-copy">
                 {% if candidate.observed_value is not none %}Observed value {{ "%.3f"|format(candidate.observed_value or 0) }}.{% endif %}
                 {% if candidate.context %} {{ candidate.context }}.{% endif %}
               </p>
+            {% endif %}
+            {% if candidate.caution %}
+              <p class="helper-copy">{{ candidate.caution }}</p>
+            {% elif candidate.trust_summary %}
+              <p class="helper-copy">{{ candidate.trust_summary }}</p>
             {% endif %}
           </article>
         {% endfor %}

@@ -751,6 +751,50 @@ class CandidateReviewSummary(ContractBaseModel):
         return values
 
 
+class ScoreBreakdownItem(ContractBaseModel):
+    key: str
+    label: str
+    raw_value: float = Field(ge=0.0, le=1.0)
+    weight: float = Field(ge=0.0, le=1.0)
+    weight_percent: float = Field(ge=0.0, le=100.0)
+    contribution: float = Field(ge=0.0, le=1.0)
+
+    @validator("key", "label", pre=True, always=True)
+    def _clean_breakdown_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+
+class CandidateRationale(ContractBaseModel):
+    summary: str
+    why_now: str = ""
+    trust_label: str = ""
+    trust_summary: str = ""
+    recommended_action: str = ""
+    primary_driver: str = ""
+    strengths: list[str] = Field(default_factory=list)
+    cautions: list[str] = Field(default_factory=list)
+    evidence_lines: list[str] = Field(default_factory=list)
+
+    @validator(
+        "summary",
+        "why_now",
+        "trust_label",
+        "trust_summary",
+        "recommended_action",
+        "primary_driver",
+        pre=True,
+        always=True,
+    )
+    def _clean_rationale_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("strengths", "cautions", "evidence_lines", pre=True)
+    def _coerce_rationale_lists(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
 class DecisionArtifactRow(ContractBaseModel):
     session_id: str
     rank: int = Field(ge=1)
@@ -775,6 +819,11 @@ class DecisionArtifactRow(ContractBaseModel):
     observed_value: float | None = None
     assay: str = ""
     target: str = ""
+    score_breakdown: list[ScoreBreakdownItem] = Field(default_factory=list)
+    rationale: CandidateRationale | None = None
+    domain_status: str = ""
+    domain_label: str = ""
+    domain_summary: str = ""
     review_summary: CandidateReviewSummary | None = None
     selection_reason: str = ""
     review_note: str = ""
@@ -782,7 +831,21 @@ class DecisionArtifactRow(ContractBaseModel):
     reviewed_at: datetime | None = None
     review_history: list[ReviewEventRecord] = Field(default_factory=list)
 
-    @validator("session_id", "candidate_id", "smiles", "canonical_smiles", "selection_reason", "review_note", "assay", "target", pre=True, always=True)
+    @validator(
+        "session_id",
+        "candidate_id",
+        "smiles",
+        "canonical_smiles",
+        "selection_reason",
+        "review_note",
+        "assay",
+        "target",
+        "domain_status",
+        "domain_label",
+        "domain_summary",
+        pre=True,
+        always=True,
+    )
     def _clean_row_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -1134,6 +1197,11 @@ def _canonical_decision_row(
         "observed_value": row.get("observed_value", row.get("value")),
         "assay": row.get("assay") or "",
         "target": row.get("target") or "",
+        "score_breakdown": row.get("score_breakdown") or [],
+        "rationale": row.get("rationale"),
+        "domain_status": row.get("domain_status") or "",
+        "domain_label": row.get("domain_label") or "",
+        "domain_summary": row.get("domain_summary") or "",
         "review_summary": review_summary,
         "selection_reason": row.get("selection_reason") or "",
         "review_note": row.get("review_note") or "",

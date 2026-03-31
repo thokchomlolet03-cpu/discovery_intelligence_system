@@ -221,6 +221,7 @@
             </td>
             <td>
               ${badgeHtml("decision", candidate.decision_category)}
+              ${candidate.trust_label ? badgeHtml("status", candidate.trust_label) : ""}
               <div class="table-subtle">${escapeHtml(candidate.suggested_next_action || candidate.decision_label)}</div>
             </td>
             <td>${metricHtml("Confidence", candidate.confidence, "confidence")}</td>
@@ -232,7 +233,7 @@
             <td>${badgeHtml("bucket", candidate.bucket)}</td>
             <td>${badgeHtml("risk", candidate.risk)}</td>
             <td>${badgeHtml("status", candidate.status)}</td>
-            <td>${escapeHtml(candidate.explanation_short)}</td>
+            <td>${escapeHtml(candidate.rationale_summary || candidate.explanation_short)}</td>
             <td>
               <div>${escapeHtml(candidate.provenance_compact)}</div>
               <div class="table-subtle">${escapeHtml(candidate.reviewed_at_label)}</div>
@@ -328,6 +329,12 @@
                   </article>
                 </section>
 
+                <section class="decision-summary-block">
+                  <span class="panel-label">Trust read</span>
+                  <strong>${escapeHtml(candidate.trust_label || "Mixed trust")}</strong>
+                  <p>${escapeHtml(candidate.trust_summary || candidate.rationale_summary || candidate.decision_summary)}</p>
+                </section>
+
                 <section class="score-grid">
                   ${metricCardHtml("Confidence", candidate.confidence, "confidence")}
                   ${metricCardHtml("Uncertainty", candidate.uncertainty, "uncertainty")}
@@ -343,10 +350,29 @@
                 </section>
 
                 <section class="reasoning-block">
-                  <span class="panel-label">Why this was selected</span>
+                  <span class="panel-label">Why this was selected now</span>
+                  <p>${escapeHtml(candidate.rationale_why_now || candidate.decision_summary)}</p>
                   <ul>
-                    ${candidate.explanation_lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+                    ${(Array.isArray(candidate.rationale_strengths) ? candidate.rationale_strengths : [])
+                      .map((line) => `<li>${escapeHtml(line)}</li>`)
+                      .join("")}
                   </ul>
+                </section>
+
+                <section class="reasoning-block">
+                  <span class="panel-label">Evidence and caveats</span>
+                  <ul>
+                    ${(Array.isArray(candidate.rationale_evidence_lines) ? candidate.rationale_evidence_lines : candidate.explanation_lines)
+                      .map((line) => `<li>${escapeHtml(line)}</li>`)
+                      .join("")}
+                  </ul>
+                  ${
+                    Array.isArray(candidate.rationale_cautions) && candidate.rationale_cautions.length
+                      ? `<div class="warning-chip-row">${candidate.rationale_cautions
+                          .map((line) => `<article class="warning-chip">${escapeHtml(line)}</article>`)
+                          .join("")}</div>`
+                      : ""
+                  }
                 </section>
 
                 <section class="reasoning-block">
@@ -664,6 +690,32 @@
       </section>
 
       <section class="detail-section">
+        <span class="panel-label">Trust read</span>
+        <div class="detail-grid">
+          <article class="detail-item">
+            <span class="panel-label">Trust label</span>
+            <strong>${escapeHtml(candidate.trust_label || "Mixed trust")}</strong>
+            <p>${escapeHtml(candidate.trust_summary || candidate.rationale_summary || candidate.decision_summary)}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Why now</span>
+            <strong>${escapeHtml(candidate.rationale_why_now || candidate.primary_score_label)}</strong>
+            <p>${escapeHtml(candidate.rationale_summary || candidate.decision_summary)}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Recommended move</span>
+            <strong>${escapeHtml(candidate.decision_label)}</strong>
+            <p>${escapeHtml(candidate.rationale_recommended_action || candidate.suggested_next_action)}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Primary driver</span>
+            <strong>${escapeHtml(titleCase(candidate.rationale_primary_driver || candidate.primary_score_name || "priority_score"))}</strong>
+            <p>${escapeHtml(candidate.decision_summary)}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="detail-section">
         <span class="panel-label">Signals behind the recommendation</span>
         <div class="detail-grid">
           <article class="detail-item">${metricHtml("Confidence", candidate.confidence, "confidence")}</article>
@@ -706,10 +758,19 @@
       </section>
 
       <section class="detail-section">
-        <span class="panel-label">Full explanation</span>
+        <span class="panel-label">Evidence and caveats</span>
         <ul class="detail-list">
-          ${candidate.explanation_lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+          ${(Array.isArray(candidate.rationale_evidence_lines) ? candidate.rationale_evidence_lines : candidate.explanation_lines)
+            .map((line) => `<li>${escapeHtml(line)}</li>`)
+            .join("")}
         </ul>
+        ${
+          Array.isArray(candidate.rationale_cautions) && candidate.rationale_cautions.length
+            ? `<div class="warning-chip-row">${candidate.rationale_cautions
+                .map((line) => `<article class="warning-chip">${escapeHtml(line)}</article>`)
+                .join("")}</div>`
+            : ""
+        }
       </section>
 
       <section class="detail-section">

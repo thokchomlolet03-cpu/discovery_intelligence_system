@@ -173,8 +173,17 @@ def build_decision_package(df, iteration, config=None, session_id: str | None = 
                 "observed_value": row.get("observed_value", row.get("value")),
                 "assay": row.get("assay") or "",
                 "target": row.get("target") or "",
+                "score_breakdown": row.get("score_breakdown") or [],
+                "rationale": row.get("rationale"),
+                "domain_status": row.get("domain_status") or "",
+                "domain_label": row.get("domain_label") or "",
+                "domain_summary": row.get("domain_summary") or "",
                 "review_summary": _review_summary(row),
-                "selection_reason": str(row.get("selection_reason") or "").strip(),
+                "selection_reason": str(
+                    row.get("selection_reason")
+                    or ((row.get("rationale") or {}).get("summary") if isinstance(row.get("rationale"), dict) else "")
+                    or ""
+                ).strip(),
                 "review_note": str(row.get("review_note") or "").strip(),
                 "reviewer": str(row.get("reviewer") or "unassigned").strip() or "unassigned",
                 "reviewed_at": row.get("reviewed_at"),

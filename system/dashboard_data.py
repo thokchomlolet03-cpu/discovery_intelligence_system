@@ -139,6 +139,16 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         assay = str(row.get("assay") or "").strip()
         target = str(row.get("target") or "").strip()
         observed_value = _safe_float(row.get("observed_value", row.get("value")))
+        rationale = row.get("rationale") if isinstance(row.get("rationale"), dict) else {}
+        score_breakdown = row.get("score_breakdown") if isinstance(row.get("score_breakdown"), list) else []
+        primary_driver = ""
+        if score_breakdown:
+            top_component = max(
+                (item for item in score_breakdown if isinstance(item, dict)),
+                key=lambda item: float(item.get("contribution") or 0.0),
+                default={},
+            )
+            primary_driver = str(top_component.get("label") or "").strip()
         preview.append(
             {
                 "rank": int(row.get("rank") or index),
@@ -153,6 +163,16 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "experiment_value": float(_safe_float(row.get("experiment_value"), 0.0) or 0.0),
                 "observed_value": observed_value,
                 "context": " / ".join(part for part in (assay, target) if part),
+                "trust_label": str(rationale.get("trust_label") or row.get("trust_label") or "").strip(),
+                "rationale_summary": str(rationale.get("summary") or "").strip(),
+                "trust_summary": str(rationale.get("trust_summary") or "").strip(),
+                "caution": (
+                    str((rationale.get("cautions") or [""])[0]).strip()
+                    if isinstance(rationale.get("cautions"), list)
+                    else ""
+                ),
+                "primary_driver": str(rationale.get("primary_driver") or primary_driver).strip(),
+                "domain_label": str(row.get("domain_label") or "").strip(),
             }
         )
     return preview

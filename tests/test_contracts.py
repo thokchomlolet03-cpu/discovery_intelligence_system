@@ -31,10 +31,35 @@ def canonical_decision_artifact() -> dict:
                 "novelty": 0.48,
                 "acquisition_score": 0.62,
                 "experiment_value": 0.64,
+                "priority_score": 0.66,
                 "bucket": "exploit",
                 "risk": "medium",
                 "status": "suggested",
                 "explanation": ["Balanced scores make this a reasonable candidate for expert review."],
+                "score_breakdown": [
+                    {
+                        "key": "confidence",
+                        "label": "Confidence",
+                        "raw_value": 0.74,
+                        "weight": 0.30,
+                        "weight_percent": 30.0,
+                        "contribution": 0.222,
+                    }
+                ],
+                "rationale": {
+                    "summary": "This candidate is being prioritized mainly because confidence is carrying the shortlist position.",
+                    "why_now": "Confidence is the largest contributor to the current priority score.",
+                    "trust_label": "Mixed trust",
+                    "trust_summary": "The shortlist is useful for prioritization, but still needs scientist review before becoming a bench commitment.",
+                    "recommended_action": "Keep this in expert review before moving it into the next testing round.",
+                    "primary_driver": "confidence",
+                    "strengths": ["Confidence is relatively strong at 0.740."],
+                    "cautions": ["No uploaded observed value is available for direct cross-checking in this session."],
+                    "evidence_lines": ["This candidate is being prioritized mainly because confidence is carrying the shortlist position."],
+                },
+                "domain_status": "in_domain",
+                "domain_label": "Within stronger chemistry range",
+                "domain_summary": "Reference similarity is strong enough to support more confident near-term review.",
                 "provenance": {
                     "text": "Scored directly from user-uploaded dataset upload.csv. Model version: rf_isotonic:isotonic.",
                     "source_name": "upload.csv",
@@ -61,6 +86,7 @@ class ContractValidationTest(unittest.TestCase):
         self.assertEqual(validated["session_id"], "session_1")
         self.assertEqual(validated["top_experiments"][0]["candidate_id"], "cand_1")
         self.assertEqual(validated["top_experiments"][0]["bucket"], "exploit")
+        self.assertEqual(validated["top_experiments"][0]["rationale"]["primary_driver"], "confidence")
 
     def test_malformed_decision_artifact_fails_schema_validation(self):
         invalid = canonical_decision_artifact()

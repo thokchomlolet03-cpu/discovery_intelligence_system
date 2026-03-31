@@ -151,6 +151,11 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(candidate["status"], "suggested")
         self.assertIn("upload.csv", candidate["provenance"])
         self.assertTrue(candidate["short_explanation"])
+        self.assertTrue(candidate["score_breakdown"])
+        self.assertIsInstance(candidate["rationale"], dict)
+        self.assertTrue(candidate["rationale"]["summary"])
+        self.assertTrue(candidate["trust_label"])
+        self.assertTrue(candidate["domain_label"])
         self.assertIn(candidate["risk"], {"low", "medium", "high"})
 
     @patch("system.services.candidate_service.max_similarity_to_reference", return_value=0.1)

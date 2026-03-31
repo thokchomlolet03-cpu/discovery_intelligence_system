@@ -316,6 +316,28 @@ def score_breakdown(candidate: dict[str, Any], policy: dict[str, Any]) -> list[d
     return items
 
 
+def normalize_score_breakdown_payload(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        key = _canonical_score_name(item.get("key"))
+        normalized.append(
+            {
+                "key": key,
+                "label": str(item.get("label") or _score_label(key)).strip() or _score_label(key),
+                "raw_value": _clamp_score(item.get("raw_value")),
+                "weight": max(_safe_float(item.get("weight")), 0.0),
+                "weight_percent": max(_safe_float(item.get("weight_percent")), 0.0),
+                "contribution": max(_safe_float(item.get("contribution")), 0.0),
+            }
+        )
+    return normalized
+
+
 def domain_summary(max_similarity: Any) -> dict[str, Any]:
     try:
         similarity = float(max_similarity)
@@ -431,6 +453,76 @@ def enrich_explanations(
     return lines[:5]
 
 
+def normalize_candidate_rationale(
+    raw_rationale: Any,
+    *,
+    explanation_lines: list[str],
+    breakdown: list[dict[str, Any]],
+    decision_summary: str,
+    suggested_action: str,
+    domain: dict[str, Any],
+    bucket: str,
+    risk: str,
+    confidence: float,
+    uncertainty: float,
+    novelty: float,
+) -> dict[str, Any]:
+    cleaned = raw_rationale if isinstance(raw_rationale, dict) else {}
+    dominant = max(breakdown, key=lambda item: float(item.get("contribution", 0.0))) if breakdown else {}
+    dominant_key = _canonical_score_name(cleaned.get("primary_driver") or dominant.get("key"))
+    dominant_label = _score_label(dominant_key)
+
+    if uncertainty >= 0.7 or str(domain.get("status") or "") == "out_of_domain" or risk == "high":
+        default_trust_label = "High caution"
+        default_trust_summary = "The recommendation is useful, but uncertainty or weak domain coverage means it should be challenged carefully."
+    elif confidence >= 0.8 and uncertainty <= 0.25 and str(domain.get("status") or "") == "in_domain":
+        default_trust_label = "Stronger trust"
+        default_trust_summary = "Confidence is relatively stable and the chemistry remains within stronger domain coverage."
+    elif bucket == "learn" or novelty >= 0.65:
+        default_trust_label = "Exploratory trust"
+        default_trust_summary = "The shortlist is useful for exploration or learning, but it should not be treated as near-certain."
+    else:
+        default_trust_label = "Mixed trust"
+        default_trust_summary = "The shortlist is useful for prioritization, but still needs scientist review before becoming a bench commitment."
+
+    summary = str(cleaned.get("summary") or decision_summary or (explanation_lines[0] if explanation_lines else "")).strip()
+    why_now = str(cleaned.get("why_now") or f"{dominant_label} is the largest contributor to the current priority score.").strip()
+    trust_label = str(cleaned.get("trust_label") or default_trust_label).strip()
+    trust_summary = str(cleaned.get("trust_summary") or default_trust_summary).strip()
+    recommended_action = str(cleaned.get("recommended_action") or suggested_action).strip()
+
+    strengths = cleaned.get("strengths") if isinstance(cleaned.get("strengths"), list) else []
+    strengths = [str(item).strip() for item in strengths if str(item).strip()]
+    cautions = cleaned.get("cautions") if isinstance(cleaned.get("cautions"), list) else []
+    cautions = [str(item).strip() for item in cautions if str(item).strip()]
+    evidence_lines = cleaned.get("evidence_lines") if isinstance(cleaned.get("evidence_lines"), list) else []
+    evidence_lines = [str(item).strip() for item in evidence_lines if str(item).strip()]
+
+    if not evidence_lines:
+        evidence_lines = explanation_lines[:4]
+    if not strengths:
+        strengths = explanation_lines[1:3]
+    if not cautions:
+        if str(domain.get("status") or "") == "out_of_domain":
+            cautions.append("This candidate sits outside stronger chemistry coverage.")
+        elif uncertainty >= 0.7:
+            cautions.append("Uncertainty remains high, so the recommendation is more useful for learning than confirmation.")
+        elif confidence <= 0.35:
+            cautions.append("Confidence remains low, so treat this as exploratory guidance.")
+
+    return {
+        "summary": summary,
+        "why_now": why_now,
+        "trust_label": trust_label,
+        "trust_summary": trust_summary,
+        "recommended_action": recommended_action,
+        "primary_driver": dominant_key,
+        "strengths": strengths[:4],
+        "cautions": cautions[:4],
+        "evidence_lines": evidence_lines[:5],
+    }
+
+
 def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     groups = []
     next_action_items = []
@@ -446,12 +538,13 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
                     {
                         "candidate_id": candidate.get("candidate_id"),
                         "rank": candidate.get("rank"),
-                        "summary": candidate.get("decision_summary") or candidate.get("explanation_short"),
+                        "summary": candidate.get("rationale_summary") or candidate.get("decision_summary") or candidate.get("explanation_short"),
                         "smiles": candidate.get("smiles"),
                         "priority_score": candidate.get("priority_score"),
                         "primary_score_value": candidate.get("primary_score_value"),
                         "suggested_next_action": candidate.get("suggested_next_action"),
                         "domain_label": candidate.get("domain_label"),
+                        "trust_label": candidate.get("trust_label"),
                         "observed_value": candidate.get("observed_value"),
                         "assay": candidate.get("assay"),
                         "target": candidate.get("target"),
@@ -472,11 +565,13 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
             "rank": candidate.get("rank"),
             "decision_label": candidate.get("decision_label"),
             "decision_summary": candidate.get("decision_summary"),
+            "rationale_summary": candidate.get("rationale_summary"),
             "suggested_next_action": candidate.get("suggested_next_action"),
             "priority_score": candidate.get("priority_score"),
             "primary_score_label": candidate.get("primary_score_label"),
             "primary_score_value": candidate.get("primary_score_value"),
             "domain_label": candidate.get("domain_label"),
+            "trust_label": candidate.get("trust_label"),
             "observed_value": candidate.get("observed_value"),
             "assay": candidate.get("assay"),
             "target": candidate.get("target"),
@@ -580,6 +675,13 @@ def normalize_candidate(
     assay = str(candidate.get("assay") or "").strip()
     target = str(candidate.get("target") or "").strip()
     domain = domain_summary(candidate.get("max_similarity"))
+    if candidate.get("domain_status") or candidate.get("domain_label") or candidate.get("domain_summary"):
+        domain = {
+            "status": str(candidate.get("domain_status") or domain.get("status") or "unknown"),
+            "label": str(candidate.get("domain_label") or domain.get("label") or "Domain coverage unavailable"),
+            "summary": str(candidate.get("domain_summary") or domain.get("summary") or "Reference-similarity diagnostics were not saved for this candidate."),
+            "max_similarity": candidate.get("max_similarity", domain.get("max_similarity")),
+        }
     decision = classify_decision(
         bucket=bucket,
         risk=risk,
@@ -590,21 +692,14 @@ def normalize_candidate(
         experiment_value=experiment_value,
         domain_status=str(domain.get("status") or "unknown"),
     )
-    explanations = enrich_explanations(
-        explanations,
-        decision_summary=decision["summary"],
-        domain=domain,
-        observed_value=observed_value,
-        assay=assay,
-        target=target,
-    )
     primary_score = _canonical_score_name(ranking_policy.get("primary_score"))
     primary_score_raw = candidate.get(primary_score)
     if primary_score == "priority_score":
         primary_score_value = _clamp_score(priority_score if primary_score_raw is None else primary_score_raw)
     else:
         primary_score_value = _clamp_score(0.0 if primary_score_raw is None else primary_score_raw)
-    breakdown = score_breakdown(
+    persisted_breakdown = normalize_score_breakdown_payload(candidate.get("score_breakdown"))
+    breakdown = persisted_breakdown or score_breakdown(
         {
             "confidence": confidence,
             "uncertainty": uncertainty,
@@ -618,6 +713,28 @@ def normalize_candidate(
         suggested_action = "Test this candidate in the next round and use it as a near-term lead."
     elif decision["category"] == "deprioritize":
         suggested_action = "Keep this candidate off the immediate testing list unless new evidence changes the tradeoff."
+    rationale = normalize_candidate_rationale(
+        candidate.get("rationale"),
+        explanation_lines=explanations,
+        breakdown=breakdown,
+        decision_summary=decision["summary"],
+        suggested_action=suggested_action,
+        domain=domain,
+        bucket=bucket,
+        risk=risk,
+        confidence=confidence,
+        uncertainty=uncertainty,
+        novelty=novelty,
+    )
+    explanations = enrich_explanations(
+        rationale["evidence_lines"] or explanations,
+        decision_summary=rationale["summary"] or decision["summary"],
+        domain=domain,
+        observed_value=observed_value,
+        assay=assay,
+        target=target,
+    )
+    rationale["evidence_lines"] = explanations
 
     return {
         "rank": int(candidate.get("rank") or position),
@@ -634,6 +751,15 @@ def normalize_candidate(
         "primary_score_label": _score_label(primary_score),
         "primary_score_value": primary_score_value,
         "score_breakdown": breakdown,
+        "trust_label": rationale["trust_label"],
+        "trust_summary": rationale["trust_summary"],
+        "rationale_summary": rationale["summary"],
+        "rationale_why_now": rationale["why_now"],
+        "rationale_primary_driver": rationale["primary_driver"],
+        "rationale_strengths": rationale["strengths"],
+        "rationale_cautions": rationale["cautions"],
+        "rationale_recommended_action": rationale["recommended_action"],
+        "rationale_evidence_lines": rationale["evidence_lines"],
         "bucket": bucket,
         "risk": risk,
         "status": status,
@@ -642,7 +768,7 @@ def normalize_candidate(
         "decision_description": decision["description"],
         "decision_summary": decision["summary"],
         "explanation_lines": explanations,
-        "explanation_short": explanations[0] if explanations else "Recommendation details unavailable.",
+        "explanation_short": rationale["summary"] if rationale.get("summary") else (explanations[0] if explanations else "Recommendation details unavailable."),
         "provenance": provenance_text,
         "provenance_compact": compact_provenance(source_type, iteration, model_version, parent_molecule),
         "source_type": source_type,

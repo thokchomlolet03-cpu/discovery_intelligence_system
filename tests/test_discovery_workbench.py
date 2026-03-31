@@ -49,6 +49,44 @@ def canonical_decision_output() -> dict:
                 "assay": "screen_a",
                 "target": "target_a",
                 "explanation": ["High confidence makes this a practical exploit candidate for review."],
+                "score_breakdown": [
+                    {
+                        "key": "confidence",
+                        "label": "Confidence",
+                        "raw_value": 0.91,
+                        "weight": 0.30,
+                        "weight_percent": 30.0,
+                        "contribution": 0.273,
+                    },
+                    {
+                        "key": "experiment_value",
+                        "label": "Experiment value",
+                        "raw_value": 0.72,
+                        "weight": 0.35,
+                        "weight_percent": 35.0,
+                        "contribution": 0.252,
+                    },
+                ],
+                "rationale": {
+                    "summary": "This candidate is being prioritized mainly because confidence is carrying the shortlist position.",
+                    "why_now": "Confidence is the largest contributor to the current priority score.",
+                    "trust_label": "Stronger trust",
+                    "trust_summary": "Confidence is relatively stable and the chemistry remains within stronger domain coverage.",
+                    "recommended_action": "Use this as a near-term testing candidate because the signal is relatively stable.",
+                    "primary_driver": "confidence",
+                    "strengths": [
+                        "Confidence is relatively strong at 0.910.",
+                        "Reference similarity is strong enough to support more confident near-term review.",
+                    ],
+                    "cautions": [],
+                    "evidence_lines": [
+                        "This candidate is being prioritized mainly because confidence is carrying the shortlist position.",
+                        "Confidence is the largest contributor to the current priority score.",
+                    ],
+                },
+                "domain_status": "in_domain",
+                "domain_label": "Within stronger chemistry range",
+                "domain_summary": "Reference similarity is strong enough to support more confident near-term review.",
                 "provenance": {
                     "text": "Scored directly from user-uploaded dataset upload.csv. Model version: rf_isotonic:isotonic.",
                     "source_name": "upload.csv",
@@ -100,6 +138,10 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["observed_value"], 6.4)
         self.assertEqual(candidate["assay"], "screen_a")
         self.assertEqual(candidate["target"], "target_a")
+        self.assertEqual(candidate["trust_label"], "Stronger trust")
+        self.assertIn("confidence", candidate["rationale_primary_driver"])
+        self.assertTrue(candidate["rationale_summary"])
+        self.assertTrue(candidate["rationale_evidence_lines"])
         self.assertTrue(workbench["ranking_policy"]["weight_breakdown"])
         self.assertEqual(workbench["decision_overview"]["groups"][0]["key"], "test_now")
         self.assertEqual(workbench["decision_overview"]["primary_group"]["key"], "test_now")

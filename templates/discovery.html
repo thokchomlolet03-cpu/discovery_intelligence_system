@@ -186,6 +186,9 @@
                 {% if workbench.decision_overview.primary_candidate.domain_label %}
                   <span class="data-chip">{{ workbench.decision_overview.primary_candidate.domain_label }}</span>
                 {% endif %}
+                {% if workbench.decision_overview.primary_candidate.trust_label %}
+                  <span class="data-chip">{{ workbench.decision_overview.primary_candidate.trust_label }}</span>
+                {% endif %}
                 {% if workbench.decision_overview.primary_candidate.assay or workbench.decision_overview.primary_candidate.target %}
                   <span class="data-chip">
                     {{ [workbench.decision_overview.primary_candidate.assay, workbench.decision_overview.primary_candidate.target] | select | join(" / ") }}
@@ -210,11 +213,14 @@
                   </div>
                   <span class="data-chip">{{ candidate.candidate_id }}</span>
                 </div>
-                <p>{{ candidate.decision_summary }}</p>
+                <p>{{ candidate.rationale_summary or candidate.decision_summary }}</p>
                 <div class="decision-shortlist-meta">
                   <span class="data-chip">{{ candidate.decision_label }}</span>
                   <span class="data-chip">Priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
                   <span class="data-chip">{{ candidate.primary_score_label }} {{ "%.3f"|format(candidate.primary_score_value or 0) }}</span>
+                  {% if candidate.trust_label %}
+                    <span class="data-chip">{{ candidate.trust_label }}</span>
+                  {% endif %}
                 </div>
               </article>
             {% endfor %}

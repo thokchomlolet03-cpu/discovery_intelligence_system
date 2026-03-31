@@ -94,6 +94,11 @@ def apply_priority_scores(df: pd.DataFrame, intent: str, scoring_mode: str) -> p
     policy = ranking_policy(intent, scoring_mode)
     weights = policy["weights"]
 
+    prioritized["priority_weight_confidence"] = weights["confidence"]
+    prioritized["priority_weight_uncertainty"] = weights["uncertainty"]
+    prioritized["priority_weight_novelty"] = weights["novelty"]
+    prioritized["priority_weight_experiment_value"] = weights["experiment_value"]
+
     prioritized["priority_component_confidence"] = prioritized["confidence"] * weights["confidence"]
     prioritized["priority_component_uncertainty"] = prioritized["uncertainty"] * weights["uncertainty"]
     prioritized["priority_component_novelty"] = prioritized["novelty"] * weights["novelty"]

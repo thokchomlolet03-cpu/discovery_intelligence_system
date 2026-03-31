@@ -102,6 +102,9 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["target"], "target_a")
         self.assertTrue(workbench["ranking_policy"]["weight_breakdown"])
         self.assertEqual(workbench["decision_overview"]["groups"][0]["key"], "test_now")
+        self.assertEqual(workbench["decision_overview"]["primary_group"]["key"], "test_now")
+        self.assertEqual(workbench["decision_overview"]["primary_candidate"]["candidate_id"], "cand_1")
+        self.assertEqual(workbench["decision_overview"]["top_shortlist"][0]["candidate_id"], "cand_1")
 
     def test_build_discovery_workbench_reports_contract_error_for_missing_required_fields(self):
         invalid_decision_output = {
@@ -333,6 +336,7 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("session_latest", response.text)
         self.assertIn("cand_1", response.text)
         self.assertIn("Decision Guidance", response.text)
+        self.assertIn("Recommended next step", response.text)
         self.assertIn("Priority score", response.text)
         self.assertIn("Recommended for immediate testing", response.text)
 

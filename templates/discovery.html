@@ -45,9 +45,14 @@
           {% endif %}
         </h2>
         <p>
-          Discovery is reading saved artifacts for this session rather than a generic global snapshot.
-          {% if workbench.source_path %}Source: {{ workbench.source_path }}.{% endif %}
+          Reopened from saved session data so you can continue the current decision process instead of starting over.
         </p>
+        {% if workbench.source_path %}
+          <details class="panel technical-details discovery-technical-details">
+            <summary>Session package details</summary>
+            <p class="helper-copy">Saved result package: {{ workbench.source_path }}.</p>
+          </details>
+        {% endif %}
       {% else %}
         <div class="state-icon">No session</div>
         <h2>No session is selected yet.</h2>
@@ -61,43 +66,12 @@
       </div>
     </section>
 
-    <section class="discovery-summary-grid">
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Iteration</span>
-        <strong>{{ workbench.summary.iteration }}</strong>
-      </article>
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Candidates Displayed</span>
-        <strong>{{ workbench.summary.candidates_displayed }}</strong>
-      </article>
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Top Experiment Value</span>
-        <strong>{{ "%.3f"|format(workbench.summary.top_experiment_value or 0) }}</strong>
-      </article>
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Average Confidence</span>
-        <strong>{{ "%.3f"|format(workbench.summary.average_confidence or 0) }}</strong>
-      </article>
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Average Uncertainty</span>
-        <strong>{{ "%.3f"|format(workbench.summary.average_uncertainty or 0) }}</strong>
-      </article>
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Model Version</span>
-        <strong>{{ workbench.summary.model_version }}</strong>
-      </article>
-      <article class="panel discovery-summary-card">
-        <span class="panel-label">Dataset Version</span>
-        <strong>{{ workbench.summary.dataset_version }}</strong>
-      </article>
-    </section>
-
     {% if workbench.measurement_summary or workbench.ranking_diagnostics %}
       <section class="panel discovery-interpretation-panel">
         <div class="section-header">
           <div>
             <h2>Scientific Run Context</h2>
-            <p class="helper-copy">Inspect the evidence shape, measurement coverage, and ranking diagnostics for this session.</p>
+            <p class="helper-copy">Check what evidence was available for this session before you act on the shortlist.</p>
           </div>
         </div>
         <div class="interpretation-grid">
@@ -156,7 +130,7 @@
         <div class="section-header">
           <div>
             <h2>Decision Guidance</h2>
-            <p class="helper-copy">Move from ranked output to next-action choices you can defend in review.</p>
+            <p class="helper-copy">Start with the clearest next move, then widen into the rest of the shortlist only if needed.</p>
           </div>
           <div class="discovery-results-meta">
             <span class="data-chip">Primary score: {{ workbench.ranking_policy.primary_score_label }}</span>
@@ -164,30 +138,105 @@
           </div>
         </div>
 
-        {% if workbench.recommendation_summary %}
-          <div class="recommendation-callout">
-            <span class="panel-label">Current recommendation</span>
-            <p>{{ workbench.recommendation_summary }}</p>
-          </div>
-        {% endif %}
-
-        <div class="decision-policy-callout">
-          <span class="panel-label">Ranking policy</span>
-          <p>{{ workbench.ranking_policy.formula_summary }}</p>
-          <p class="helper-copy">{{ workbench.ranking_policy.formula_text }}</p>
+        <div class="decision-next-step-grid">
+          <article class="decision-next-step-card">
+            <span class="panel-label">Recommended next step</span>
+            <h3>
+              {% if workbench.decision_overview.primary_group %}
+                {{ workbench.decision_overview.primary_group.label }}
+              {% else %}
+                {{ workbench.decision_overview.headline }}
+              {% endif %}
+            </h3>
+            <p>
+              {% if workbench.decision_overview.primary_candidate and workbench.decision_overview.primary_candidate.suggested_next_action %}
+                {{ workbench.decision_overview.primary_candidate.suggested_next_action }}
+              {% elif workbench.recommendation_summary %}
+                {{ workbench.recommendation_summary }}
+              {% else %}
+                {{ workbench.decision_overview.headline_summary }}
+              {% endif %}
+            </p>
+            {% if workbench.recommendation_summary %}
+              <p class="helper-copy">{{ workbench.recommendation_summary }}</p>
+            {% endif %}
+            {% if workbench.decision_overview.next_actions %}
+              <ul class="compact-list">
+                {% for item in workbench.decision_overview.next_actions %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            <div class="discovery-results-meta">
+              <span class="data-chip">Primary score: {{ workbench.ranking_policy.primary_score_label }}</span>
+              <span class="data-chip">Candidates in view: {{ workbench.summary.candidates_displayed }}</span>
+            </div>
+          </article>
+          {% if workbench.decision_overview.primary_candidate %}
+            <article class="decision-primary-candidate">
+              <span class="panel-label">Start with candidate</span>
+              <h3>{{ workbench.decision_overview.primary_candidate.candidate_id }}</h3>
+              <div class="decision-primary-meta">
+                <span class="data-chip">Rank {{ workbench.decision_overview.primary_candidate.rank }}</span>
+                <span class="data-chip">Priority {{ "%.3f"|format(workbench.decision_overview.primary_candidate.priority_score or 0) }}</span>
+                <span class="data-chip">{{ workbench.ranking_policy.primary_score_label }} {{ "%.3f"|format(workbench.decision_overview.primary_candidate.primary_score_value or 0) }}</span>
+              </div>
+              <p>{{ workbench.decision_overview.primary_candidate.summary }}</p>
+              <div class="decision-primary-context">
+                {% if workbench.decision_overview.primary_candidate.domain_label %}
+                  <span class="data-chip">{{ workbench.decision_overview.primary_candidate.domain_label }}</span>
+                {% endif %}
+                {% if workbench.decision_overview.primary_candidate.assay or workbench.decision_overview.primary_candidate.target %}
+                  <span class="data-chip">
+                    {{ [workbench.decision_overview.primary_candidate.assay, workbench.decision_overview.primary_candidate.target] | select | join(" / ") }}
+                  </span>
+                {% endif %}
+                {% if workbench.decision_overview.primary_candidate.observed_value is not none %}
+                  <span class="data-chip">Observed value {{ "%.3f"|format(workbench.decision_overview.primary_candidate.observed_value or 0) }}</span>
+                {% endif %}
+              </div>
+            </article>
+          {% endif %}
         </div>
 
-        {% if workbench.ranking_policy.weight_breakdown %}
-          <div class="decision-weight-grid">
-            {% for item in workbench.ranking_policy.weight_breakdown %}
-              <article class="decision-weight-card">
-                <span class="panel-label">{{ item.label }}</span>
-                <strong>{{ "%.1f"|format(item.weight_percent) }}%</strong>
-                <p>Contribution weight in the current priority formula.</p>
+        {% if workbench.decision_overview.top_shortlist %}
+          <div class="decision-shortlist-grid">
+            {% for candidate in workbench.decision_overview.top_shortlist %}
+              <article class="decision-shortlist-card">
+                <div class="decision-shortlist-head">
+                  <div>
+                    <span class="panel-label">Shortlist position</span>
+                    <strong>Rank {{ candidate.rank }}</strong>
+                  </div>
+                  <span class="data-chip">{{ candidate.candidate_id }}</span>
+                </div>
+                <p>{{ candidate.decision_summary }}</p>
+                <div class="decision-shortlist-meta">
+                  <span class="data-chip">{{ candidate.decision_label }}</span>
+                  <span class="data-chip">Priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
+                  <span class="data-chip">{{ candidate.primary_score_label }} {{ "%.3f"|format(candidate.primary_score_value or 0) }}</span>
+                </div>
               </article>
             {% endfor %}
           </div>
         {% endif %}
+
+        <details class="panel technical-details discovery-technical-details">
+          <summary>Why this shortlist was ordered this way</summary>
+          <p class="helper-copy">{{ workbench.ranking_policy.formula_summary }}</p>
+          <p class="helper-copy">{{ workbench.ranking_policy.formula_text }}</p>
+          {% if workbench.ranking_policy.weight_breakdown %}
+            <div class="decision-weight-grid">
+              {% for item in workbench.ranking_policy.weight_breakdown %}
+                <article class="decision-weight-card">
+                  <span class="panel-label">{{ item.label }}</span>
+                  <strong>{{ "%.1f"|format(item.weight_percent) }}%</strong>
+                  <p>Contribution weight in the current priority formula.</p>
+                </article>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </details>
 
         {% if workbench.decision_overview.groups %}
           <div class="decision-overview-grid">
@@ -226,14 +275,45 @@
         {% endif %}
       </section>
 
+      <section class="discovery-summary-grid">
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Iteration</span>
+          <strong>{{ workbench.summary.iteration }}</strong>
+        </article>
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Candidates Displayed</span>
+          <strong>{{ workbench.summary.candidates_displayed }}</strong>
+        </article>
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Top Experiment Value</span>
+          <strong>{{ "%.3f"|format(workbench.summary.top_experiment_value or 0) }}</strong>
+        </article>
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Average Confidence</span>
+          <strong>{{ "%.3f"|format(workbench.summary.average_confidence or 0) }}</strong>
+        </article>
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Average Uncertainty</span>
+          <strong>{{ "%.3f"|format(workbench.summary.average_uncertainty or 0) }}</strong>
+        </article>
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Model Version</span>
+          <strong>{{ workbench.summary.model_version }}</strong>
+        </article>
+        <article class="panel discovery-summary-card">
+          <span class="panel-label">Dataset Version</span>
+          <strong>{{ workbench.summary.dataset_version }}</strong>
+        </article>
+      </section>
+
       <section class="panel discovery-filter-panel">
         <div class="section-header">
           <div>
             <h2>Filter And Sort</h2>
-            <p class="helper-copy">Focus the current recommendation set by chemistry, strategy, risk, or review status.</p>
+            <p class="helper-copy">Refine the shortlist by chemistry, strategy, risk, or review status without losing the saved recommendation context.</p>
           </div>
           <div class="discovery-results-meta">
-            <span class="data-chip">Source: {{ workbench.source_path }}</span>
+            <span class="data-chip">Decision lane: {{ workbench.decision_overview.headline }}</span>
             <span class="data-chip">Session: {{ session_id or "public" }}</span>
           </div>
         </div>
@@ -312,8 +392,8 @@
       <section class="panel discovery-interpretation-panel">
         <div class="section-header">
           <div>
-            <h2>How To Interpret This Page</h2>
-            <p class="helper-copy">Use these signals to separate what to test now from what to review, defer, or reject.</p>
+            <h2>How To Use This Shortlist</h2>
+            <p class="helper-copy">Use these signals to decide what to test now, what to hold for review, and what to set aside.</p>
           </div>
         </div>
         <div class="interpretation-grid">
@@ -337,7 +417,7 @@
         <div class="section-header">
           <div>
             <h2>Results View</h2>
-            <p class="helper-copy">Switch between dense table review and candidate cards with reasoning context.</p>
+            <p class="helper-copy">Switch between a dense shortlist table and a candidate view with more rationale and context.</p>
           </div>
           <div class="view-toggle" role="tablist" aria-label="Discovery view mode">
             <button class="view-toggle-button is-active" data-view-mode="table" type="button">Table view</button>
@@ -349,8 +429,8 @@
       <section class="panel discovery-results-panel">
         <div class="results-toolbar">
           <div>
-            <span class="panel-label">Review set</span>
-            <h2 id="results-title">Candidate recommendations</h2>
+            <span class="panel-label">Current shortlist</span>
+            <h2 id="results-title">Candidates ready for review</h2>
           </div>
           <div class="results-toolbar-meta">
             <span class="data-chip"><span id="results-count">{{ workbench.summary.candidates_displayed }}</span> visible</span>
@@ -359,9 +439,9 @@
         </div>
 
         <div class="bulk-action-bar">
-          <button class="button button-secondary" type="button" data-bulk-action="approve">Mark approved</button>
-          <button class="button button-secondary" type="button" data-bulk-action="reject">Mark rejected</button>
-          <button class="button button-secondary" type="button" data-bulk-action="under_review">Add to review queue</button>
+          <button class="button button-secondary" type="button" data-bulk-action="approve">Shortlist selected</button>
+          <button class="button button-secondary" type="button" data-bulk-action="reject">Reject selected</button>
+          <button class="button button-secondary" type="button" data-bulk-action="under_review">Hold for review</button>
           {% if workspace_plan and workspace_plan.features.decision_export %}
             <button class="button button-secondary" type="button" data-bulk-action="export">Export selected</button>
           {% endif %}
@@ -375,7 +455,7 @@
         <div class="section-header">
           <div>
             <h2>Review Workflow Summary</h2>
-            <p class="helper-copy">Track how the current recommendation set is moving through chemist review.</p>
+            <p class="helper-copy">Track how the current shortlist is moving through chemist review and testing decisions.</p>
           </div>
         </div>
         <div class="workflow-grid">

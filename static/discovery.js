@@ -63,6 +63,10 @@
     return Number.isFinite(numeric) ? numeric.toFixed(3) : "0.000";
   }
 
+  function formatObservedValue(value) {
+    return value == null ? "Not available" : formatNumber(value);
+  }
+
   function formatTimestamp(value) {
     if (!value) {
       return "Not available";
@@ -217,7 +221,7 @@
             </td>
             <td>
               ${badgeHtml("decision", candidate.decision_category)}
-              <div class="table-subtle">${escapeHtml(candidate.decision_label)}</div>
+              <div class="table-subtle">${escapeHtml(candidate.suggested_next_action || candidate.decision_label)}</div>
             </td>
             <td>${metricHtml("Confidence", candidate.confidence, "confidence")}</td>
             <td>${metricHtml("Uncertainty", candidate.uncertainty, "uncertainty")}</td>
@@ -235,10 +239,10 @@
             </td>
             <td>
               <div class="row-actions">
-                <button class="inline-action" type="button" data-view-details="${escapeHtml(candidate.candidate_id)}">View details</button>
-                <button class="inline-action primary" type="button" data-review-action="approve" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Approve</button>
+                <button class="inline-action" type="button" data-view-details="${escapeHtml(candidate.candidate_id)}">View rationale</button>
+                <button class="inline-action primary" type="button" data-review-action="approve" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Shortlist</button>
                 <button class="inline-action danger" type="button" data-review-action="reject" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Reject</button>
-                <button class="inline-action" type="button" data-review-action="under_review" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Review later</button>
+                <button class="inline-action" type="button" data-review-action="under_review" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Hold</button>
               </div>
             </td>
           </tr>
@@ -254,7 +258,7 @@
               <th>Select</th>
               <th>Candidate ID</th>
               <th>SMILES</th>
-              <th>Decision</th>
+              <th>Recommended Move</th>
               <th>Confidence</th>
               <th>Uncertainty</th>
               <th>Novelty</th>
@@ -264,9 +268,9 @@
               <th>Bucket</th>
               <th>Risk</th>
               <th>Status</th>
-              <th>Explanation</th>
+              <th>Why Now</th>
               <th>Provenance</th>
-              <th>Actions</th>
+              <th>Review</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -306,8 +310,22 @@
                   <code>${escapeHtml(candidate.smiles)}</code>
                 </section>
 
-                <section class="molecule-placeholder">
-                  <span>Molecule render placeholder<br />Future RDKit depiction area</span>
+                <section class="candidate-context-grid">
+                  <article class="context-card">
+                    <span class="panel-label">Recommended move</span>
+                    <strong>${escapeHtml(candidate.decision_label)}</strong>
+                    <p>${escapeHtml(candidate.suggested_next_action || candidate.decision_summary)}</p>
+                  </article>
+                  <article class="context-card">
+                    <span class="panel-label">Domain coverage</span>
+                    <strong>${escapeHtml(candidate.domain_label || "Unavailable")}</strong>
+                    <p>${escapeHtml(candidate.domain_summary || "Reference similarity was not available for this candidate.")}</p>
+                  </article>
+                  <article class="context-card">
+                    <span class="panel-label">Observed value</span>
+                    <strong>${escapeHtml(formatObservedValue(candidate.observed_value))}</strong>
+                    <p>${escapeHtml([candidate.assay, candidate.target].filter(Boolean).join(" / ") || "No assay or target context recorded.")}</p>
+                  </article>
                 </section>
 
                 <section class="score-grid">
@@ -373,10 +391,10 @@
                     <textarea rows="3" data-note-input="${escapeHtml(candidate.candidate_id)}">${escapeHtml(candidate.review_note || "")}</textarea>
                   </label>
                   <div class="card-action-row">
-                    <button class="inline-action" type="button" data-view-details="${escapeHtml(candidate.candidate_id)}">View details</button>
-                    <button class="inline-action primary" type="button" data-review-action="approve" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Approve</button>
+                    <button class="inline-action" type="button" data-view-details="${escapeHtml(candidate.candidate_id)}">View rationale</button>
+                    <button class="inline-action primary" type="button" data-review-action="approve" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Shortlist</button>
                     <button class="inline-action danger" type="button" data-review-action="reject" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Reject</button>
-                    <button class="inline-action" type="button" data-review-action="under_review" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Review later</button>
+                    <button class="inline-action" type="button" data-review-action="under_review" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Hold</button>
                     <button class="inline-action" type="button" data-review-action="save_note" data-candidate-id="${escapeHtml(candidate.candidate_id)}">Save note</button>
                   </div>
                 </section>
@@ -392,7 +410,7 @@
     root.innerHTML = `
       <div class="empty-results">
         <h3>No candidates match the current filters.</h3>
-        <p>Adjust search, bucket, risk, or score ranges to widen the current review set.</p>
+        <p>Widen the filters to bring more of the saved shortlist back into view.</p>
       </div>
     `;
   }
@@ -646,7 +664,7 @@
       </section>
 
       <section class="detail-section">
-        <span class="panel-label">All scores</span>
+        <span class="panel-label">Signals behind the recommendation</span>
         <div class="detail-grid">
           <article class="detail-item">${metricHtml("Confidence", candidate.confidence, "confidence")}</article>
           <article class="detail-item">${metricHtml("Uncertainty", candidate.uncertainty, "uncertainty")}</article>
@@ -657,7 +675,7 @@
       </section>
 
       <section class="detail-section">
-        <span class="panel-label">Decision policy</span>
+        <span class="panel-label">What to do with this candidate</span>
         <div class="detail-grid">
           <article class="detail-item">
             <span class="panel-label">Recommended action</span>
@@ -695,7 +713,7 @@
       </section>
 
       <section class="detail-section">
-        <span class="panel-label">Provenance</span>
+        <span class="panel-label">Saved session context</span>
         <div class="detail-grid">
           <article class="detail-item">
             <span class="panel-label">Source type</span>
@@ -742,10 +760,6 @@
         }
       </section>
 
-      <section class="detail-section">
-        <span class="panel-label">Further analysis</span>
-        <div class="detail-placeholder">Feature-level explanation and experiment history can extend this panel later without changing the saved artifact contract.</div>
-      </section>
     `;
 
     drawer.classList.remove("hidden");

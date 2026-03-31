@@ -180,6 +180,52 @@
   background: rgba(49, 196, 255, 0.1);
 }
 
+.decision-next-step-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.decision-next-step-card,
+.decision-primary-candidate,
+.decision-shortlist-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid rgba(141, 199, 188, 0.14);
+  border-radius: 20px;
+  background: rgba(12, 18, 22, 0.94);
+}
+
+.decision-next-step-card h3,
+.decision-primary-candidate h3 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.decision-primary-meta,
+.decision-primary-context,
+.decision-shortlist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.decision-shortlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.decision-shortlist-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .decision-weight-grid,
 .decision-overview-grid {
   display: grid;
@@ -224,6 +270,11 @@
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid rgba(141, 199, 188, 0.08);
+}
+
+.discovery-technical-details {
+  margin-top: 18px;
+  background: rgba(12, 18, 22, 0.9);
 }
 
 .warning-chip-row {
@@ -609,17 +660,24 @@
   word-break: break-all;
 }
 
-.molecule-placeholder {
+.candidate-context-grid {
   display: grid;
-  place-items: center;
-  min-height: 120px;
-  border: 1px dashed rgba(141, 199, 188, 0.18);
-  border-radius: 18px;
-  color: var(--muted);
-  background:
-    radial-gradient(circle at 20% 20%, rgba(141, 199, 188, 0.08), transparent 30%),
-    rgba(12, 18, 22, 0.92);
-  text-align: center;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.context-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(141, 199, 188, 0.12);
+  border-radius: 16px;
+  background: rgba(12, 18, 22, 0.92);
+}
+
+.context-card strong {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .score-grid {
@@ -890,6 +948,7 @@
     max-width: none;
   }
 
+  .decision-next-step-grid,
   .provenance-grid,
   .detail-grid,
   .score-grid {

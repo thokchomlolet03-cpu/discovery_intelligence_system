@@ -450,6 +450,11 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
                         "smiles": candidate.get("smiles"),
                         "priority_score": candidate.get("priority_score"),
                         "primary_score_value": candidate.get("primary_score_value"),
+                        "suggested_next_action": candidate.get("suggested_next_action"),
+                        "domain_label": candidate.get("domain_label"),
+                        "observed_value": candidate.get("observed_value"),
+                        "assay": candidate.get("assay"),
+                        "target": candidate.get("target"),
                     }
                     for candidate in matching[:3]
                 ],
@@ -459,11 +464,33 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
             next_action_items.append(f"{DECISION_COPY[key]['label']}: {matching[0].get('candidate_id')}")
 
     headline = next((group for group in groups if group["count"] > 0), groups[0] if groups else None)
+    primary_group = next((group for group in groups if group["count"] > 0), None)
+    primary_candidate = primary_group["candidates"][0] if primary_group and primary_group["candidates"] else None
+    top_shortlist = [
+        {
+            "candidate_id": candidate.get("candidate_id"),
+            "rank": candidate.get("rank"),
+            "decision_label": candidate.get("decision_label"),
+            "decision_summary": candidate.get("decision_summary"),
+            "suggested_next_action": candidate.get("suggested_next_action"),
+            "priority_score": candidate.get("priority_score"),
+            "primary_score_label": candidate.get("primary_score_label"),
+            "primary_score_value": candidate.get("primary_score_value"),
+            "domain_label": candidate.get("domain_label"),
+            "observed_value": candidate.get("observed_value"),
+            "assay": candidate.get("assay"),
+            "target": candidate.get("target"),
+        }
+        for candidate in candidates[:3]
+    ]
     return {
         "headline": headline["label"] if headline else "No recommendation set",
         "headline_summary": headline["description"] if headline else "",
         "groups": groups,
         "next_actions": next_action_items[:4],
+        "primary_group": primary_group,
+        "primary_candidate": primary_candidate,
+        "top_shortlist": top_shortlist,
     }
 
 

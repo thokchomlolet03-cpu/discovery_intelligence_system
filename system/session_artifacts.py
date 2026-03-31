@@ -8,9 +8,64 @@ from typing import Any
 from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
 from system.db import resolve_session_artifact_path
 from system.services.artifact_service import DATA_DIR, artifact_display_path
+from system.upload_parser import load_session_metadata
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _session_measurement_summary(session_id: str | None, workspace_id: str | None) -> dict[str, Any]:
+    if not session_id:
+        return {}
+    try:
+        metadata = load_session_metadata(session_id, workspace_id=workspace_id)
+    except FileNotFoundError:
+        return {}
+    validation = metadata.get("validation_summary") if isinstance(metadata, dict) else {}
+    if not isinstance(validation, dict):
+        return {}
+    return {
+        "semantic_mode": str(validation.get("semantic_mode") or "").strip(),
+        "file_type": str(validation.get("file_type") or "").strip(),
+        "value_column": str(validation.get("value_column") or "").strip(),
+        "rows_with_values": int(validation.get("rows_with_values", 0) or 0),
+        "rows_without_values": int(validation.get("rows_without_values", 0) or 0),
+        "rows_with_labels": int(validation.get("rows_with_labels", 0) or 0),
+        "rows_without_labels": int(validation.get("rows_without_labels", 0) or 0),
+        "label_source": str(validation.get("label_source") or "").strip(),
+    }
+
+
+def _backfill_measurement_summary(
+    report: dict[str, Any],
+    *,
+    session_id: str | None,
+    workspace_id: str | None,
+) -> dict[str, Any]:
+    session_measurement = _session_measurement_summary(session_id, workspace_id)
+    if not session_measurement:
+        return report
+
+    existing = report.get("measurement_summary") if isinstance(report.get("measurement_summary"), dict) else {}
+    merged = dict(existing)
+    updated = False
+
+    for field in ("semantic_mode", "file_type", "value_column", "label_source"):
+        if not str(merged.get(field) or "").strip() and session_measurement.get(field):
+            merged[field] = session_measurement[field]
+            updated = True
+
+    for field in ("rows_with_values", "rows_without_values", "rows_with_labels", "rows_without_labels"):
+        existing_value = int(merged.get(field, 0) or 0)
+        session_value = int(session_measurement.get(field, 0) or 0)
+        if existing_value <= 0 and session_value > 0:
+            merged[field] = session_value
+            updated = True
+
+    if updated or (not existing and merged):
+        report = dict(report)
+        report["measurement_summary"] = merged
+    return report
 
 
 def _json_file_payload(path: Path | None) -> dict[str, Any]:
@@ -165,6 +220,11 @@ def load_analysis_report_payload(
         if isinstance(payload, dict):
             report = payload.get("analysis_report", payload)
             if isinstance(report, dict):
+                report = _backfill_measurement_summary(
+                    report,
+                    session_id=session_id,
+                    workspace_id=workspace_id,
+                )
                 return {
                     **report,
                     "artifact_state": "ok",
@@ -180,8 +240,13 @@ def load_analysis_report_payload(
     )
     result_payload = result_artifact.get("payload")
     if isinstance(result_payload, dict) and isinstance(result_payload.get("analysis_report"), dict):
+        report = _backfill_measurement_summary(
+            result_payload["analysis_report"],
+            session_id=session_id,
+            workspace_id=workspace_id,
+        )
         return {
-            **result_payload["analysis_report"],
+            **report,
             "artifact_state": "ok",
             "source_path": f"{result_artifact.get('source_path')}#analysis_report",
             "source_updated_at": result_artifact.get("source_updated_at"),

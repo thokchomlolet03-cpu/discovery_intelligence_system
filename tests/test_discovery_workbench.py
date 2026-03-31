@@ -212,6 +212,94 @@ class DiscoveryRouteTest(unittest.TestCase):
             created_by_user_id=self.user["user_id"],
         )
 
+    def _store_legacy_measurement_session(self, session_id: str) -> None:
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            source_name="measurement.csv",
+            input_type="measurement_dataset",
+            latest_job_id="job_legacy",
+            upload_metadata={
+                "session_id": session_id,
+                "created_at": "2026-03-31T02:00:00+00:00",
+                "filename": "measurement.csv",
+                "input_type": "measurement_dataset",
+                "file_type": "csv",
+                "semantic_mode": "measurement_dataset",
+                "columns": ["compound_id", "smiles", "pic50"],
+                "preview_rows": [
+                    {"compound_id": "cmp1", "smiles": "CCO", "pic50": "6.4"},
+                    {"compound_id": "cmp2", "smiles": "CCN", "pic50": "5.8"},
+                ],
+                "inferred_mapping": {
+                    "entity_id": "compound_id",
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "label": None,
+                    "target": None,
+                    "assay": None,
+                    "source": None,
+                    "notes": None,
+                },
+                "selected_mapping": {
+                    "entity_id": "compound_id",
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "label": None,
+                    "target": None,
+                    "assay": None,
+                    "source": None,
+                    "notes": None,
+                },
+                "validation_summary": {
+                    "total_rows": 12,
+                    "valid_smiles_count": 12,
+                    "invalid_smiles_count": 0,
+                    "duplicate_count": 0,
+                    "rows_with_labels": 0,
+                    "rows_without_labels": 12,
+                    "rows_with_values": 12,
+                    "rows_without_values": 0,
+                    "value_column": "pic50",
+                    "semantic_mode": "measurement_dataset",
+                    "file_type": "csv",
+                    "label_source": "missing",
+                    "can_run_analysis": True,
+                    "warnings": [],
+                },
+            },
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        session_dir = Path(self.tmpdir.name) / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        result_path = session_dir / "result.json"
+        result_path.write_text(
+            discovery_app.json.dumps(
+                {
+                    "decision_output": canonical_decision_output(),
+                    "analysis_report": {
+                        "warnings": [],
+                        "top_level_recommendation_summary": "Start with the top candidate.",
+                        "measurement_summary": {
+                            "semantic_mode": "",
+                            "value_column": "",
+                            "rows_with_values": 0,
+                            "label_source": "",
+                        },
+                        "ranking_diagnostics": {"out_of_domain_rate": 0.2},
+                    },
+                }
+            )
+        )
+        ArtifactRepository().register_artifact(
+            artifact_type="result_json",
+            path=result_path,
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
+
     def test_discovery_page_renders_workbench_sections(self):
         response = self.client.get("/discovery")
 
@@ -258,6 +346,26 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("session_dashboard_result_only", response.text)
         self.assertIn("measurement_dataset", response.text)
+
+    def test_discovery_page_backfills_measurement_context_from_upload_metadata(self):
+        self._store_legacy_measurement_session("session_legacy_discovery")
+
+        response = self.client.get("/discovery?session_id=session_legacy_discovery")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("measurement_dataset", response.text)
+        self.assertIn("pic50", response.text)
+        self.assertIn(">12<", response.text)
+
+    def test_dashboard_page_backfills_measurement_context_from_upload_metadata(self):
+        self._store_legacy_measurement_session("session_legacy_dashboard")
+
+        response = self.client.get("/dashboard?session_id=session_legacy_dashboard")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("measurement_dataset", response.text)
+        self.assertIn("pic50", response.text)
+        self.assertIn(">12<", response.text)
         self.assertIn("cand_1", response.text)
 
     def test_reviews_api_accepts_bulk_payload(self):

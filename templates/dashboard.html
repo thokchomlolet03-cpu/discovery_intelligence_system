@@ -10,6 +10,35 @@
     </p>
   </section>
 
+  <section class="panel">
+    {% if session_view.session_id %}
+      <div class="state-icon">Session {{ session_view.session_id }}</div>
+      <h2>
+        {% if session_view.selection_reason == "requested" %}
+          Viewing the requested dashboard session.
+        {% elif session_view.selection_reason == "active" %}
+          Viewing your active session dashboard.
+        {% else %}
+          Viewing the latest completed session dashboard.
+        {% endif %}
+      </h2>
+      <p>
+        This dashboard is reading saved session artifacts rather than a generic workspace snapshot.
+        {% if dashboard.source_path %}Source: {{ dashboard.source_path }}.{% endif %}
+      </p>
+    {% else %}
+      <div class="state-icon">No session</div>
+      <h2>No session is selected for the dashboard.</h2>
+      <p>Open a completed upload session or run a new analysis to populate the dashboard.</p>
+    {% endif %}
+    <div class="cta-row">
+      <a class="button button-primary" href="/upload">Upload Data</a>
+      {% if session_view.latest_session_id and session_view.latest_session_id != session_view.session_id %}
+        <a class="button button-secondary" href="/dashboard?session_id={{ session_view.latest_session_id }}">Open latest completed session</a>
+      {% endif %}
+    </div>
+  </section>
+
   {% if dashboard.warnings %}
     <section class="warning-stack">
       {% for warning in dashboard.warnings %}
@@ -30,15 +59,57 @@
     {% endfor %}
   </section>
 
-  <section class="dashboard-grid">
-    {% for chart in dashboard.charts %}
-      <article class="panel chart-panel">
-        <h2>{{ chart.title }}</h2>
-        <p class="helper-copy">{{ chart.description }}</p>
-        <div class="chart-shell">{{ chart.chart_html | safe }}</div>
-      </article>
-    {% endfor %}
-  </section>
+  {% if dashboard.analysis_report.measurement_summary or dashboard.analysis_report.ranking_diagnostics %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Scientific Run Context</h2>
+          <p class="helper-copy">Evidence structure, measurement coverage, and ranking diagnostics for this session.</p>
+        </div>
+      </div>
+      <div class="card-grid metrics-grid">
+        {% if dashboard.analysis_report.measurement_summary %}
+          <article class="panel">
+            <span class="panel-label">Semantic mode</span>
+            <strong>{{ dashboard.analysis_report.measurement_summary.semantic_mode or "Not detected" }}</strong>
+          </article>
+          <article class="panel">
+            <span class="panel-label">Rows with values</span>
+            <strong>{{ dashboard.analysis_report.measurement_summary.rows_with_values or 0 }}</strong>
+          </article>
+        {% endif %}
+        {% if dashboard.analysis_report.ranking_diagnostics.spearman_rank_correlation is not none %}
+          <article class="panel">
+            <span class="panel-label">Rank correlation</span>
+            <strong>{{ "%.3f"|format(dashboard.analysis_report.ranking_diagnostics.spearman_rank_correlation or 0) }}</strong>
+          </article>
+        {% endif %}
+        {% if dashboard.analysis_report.ranking_diagnostics.out_of_domain_rate is not none %}
+          <article class="panel">
+            <span class="panel-label">Out-of-domain rate</span>
+            <strong>{{ "%.1f"|format((dashboard.analysis_report.ranking_diagnostics.out_of_domain_rate or 0) * 100) }}%</strong>
+          </article>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if dashboard.charts %}
+    <section class="dashboard-grid">
+      {% for chart in dashboard.charts %}
+        <article class="panel chart-panel">
+          <h2>{{ chart.title }}</h2>
+          <p class="helper-copy">{{ chart.description }}</p>
+          <div class="chart-shell">{{ chart.chart_html | safe }}</div>
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <section class="panel">
+      <h2>Charts are not available yet.</h2>
+      <p>{{ dashboard.state.message }}</p>
+    </section>
+  {% endif %}
 
   <section class="panel">
     <div class="section-header">
@@ -75,7 +146,7 @@
             </tr>
           {% else %}
             <tr>
-              <td colspan="8" class="empty-cell">No ranked candidates are available yet.</td>
+              <td colspan="8" class="empty-cell">{{ dashboard.state.message }}</td>
             </tr>
           {% endfor %}
         </tbody>

@@ -47,36 +47,31 @@
       <div class="step-header">
         <span class="step-number">1</span>
         <div>
-          <h2>Input Type</h2>
-          <p>Select the kind of dataset you are providing.</p>
+          <h2>Ingestion Mode</h2>
+          <p>Select the semantic shape of the dataset you are providing.</p>
         </div>
       </div>
       <div class="choice-grid" id="input-type-options">
         <label class="choice-card active">
-          <input type="radio" name="input_type" value="experimental_results" checked />
-          <strong>Experimental results</strong>
-          <span>Use when the CSV contains measured outcomes or assay results.</span>
+          <input type="radio" name="input_type" value="measurement_dataset" checked />
+          <strong>Measurement dataset</strong>
+          <span>Use when the file contains continuous values like pIC50, potency, or assay responses.</span>
         </label>
         <label class="choice-card">
-          <input type="radio" name="input_type" value="known_labeled_molecules" />
-          <strong>Known labeled molecules</strong>
-          <span>Use when the file is a labeled set for model-guided discovery.</span>
+          <input type="radio" name="input_type" value="labeled_tabular_dataset" />
+          <strong>Labeled dataset</strong>
+          <span>Use when the file already contains labels or classes for model-guided discovery.</span>
         </label>
         <label class="choice-card">
-          <input type="radio" name="input_type" value="molecules_to_screen_only" />
-          <strong>Molecules to screen only</strong>
-          <span>Use when you mainly want predictions or ranking for uploaded molecules.</span>
-        </label>
-        <label class="choice-card">
-          <input type="radio" name="input_type" value="candidate_list_for_ranking" />
-          <strong>Candidate list for ranking</strong>
-          <span>Use when you already have a candidate set and want prioritization support.</span>
+          <input type="radio" name="input_type" value="structure_only_screening" />
+          <strong>Structure-only screening</strong>
+          <span>Use when you mainly want ranking or prediction from SMILES, TXT lists, or SDF structures.</span>
         </label>
       </div>
       <div class="upload-form">
         <label class="file-picker" for="dataset-file">
-          <span>Select CSV file</span>
-          <input id="dataset-file" name="file" type="file" accept=".csv" required />
+          <span>Select data file</span>
+          <input id="dataset-file" name="file" type="file" accept=".csv,.tsv,.txt,.sdf" required />
         </label>
         <button class="button button-primary" id="inspect-button" type="button">Inspect upload</button>
       </div>
@@ -93,16 +88,28 @@
       </div>
       <div class="form-grid">
         <label>
+          <span>Entity / molecule ID</span>
+          <select id="map-entity-id"></select>
+        </label>
+        <label>
           <span>SMILES</span>
           <select id="map-smiles"></select>
         </label>
         <label>
-          <span>Biodegradable label</span>
-          <select id="map-biodegradable"></select>
+          <span>Measurement / value</span>
+          <select id="map-value"></select>
         </label>
         <label>
-          <span>Molecule name / ID</span>
-          <select id="map-molecule-id"></select>
+          <span>Label / class</span>
+          <select id="map-label"></select>
+        </label>
+        <label>
+          <span>Target</span>
+          <select id="map-target"></select>
+        </label>
+        <label>
+          <span>Assay</span>
+          <select id="map-assay"></select>
         </label>
         <label>
           <span>Source</span>
@@ -133,9 +140,47 @@
       </div>
     </article>
 
-    <article class="panel hidden" id="intent-panel">
+    <article class="panel hidden" id="label-builder-panel">
       <div class="step-header">
         <span class="step-number">4</span>
+        <div>
+          <h2>Label Builder</h2>
+          <p>Optionally derive labels from a continuous measurement column before analysis runs.</p>
+        </div>
+      </div>
+      <div class="choice-grid" id="label-builder-options">
+        <label class="choice-card active">
+          <input type="radio" name="label_builder_enabled" value="false" checked />
+          <strong>Keep as measurement-only</strong>
+          <span>Use ranking and prediction without deriving a binary label.</span>
+        </label>
+        <label class="choice-card">
+          <input type="radio" name="label_builder_enabled" value="true" />
+          <strong>Derive labels from measurements</strong>
+          <span>Turn continuous values into labels so the session can support discovery-style workflows.</span>
+        </label>
+      </div>
+      <div class="form-grid hidden" id="label-builder-controls">
+        <label>
+          <span>Operator</span>
+          <select id="label-builder-operator">
+            <option value=">">&gt;</option>
+            <option value=">=" selected>&gt;=</option>
+            <option value="<">&lt;</option>
+            <option value="<=">&lt;=</option>
+          </select>
+        </label>
+        <label>
+          <span>Threshold</span>
+          <input id="label-builder-threshold" type="number" step="any" placeholder="6.0" />
+        </label>
+      </div>
+      <div id="label-builder-guidance" class="status-box muted hidden"></div>
+    </article>
+
+    <article class="panel hidden" id="intent-panel">
+      <div class="step-header">
+        <span class="step-number">5</span>
         <div>
           <h2>User Intent</h2>
           <p>Select the outcome you want from this run.</p>
@@ -173,7 +218,7 @@
 
     <article class="panel hidden" id="mode-panel">
       <div class="step-header">
-        <span class="step-number">5</span>
+        <span class="step-number">6</span>
         <div>
           <h2>Scoring Mode</h2>
           <p>Adjust ranking emphasis to match your current review strategy.</p>
@@ -200,7 +245,7 @@
 
     <article class="panel hidden" id="consent-panel">
       <div class="step-header">
-        <span class="step-number">6</span>
+        <span class="step-number">7</span>
         <div>
           <h2>Consent For Learning</h2>
           <p>Your data will not be added to the learning queue unless you opt in explicitly.</p>
@@ -289,6 +334,10 @@
       jobId: null,
       jobPollHandle: null,
       validationSummary: null,
+      semanticMode: "",
+      fileType: "",
+      measurementColumns: [],
+      labelBuilderSuggestion: null,
     };
 
     const inspectButton = document.getElementById("inspect-button");
@@ -297,9 +346,12 @@
     const analysisStatus = document.getElementById("analysis-status");
     const mappingPanel = document.getElementById("mapping-panel");
     const validationPanel = document.getElementById("validation-panel");
+    const labelBuilderPanel = document.getElementById("label-builder-panel");
     const intentPanel = document.getElementById("intent-panel");
     const modePanel = document.getElementById("mode-panel");
     const consentPanel = document.getElementById("consent-panel");
+    const labelBuilderGuidance = document.getElementById("label-builder-guidance");
+    const labelBuilderControls = document.getElementById("label-builder-controls");
     const consentGuidance = document.getElementById("consent-guidance");
     const validationGrid = document.getElementById("validation-grid");
     const validationWarning = document.getElementById("validation-warning");
@@ -345,9 +397,12 @@
     };
 
     const mappingFields = [
+      ["entity_id", "map-entity-id"],
       ["smiles", "map-smiles"],
-      ["biodegradable", "map-biodegradable"],
-      ["molecule_id", "map-molecule-id"],
+      ["value", "map-value"],
+      ["label", "map-label"],
+      ["target", "map-target"],
+      ["assay", "map-assay"],
       ["source", "map-source"],
       ["notes", "map-notes"],
     ];
@@ -355,6 +410,12 @@
 
     const selectValue = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
     const mappingPayload = () => Object.fromEntries(mappingFields.map(([field, id]) => [field, document.getElementById(id).value || null]));
+    const labelBuilderPayload = () => ({
+      enabled: selectValue("label_builder_enabled") === "true",
+      value_column: document.getElementById("map-value").value || "",
+      operator: document.getElementById("label-builder-operator").value || ">=",
+      threshold: document.getElementById("label-builder-threshold").value || "",
+    });
     const formatNumber = (value) => {
       const numeric = Number(value ?? 0);
       return Number.isFinite(numeric) ? numeric.toFixed(3) : "-";
@@ -365,6 +426,7 @@
       return Math.max(0, Math.min(100, Math.round(numeric)));
     };
     const usableLabelCount = (summary) => Number(summary?.usable_label_count ?? summary?.rows_with_labels ?? 0);
+    const usableValueCount = (summary) => Number(summary?.rows_with_values ?? 0);
     const upgradeAwareMessage = (body, fallback) => {
       const base = body?.message || body?.detail || fallback;
       return body?.upgrade_required ? `${base} Open Billing to upgrade this workspace.` : base;
@@ -444,12 +506,13 @@
     const updateConsentState = (summary) => {
       const usableLabels = usableLabelCount(summary);
       const warningTone = usableLabels > 0 ? "status-box muted" : "notice-panel";
+      const labelSource = summary?.label_source || "missing";
       if (usableLabels > 0) {
         learningConsentRadio.disabled = false;
         learningConsentRadio.closest(".choice-card").classList.remove("muted");
         consentGuidance.innerHTML = `
           <strong>${usableLabels} labeled rows are eligible for the feedback queue.</strong>
-          <p>If you choose Allow learning, only usable labeled rows from this upload will be added.</p>
+          <p>${labelSource === "derived" ? "These labels were derived from your measurement rule." : "If you choose Allow learning, only usable labeled rows from this upload will be added."}</p>
         `;
       } else {
         learningConsentRadio.disabled = true;
@@ -466,8 +529,36 @@
       refreshChoiceCards("consent-options");
     };
 
+    const updateLabelBuilderState = (summary) => {
+      const hasValues = usableValueCount(summary) > 0 || !!mappingPayload().value;
+      const hasMappedLabels = usableLabelCount(summary) > 0 && (summary?.label_source || "") === "mapped";
+      const enabled = selectValue("label_builder_enabled") === "true";
+      labelBuilderPanel.classList.toggle("hidden", !hasValues);
+      labelBuilderControls.classList.toggle("hidden", !hasValues || !enabled || hasMappedLabels);
+      if (!hasValues) {
+        labelBuilderGuidance.className = "status-box muted";
+        labelBuilderGuidance.innerHTML = "<strong>No measurement column detected yet.</strong><p>Map a numeric value column to enable threshold-based label building.</p>";
+        labelBuilderGuidance.classList.remove("hidden");
+        return;
+      }
+      if (hasMappedLabels) {
+        document.querySelector('input[name="label_builder_enabled"][value="false"]').checked = true;
+        refreshChoiceCards("label-builder-options");
+        labelBuilderControls.classList.add("hidden");
+        labelBuilderGuidance.className = "status-box muted";
+        labelBuilderGuidance.innerHTML = "<strong>This dataset already contains labels.</strong><p>The label builder is optional here because mapped labels are already available.</p>";
+        labelBuilderGuidance.classList.remove("hidden");
+        return;
+      }
+      labelBuilderGuidance.className = enabled ? "status-box success" : "status-box muted";
+      labelBuilderGuidance.innerHTML = enabled
+        ? "<strong>Derived labels will be created during validation and analysis.</strong><p>Use this when you want a continuous measurement like pIC50 to become a binary label.</p>"
+        : "<strong>Measurement mode is active.</strong><p>You can still rank molecules without deriving labels, or enable the label builder if you want session-trained discovery behavior.</p>";
+      labelBuilderGuidance.classList.remove("hidden");
+    };
+
     const showWorkflow = () => {
-      [mappingPanel, validationPanel, intentPanel, modePanel, consentPanel].forEach((panel) => panel.classList.remove("hidden"));
+      [mappingPanel, validationPanel, labelBuilderPanel, intentPanel, modePanel, consentPanel].forEach((panel) => panel.classList.remove("hidden"));
     };
 
     const renderChoices = (containerId) => {
@@ -479,23 +570,29 @@
       });
       refreshChoiceCards(containerId);
     };
-    ["input-type-options", "intent-options", "mode-options", "consent-options"].forEach(renderChoices);
+    ["input-type-options", "label-builder-options", "intent-options", "mode-options", "consent-options"].forEach(renderChoices);
 
     const renderSelectOptions = (id, columns, selected) => {
       const select = document.getElementById(id);
       select.innerHTML = `<option value="">Not mapped</option>${columns.map((column) => `
         <option value="${column}" ${selected === column ? "selected" : ""}>${column}</option>
       `).join("")}`;
-      select.addEventListener("change", refreshValidation);
+      select.addEventListener("change", async () => {
+        updateLabelBuilderState(state.validationSummary);
+        await refreshValidation();
+      });
     };
 
     const renderValidation = (summary) => {
       state.validationSummary = summary;
       const items = [
+        ["Semantic mode", summary.semantic_mode || state.semanticMode || "-"],
+        ["File type", summary.file_type || state.fileType || "-"],
         ["Total rows", summary.total_rows],
         ["Valid SMILES", summary.valid_smiles_count],
         ["Invalid SMILES", summary.invalid_smiles_count],
         ["Duplicates", summary.duplicate_count],
+        ["Rows with values", summary.rows_with_values ?? 0],
         ["Rows with labels", summary.rows_with_labels],
         ["Rows without labels", summary.rows_without_labels],
       ];
@@ -523,6 +620,7 @@
         validationWarning.classList.add("hidden");
       }
       analyzeButton.disabled = !summary.can_run_analysis;
+      updateLabelBuilderState(summary);
       updateConsentState(summary);
     };
 
@@ -543,6 +641,7 @@
         body: JSON.stringify({
           session_id: state.sessionId,
           mapping: mappingPayload(),
+          label_builder: labelBuilderPayload(),
         }),
       });
       const body = await response.json();
@@ -554,7 +653,7 @@
     inspectButton.addEventListener("click", async () => {
       const fileInput = document.getElementById("dataset-file");
       if (!fileInput.files.length) {
-        inspectStatus.textContent = "Select a CSV file before inspection.";
+        inspectStatus.textContent = "Select a supported data file before inspection.";
         inspectStatus.className = "status-box error";
         return;
       }
@@ -567,7 +666,7 @@
 
       const payload = new FormData();
       payload.append("file", fileInput.files[0]);
-      payload.append("input_type", selectValue("input_type") || "molecules_to_screen_only");
+      payload.append("input_type", selectValue("input_type") || "measurement_dataset");
       payload.append("csrf_token", csrfToken());
 
       const response = await fetch("/api/upload/inspect", {method: "POST", body: payload});
@@ -581,13 +680,28 @@
       state.sessionId = body.session_id;
       state.previewRows = body.preview_rows || [];
       state.columns = body.columns || [];
+      state.semanticMode = body.semantic_mode || "";
+      state.fileType = body.file_type || "";
+      state.measurementColumns = body.measurement_columns || [];
+      state.labelBuilderSuggestion = body.label_builder_suggestion || null;
 
-      mappingFields.forEach(([field, id]) => renderSelectOptions(id, state.columns, body.inferred_mapping?.[field] || ""));
+      mappingFields.forEach(([field, id]) => renderSelectOptions(id, state.columns, body.semantic_roles?.[field] || body.inferred_mapping?.[field] || ""));
+      document.getElementById("label-builder-operator").value = state.labelBuilderSuggestion?.operator || ">=";
+      document.getElementById("label-builder-threshold").value = state.labelBuilderSuggestion?.threshold ?? "";
       showWorkflow();
       renderValidation(body.validation_summary);
       renderPreview();
-      inspectStatus.textContent = `Inspection complete. Session: ${body.session_id}`;
+      inspectStatus.textContent = `Inspection complete. Detected ${body.file_type || "dataset"} in ${body.semantic_mode || "screening"} mode. Session: ${body.session_id}`;
       inspectStatus.className = "status-box success";
+    });
+
+    document.getElementById("label-builder-operator").addEventListener("change", refreshValidation);
+    document.getElementById("label-builder-threshold").addEventListener("input", refreshValidation);
+    document.querySelectorAll('#label-builder-options input[type="radio"]').forEach((input) => {
+      input.addEventListener("change", async () => {
+        updateLabelBuilderState(state.validationSummary);
+        await refreshValidation();
+      });
     });
 
     const renderResultWarnings = (warnings) => {
@@ -721,16 +835,25 @@
 
       const payload = new FormData();
       payload.append("session_id", state.sessionId);
-      payload.append("input_type", selectValue("input_type") || "molecules_to_screen_only");
+      payload.append("input_type", selectValue("input_type") || "measurement_dataset");
       payload.append("intent", selectValue("intent") || "rank_uploaded_molecules");
       payload.append("scoring_mode", selectValue("scoring_mode") || "balanced");
       payload.append("consent_choice", selectValue("consent_choice") || "private");
       const mapping = mappingPayload();
+      payload.append("entity_id_column", mapping.entity_id || "");
       payload.append("smiles_column", mapping.smiles || "");
-      payload.append("biodegradable_column", mapping.biodegradable || "");
-      payload.append("molecule_id_column", mapping.molecule_id || "");
+      payload.append("value_column", mapping.value || "");
+      payload.append("label_column", mapping.label || "");
+      payload.append("target_column", mapping.target || "");
+      payload.append("assay_column", mapping.assay || "");
+      payload.append("biodegradable_column", mapping.label || "");
+      payload.append("molecule_id_column", mapping.entity_id || "");
       payload.append("source_column", mapping.source || "");
       payload.append("notes_column", mapping.notes || "");
+      const labelBuilder = labelBuilderPayload();
+      payload.append("label_builder_enabled", String(labelBuilder.enabled));
+      payload.append("label_builder_operator", labelBuilder.operator || ">=");
+      payload.append("label_builder_threshold", labelBuilder.threshold || "");
       payload.append("csrf_token", csrfToken());
 
       const response = await fetch("/upload", {method: "POST", body: payload});

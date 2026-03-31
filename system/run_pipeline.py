@@ -26,15 +26,17 @@ from system.session_report import (
     build_warnings,
 )
 from system.upload_parser import infer_column_mapping
+from system.services.ingestion import normalize_input_type
 
 
 DEFAULT_ANALYSIS_OPTIONS = {
     "session_id": None,
-    "input_type": "molecules_to_screen_only",
+    "input_type": "structure_only_screening",
     "intent": "rank_uploaded_molecules",
     "scoring_mode": "balanced",
     "consent_learning": False,
     "column_mapping": None,
+    "label_builder": {"enabled": False},
 }
 
 
@@ -126,7 +128,11 @@ def run_pipeline(
         message="Normalizing mapped columns and validating uploaded molecules.",
         percent=12,
     )
-    prepared, summary = prepare_analysis_dataframe(df, column_mapping)
+    prepared, summary = prepare_analysis_dataframe(
+        df,
+        column_mapping,
+        label_builder=options.get("label_builder"),
+    )
 
     _emit_progress(
         progress_callback,
@@ -138,7 +144,7 @@ def run_pipeline(
     session_id = _resolve_session_id(options, prepared)
     summary = _validated_normalized_summary(summary, session_id, source_name)
 
-    input_type = str(options.get("input_type") or "molecules_to_screen_only")
+    input_type = normalize_input_type(options.get("input_type"), default="structure_only_screening")
     intent = str(options.get("intent") or "rank_uploaded_molecules")
     consent_learning = bool(options.get("consent_learning"))
     product_tier = str(options.get("product_tier") or "standard")
@@ -230,6 +236,7 @@ def run_pipeline(
         top_candidates=result.get("top_candidates", []),
         warnings=warnings,
         product_tier=product_tier,
+        scored_frame=scored,
     )
     _apply_result_metadata(
         result,

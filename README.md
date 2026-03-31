@@ -104,20 +104,23 @@ venv/bin/python -m unittest discover -s tests -v
 
 ## Upload Behavior
 
-- CSV uploads are inspected first so users can map columns before analysis runs.
-- CSV uploads must include a mapped `smiles` column.
-- Label aliases such as `biodegradable`, `label`, `target`, and `class` are accepted.
-- The upload flow supports input type, intent, scoring mode, and consent selection.
+- Supported upload formats are `CSV`, `TSV`, `TXT` SMILES lists, and `SDF`.
+- Every upload is parsed into a canonical ingestion shape before analysis runs.
+- The upload flow supports three semantic modes: structure-only screening, measurement datasets, and labeled tabular datasets.
+- Users can map semantic roles such as `smiles`, `value`, `label`, `entity_id`, `target`, and `assay`.
+- Measurement uploads can derive labels with a threshold rule before the job starts.
 - Labeled uploads are copied into `data/user_feedback.csv` only if the user explicitly allows learning.
 - Each web run is archived under `data/uploads/<timestamp>/`.
 - Each session writes `upload_session_summary.json`, `analysis_report.json`, `decision_output.json`, and `review_queue.json`.
+- Discovery and Dashboard keep the active session in navigation and fall back to the latest completed workspace session when no `session_id` is selected.
+- Saved sessions can reopen from dedicated artifacts or from nested payloads inside `result.json`, which makes older runs more durable across page reloads.
 - Session-specific pages are available at `/discovery?session_id=<id>` and `/dashboard?session_id=<id>`.
 
 ## Notes
 
 - `GET /` renders the homepage.
 - `GET /upload` renders the upload UI.
-- `POST /api/upload/inspect` inspects a CSV and returns inferred mapping plus validation summary.
+- `POST /api/upload/inspect` inspects a supported file and returns inferred semantic mapping plus validation summary.
 - `POST /api/upload/validate` refreshes validation against the selected mapping.
 - `POST /upload` runs analysis and returns JSON.
 - `GET /discovery` renders the ranked candidates table and review workflow.

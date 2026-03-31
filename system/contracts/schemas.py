@@ -223,6 +223,12 @@ class ValidationStats(ContractBaseModel):
     duplicate_count: int = Field(ge=0)
     rows_with_labels: int = Field(ge=0)
     rows_without_labels: int = Field(ge=0)
+    rows_with_values: int = Field(default=0, ge=0)
+    rows_without_values: int = Field(default=0, ge=0)
+    value_column: str = ""
+    semantic_mode: str = ""
+    label_source: str = ""
+    file_type: str = ""
     positive_label_count: int = Field(default=0, ge=0)
     negative_label_count: int = Field(default=0, ge=0)
     unlabeled_label_count: int = Field(default=0, ge=0)
@@ -245,7 +251,18 @@ class ValidationStats(ContractBaseModel):
             values.get("rows_without_labels", max(total_rows - rows_with_labels, 0)),
             max(total_rows - rows_with_labels, 0),
         )
+        rows_with_values = _int_or_default(values.get("rows_with_values", 0), 0)
+        rows_without_values = _int_or_default(
+            values.get("rows_without_values", max(total_rows - rows_with_values, 0)),
+            max(total_rows - rows_with_values, 0),
+        )
         values["rows_without_labels"] = rows_without_labels
+        values["rows_with_values"] = rows_with_values
+        values["rows_without_values"] = rows_without_values
+        values["value_column"] = _clean_text(values.get("value_column"))
+        values["semantic_mode"] = _clean_text(values.get("semantic_mode"))
+        values["label_source"] = _clean_text(values.get("label_source"))
+        values["file_type"] = _clean_text(values.get("file_type"))
         values["row_count_before"] = _int_or_default(values.get("row_count_before", total_rows), total_rows)
         values["row_count_after"] = _int_or_default(
             values.get("row_count_after", values.get("analyzed_rows", total_rows)),
@@ -272,19 +289,50 @@ class ValidationStats(ContractBaseModel):
         return values
 
 
+class LabelBuilderConfig(ContractBaseModel):
+    enabled: bool = False
+    value_column: str = ""
+    operator: str = ">="
+    threshold: float | None = None
+    positive_label: int = Field(default=1)
+    negative_label: int = Field(default=0)
+
+    @validator("value_column", "operator", pre=True, always=True)
+    def _clean_label_builder_text(cls, value: Any, field) -> str:
+        default = ">=" if field.name == "operator" else ""
+        return _clean_text(value, default=default)
+
+    @root_validator(pre=False)
+    def _validate_rule(cls, values: dict[str, Any]) -> dict[str, Any]:
+        enabled = bool(values.get("enabled"))
+        operator = values.get("operator") or ">="
+        if operator not in {">", ">=", "<", "<=", "=", "=="}:
+            raise ValueError("operator must be one of >, >=, <, <=, =, ==")
+        if enabled and not values.get("value_column"):
+            raise ValueError("value_column is required when label builder is enabled")
+        if enabled and values.get("threshold") is None:
+            raise ValueError("threshold is required when label builder is enabled")
+        return values
+
+
 class UploadInspectionResult(ContractBaseModel):
     schema_version: str = "upload_inspection.v1"
     session_id: str
     created_at: datetime
     filename: str
     input_type: str
+    file_type: str = ""
+    semantic_mode: str = ""
     columns: list[str]
     preview_rows: list[dict[str, str]] = Field(default_factory=list)
     inferred_mapping: dict[str, str | None]
+    semantic_roles: dict[str, str | None] = Field(default_factory=dict)
+    measurement_columns: list[str] = Field(default_factory=list)
+    label_builder_suggestion: LabelBuilderConfig = Field(default_factory=LabelBuilderConfig)
     validation_summary: ValidationStats
     free_tier_assessment: dict[str, Any] = Field(default_factory=dict)
 
-    @validator("filename", "input_type", "session_id", pre=True)
+    @validator("filename", "input_type", "session_id", "file_type", "semantic_mode", pre=True)
     def _strip_required_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -756,9 +804,13 @@ class DecisionArtifactRow(ContractBaseModel):
             return {"is_feasible": bool(value), "reason": ""}
         return {"is_feasible": None, "reason": ""}
 
-    @validator("created_at", "reviewed_at", pre=True)
-    def _coerce_row_datetime(cls, value: Any) -> Any:
-        return _coerce_datetime(value) or (_now_utc() if value is not None else None)
+    @validator("created_at", pre=True)
+    def _coerce_created_at(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("reviewed_at", pre=True)
+    def _coerce_reviewed_at(cls, value: Any) -> Any:
+        return _coerce_datetime(value)
 
     @validator("model_metadata", pre=True)
     def _coerce_model_metadata(cls, value: Any) -> Any:
@@ -928,6 +980,10 @@ class JobState(ContractBaseModel):
 
 def validate_upload_inspection_result(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(UploadInspectionResult, payload))
+
+
+def validate_label_builder_config(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(LabelBuilderConfig, payload))
 
 
 def validate_session_metadata(payload: Any) -> dict[str, Any]:

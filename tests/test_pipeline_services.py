@@ -88,6 +88,39 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(int(summary["analyzed_rows"]), 1)
         self.assertEqual(int(summary["invalid_smiles_count"]), 1)
 
+    def test_prepare_analysis_dataframe_builds_labels_from_measurements(self):
+        frame = pd.DataFrame(
+            [
+                {"smiles": "CCO", "pic50": 6.2, "compound_id": "mol_1", "assay_name": "screen_a"},
+                {"smiles": "CCN", "pic50": 5.4, "compound_id": "mol_2", "assay_name": "screen_a"},
+                {"smiles": "CCC", "pic50": None, "compound_id": "mol_3", "assay_name": "screen_a"},
+            ]
+        )
+
+        prepared, summary = prepare_analysis_dataframe(
+            frame,
+            {
+                "smiles": "smiles",
+                "value": "pic50",
+                "entity_id": "compound_id",
+                "assay": "assay_name",
+            },
+            label_builder={
+                "enabled": True,
+                "value_column": "pic50",
+                "operator": ">=",
+                "threshold": 6.0,
+            },
+        )
+
+        self.assertEqual(prepared["biodegradable"].tolist(), [1, 0, -1])
+        self.assertEqual(prepared["molecule_id"].tolist(), ["mol_1", "mol_2", "mol_3"])
+        self.assertEqual(prepared["assay"].tolist(), ["screen_a", "screen_a", "screen_a"])
+        self.assertEqual(int(summary["rows_with_values"]), 2)
+        self.assertEqual(int(summary["rows_with_labels"]), 2)
+        self.assertEqual(summary["label_source"], "derived")
+        self.assertEqual(summary["semantic_mode"], "measurement_dataset")
+
     def test_decorate_candidates_assigns_ids_buckets_and_review_defaults(self):
         frame = pd.DataFrame(
             [
@@ -215,7 +248,7 @@ class PipelineServicesTest(unittest.TestCase):
             source_name="upload.csv",
             analysis_options={
                 "session_id": session_id,
-                "input_type": "molecules_to_screen_only",
+                "input_type": "structure_only_screening",
                 "intent": "rank_uploaded_molecules",
                 "scoring_mode": "balanced",
                 "consent_learning": False,
@@ -233,7 +266,7 @@ class PipelineServicesTest(unittest.TestCase):
         build_prediction_result_mock.assert_called_once()
         self.assertEqual(result["session_id"], session_id)
         self.assertEqual(result["decision_output"]["session_id"], session_id)
-        self.assertEqual(result["decision_output"]["input_type"], "molecules_to_screen_only")
+        self.assertEqual(result["decision_output"]["input_type"], "structure_only_screening")
         self.assertEqual(result["decision_output"]["intent"], "rank_uploaded_molecules")
         self.assertEqual(result["top_candidates"][0]["candidate_id"], "cand_1")
         self.assertEqual(result["review_queue"]["session_id"], session_id)
@@ -279,7 +312,7 @@ class PipelineServicesTest(unittest.TestCase):
             source_name="upload.csv",
             analysis_options={
                 "session_id": session_id,
-                "input_type": "molecules_to_screen_only",
+                "input_type": "structure_only_screening",
                 "intent": "rank_uploaded_molecules",
                 "scoring_mode": "balanced",
                 "consent_learning": False,

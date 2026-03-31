@@ -6,11 +6,15 @@ from typing import Any
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
 from system.db import resolve_artifact_path
 from system.review_manager import build_review_queue
+from system.session_artifacts import (
+    load_analysis_report_payload,
+    load_decision_artifact_payload,
+    load_evaluation_summary_payload,
+)
 from utils.artifact_writer import REPO_ROOT, uploaded_session_dir
 
 
@@ -18,10 +22,6 @@ DATASET_PATHS = ("uploaded_dataset.csv", "data/data.csv", "data.csv")
 DATASET_ARTIFACT_TYPES = ("upload_csv", "raw_upload_csv")
 CANDIDATE_PATHS = ("scored_candidates.csv", "predicted_candidates.csv", "candidates_results.csv")
 CANDIDATE_ARTIFACT_TYPES = ("scored_candidates_csv", "processed_candidates_csv")
-DECISION_PATHS = ("decision_output.json", "data/decision_output.json")
-DECISION_ARTIFACT_TYPES = ("decision_output_json",)
-ANALYSIS_REPORT_PATHS = ("analysis_report.json", "data/reports/latest_result.json", "data/uploads/latest_result.json")
-ANALYSIS_REPORT_ARTIFACT_TYPES = ("analysis_report_json", "analysis_report_copy_json", "latest_result_json")
 REVIEW_QUEUE_PATHS = ("review_queue.json", "data/review_queue.json")
 REVIEW_QUEUE_ARTIFACT_TYPES = ("review_queue_json",)
 EVOLUTION_PATHS = ("iteration_history.csv",)
@@ -145,31 +145,34 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
             )
         )
     )
-    decision_payload = _load_json(
-        _resolve_run_artifact(
-            session_id=session_id,
-            workspace_id=workspace_id,
-            run_root=run_root,
-            artifact_types=DECISION_ARTIFACT_TYPES,
-            fallback_candidates=DECISION_PATHS,
-        )
-    ) or {}
-    try:
-        decision_payload = normalize_loaded_decision_artifact(
-            decision_payload,
-            session_id=session_id,
-        )
-    except ContractValidationError:
-        decision_payload = {"summary": {"top_experiment_value": 0.0}, "top_experiments": []}
-    analysis_report = _load_json(
-        _resolve_run_artifact(
-            session_id=session_id,
-            workspace_id=workspace_id,
-            run_root=run_root,
-            artifact_types=ANALYSIS_REPORT_ARTIFACT_TYPES,
-            fallback_candidates=ANALYSIS_REPORT_PATHS,
-        )
-    ) or {}
+    decision_payload = load_decision_artifact_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=workspace_id is None,
+    )
+    if str(decision_payload.get("artifact_state") or "missing") == "ok":
+        try:
+            decision_payload = normalize_loaded_decision_artifact(
+                decision_payload,
+                session_id=session_id,
+            )
+        except ContractValidationError:
+            decision_payload = {
+                "summary": {"top_experiment_value": 0.0},
+                "top_experiments": [],
+                "artifact_state": "error",
+                "load_error": "Decision artifact failed contract validation.",
+            }
+    analysis_report = load_analysis_report_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=workspace_id is None,
+    )
+    evaluation_summary = load_evaluation_summary_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=workspace_id is None,
+    )
     review_payload = _load_json(
         _resolve_run_artifact(
             session_id=session_id,
@@ -196,6 +199,24 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         {"label": "Top experiment value", "value": f"{float((decision_payload.get('summary') or {}).get('top_experiment_value', 0.0)):.3f}"},
         {"label": "Pending review", "value": int((review_payload.get("summary") or {}).get("pending_review", 0))},
     ]
+    measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
+    ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
+    if measurement_summary:
+        cards.append({"label": "Rows with values", "value": int(measurement_summary.get("rows_with_values", 0) or 0)})
+    if ranking_diagnostics.get("out_of_domain_rate") is not None:
+        cards.append(
+            {
+                "label": "OOD rate",
+                "value": f"{100 * float(ranking_diagnostics.get('out_of_domain_rate', 0.0)):.1f}%",
+            }
+        )
+    elif ranking_diagnostics.get("spearman_rank_correlation") is not None:
+        cards.append(
+            {
+                "label": "Rank correlation",
+                "value": f"{float(ranking_diagnostics.get('spearman_rank_correlation', 0.0)):.3f}",
+            }
+        )
 
     charts = []
     include_js = True
@@ -289,12 +310,38 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         )
 
     top_candidates = decision_rows[:10]
+    if session_id is None:
+        state = {
+            "kind": "no_session",
+            "message": "No session is selected yet. Open a completed upload session to see its dashboard.",
+        }
+    elif str(decision_payload.get("artifact_state") or "missing") == "error":
+        state = {
+            "kind": "error",
+            "message": str(decision_payload.get("load_error") or "The dashboard could not read the saved decision artifact for this session."),
+        }
+    elif str(decision_payload.get("artifact_state") or "missing") == "missing":
+        state = {
+            "kind": "artifact_missing",
+            "message": str(decision_payload.get("load_error") or "No saved decision artifact was found for this session yet."),
+        }
+    elif top_candidates:
+        state = {"kind": "ready", "message": ""}
+    else:
+        state = {
+            "kind": "empty",
+            "message": "This session has no ranked candidates yet, even though the run context exists.",
+        }
     return {
+        "state": state,
         "session_id": session_id,
+        "source_path": decision_payload.get("source_path") or "",
+        "source_updated_at": decision_payload.get("source_updated_at") or "",
         "cards": cards,
         "warnings": warnings,
         "charts": charts,
         "top_candidates": top_candidates,
         "review_summary": review_payload.get("summary", {}),
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},
+        "evaluation_summary": evaluation_summary if isinstance(evaluation_summary, dict) else {},
     }

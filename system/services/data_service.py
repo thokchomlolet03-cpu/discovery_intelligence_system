@@ -134,17 +134,37 @@ def labeled_subset(df):
 def prepare_analysis_dataframe(
     df: pd.DataFrame,
     column_mapping: dict[str, str | None],
+    label_builder: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    from system.upload_parser import apply_column_mapping, validation_summary
+    from system.upload_parser import build_analysis_frame, validation_summary
 
-    mapped = apply_column_mapping(df, column_mapping)
-    summary = validation_summary(df, column_mapping)
+    mapped = build_analysis_frame(df, column_mapping, label_builder=label_builder)
+    summary = validation_summary(df, column_mapping, label_builder=label_builder)
 
     prepared = mapped.copy()
     prepared["smiles"] = prepared["smiles"].apply(canonicalize_smiles)
     prepared = prepared[prepared["smiles"].notna()].reset_index(drop=True)
     prepared["biodegradable"] = pd.to_numeric(prepared["biodegradable"], errors="coerce").fillna(-1).astype(int)
-    prepared["molecule_id"] = prepared["molecule_id"].fillna("").astype(str)
+    if "entity_id" not in prepared.columns:
+        prepared["entity_id"] = ""
+    prepared["entity_id"] = prepared["entity_id"].fillna("").astype(str)
+    if "molecule_id" not in prepared.columns:
+        prepared["molecule_id"] = prepared["entity_id"]
+    prepared["molecule_id"] = prepared["molecule_id"].fillna(prepared["entity_id"]).astype(str)
+    if "value" in prepared.columns:
+        prepared["value"] = pd.to_numeric(prepared["value"], errors="coerce")
+    else:
+        prepared["value"] = pd.Series([np.nan] * len(prepared), index=prepared.index)
+    if "target" not in prepared.columns:
+        prepared["target"] = ""
+    if "assay" not in prepared.columns:
+        prepared["assay"] = ""
+    if "source" not in prepared.columns:
+        prepared["source"] = ""
+    if "notes" not in prepared.columns:
+        prepared["notes"] = ""
+    prepared["target"] = prepared["target"].fillna("").astype(str)
+    prepared["assay"] = prepared["assay"].fillna("").astype(str)
     prepared["source"] = prepared["source"].fillna("").astype(str)
     prepared["notes"] = prepared["notes"].fillna("").astype(str)
 

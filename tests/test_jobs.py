@@ -3,10 +3,12 @@ import os
 import re
 import tempfile
 import unittest
+import io
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from rdkit import Chem
 
 import app as discovery_app
 from system.auth import hash_password
@@ -373,6 +375,89 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn("job_url", body)
         self.assertIn("result_url", body)
         mock_start.assert_called_once()
+
+    def test_inspect_route_accepts_smiles_text_uploads(self):
+        response = self.client.post(
+            "/api/upload/inspect",
+            data={"csrf_token": self._authenticated_csrf(), "input_type": "structure_only_screening"},
+            files={"file": ("molecules.txt", io.BytesIO(b"CCO ethanol\nCCN ethylamine\n"), "text/plain")},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["file_type"], "smiles_txt")
+        self.assertEqual(body["semantic_mode"], "structure_only_screening")
+        self.assertEqual(body["semantic_roles"]["smiles"], "smiles")
+        self.assertEqual(body["semantic_roles"]["entity_id"], "entity_id")
+
+    def test_inspect_route_accepts_sdf_uploads(self):
+        molecule = Chem.MolFromSmiles("CCO")
+        molecule.SetProp("_Name", "mol_1")
+        molecule.SetProp("pIC50", "6.2")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sdf_path = Path(tmpdir) / "molecules.sdf"
+            writer = Chem.SDWriter(str(sdf_path))
+            writer.write(molecule)
+            writer.close()
+
+            response = self.client.post(
+                "/api/upload/inspect",
+                data={"csrf_token": self._authenticated_csrf(), "input_type": "measurement_dataset"},
+                files={"file": ("molecules.sdf", io.BytesIO(sdf_path.read_bytes()), "chemical/x-mdl-sdfile")},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["file_type"], "sdf")
+        self.assertEqual(body["semantic_roles"]["smiles"], "smiles")
+        self.assertEqual(body["semantic_roles"]["entity_id"], "entity_id")
+        self.assertIn("pic50", body["columns"])
+
+    def test_upload_route_passes_label_builder_configuration(self):
+        queued_job = DatabaseJobStore().create_job(
+            session_id="session_1",
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
+
+        with (
+            patch.object(
+                discovery_app,
+                "load_session_metadata",
+                return_value={
+                    "filename": "measurements.csv",
+                    "semantic_roles": {"smiles": "smiles", "value": "pic50", "entity_id": "compound_id"},
+                    "validation_summary": {"total_rows": 3},
+                },
+            ),
+            patch.object(discovery_app.job_manager, "start_analysis_job", return_value=queued_job) as mock_start,
+        ):
+            response = self.client.post(
+                "/upload",
+                data={
+                    "session_id": "session_1",
+                    "csrf_token": self._authenticated_csrf(),
+                    "input_type": "measurement_dataset",
+                    "intent": "rank_uploaded_molecules",
+                    "scoring_mode": "balanced",
+                    "consent_choice": "private",
+                    "smiles_column": "smiles",
+                    "value_column": "pic50",
+                    "entity_id_column": "compound_id",
+                    "label_builder_enabled": "true",
+                    "label_builder_operator": ">=",
+                    "label_builder_threshold": "6.0",
+                },
+            )
+
+        self.assertEqual(response.status_code, 202)
+        analysis_options = mock_start.call_args.kwargs["analysis_options"]
+        self.assertEqual(analysis_options["column_mapping"]["value"], "pic50")
+        self.assertEqual(analysis_options["column_mapping"]["entity_id"], "compound_id")
+        self.assertTrue(analysis_options["label_builder"]["enabled"])
+        self.assertEqual(analysis_options["label_builder"]["operator"], ">=")
+        self.assertEqual(analysis_options["label_builder"]["threshold"], 6.0)
 
     def test_job_status_endpoint_returns_persisted_job_metadata(self):
         queued_job = DatabaseJobStore().create_job(

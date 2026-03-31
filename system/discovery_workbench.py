@@ -319,6 +319,7 @@ def build_discovery_workbench(
     system_version: str,
 ) -> dict[str, Any]:
     artifact_state = str(decision_output.get("artifact_state") or "ok")
+    analysis_payload = analysis_report if isinstance(analysis_report, dict) else {}
     if artifact_state == "error":
         state = {
             "kind": "error",
@@ -338,12 +339,14 @@ def build_discovery_workbench(
                 "dataset_version": resolve_dataset_version(session_id, decision_output),
             },
             "review_summary": {status.replace(" ", "_") if " " in status else status: 0 for status in STATUS_ORDER},
-            "warnings": list((analysis_report or {}).get("warnings", [])) if isinstance(analysis_report, dict) else [],
-            "recommendation_summary": str((analysis_report or {}).get("top_level_recommendation_summary") or "").strip(),
+            "warnings": list(analysis_payload.get("warnings", [])),
+            "recommendation_summary": str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
             "last_updated_label": humanize_timestamp(decision_output.get("source_updated_at")),
             "last_updated": _to_iso(decision_output.get("source_updated_at")),
             "system_version": system_version,
             "candidates": [],
+            "measurement_summary": analysis_payload.get("measurement_summary", {}),
+            "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
             "interpretation": [
                 {"label": "Confidence", "text": "Model belief strength for the current candidate."},
                 {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
@@ -374,12 +377,14 @@ def build_discovery_workbench(
                     "dataset_version": resolve_dataset_version(session_id, decision_output),
                 },
                 "review_summary": {"suggested": 0, "under_review": 0, "approved": 0, "rejected": 0, "tested": 0, "ingested": 0},
-                "warnings": list((analysis_report or {}).get("warnings", [])) if isinstance(analysis_report, dict) else [],
-                "recommendation_summary": str((analysis_report or {}).get("top_level_recommendation_summary") or "").strip(),
+                "warnings": list(analysis_payload.get("warnings", [])),
+                "recommendation_summary": str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
                 "last_updated_label": humanize_timestamp(decision_output.get("source_updated_at")),
                 "last_updated": _to_iso(decision_output.get("source_updated_at")),
                 "system_version": system_version,
                 "candidates": [],
+                "measurement_summary": analysis_payload.get("measurement_summary", {}),
+                "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
                 "interpretation": [
                     {"label": "Confidence", "text": "Model belief strength for the current candidate."},
                     {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
@@ -414,7 +419,17 @@ def build_discovery_workbench(
         counts = review_summary_from_candidates(candidates)
 
     has_candidates = bool(candidates)
-    if not has_candidates:
+    if artifact_state == "missing" and session_id:
+        state = {
+            "kind": "artifact_missing",
+            "message": str(decision_output.get("load_error") or "No saved decision artifact was found for this session yet."),
+        }
+    elif not has_candidates and not session_id:
+        state = {
+            "kind": "no_session",
+            "message": "No session is selected yet. Open a completed upload session or run a new analysis.",
+        }
+    elif not has_candidates:
         state = {
             "kind": "empty",
             "message": "No discovery results available yet. Run analysis or upload a dataset to generate recommendations.",
@@ -445,17 +460,20 @@ def build_discovery_workbench(
             "tested": int(counts.get("tested", 0)),
             "ingested": int(counts.get("ingested", 0)),
         },
-        "warnings": list((analysis_report or {}).get("warnings", [])) if isinstance(analysis_report, dict) else [],
-        "recommendation_summary": str((analysis_report or {}).get("top_level_recommendation_summary") or "").strip(),
+        "warnings": list(analysis_payload.get("warnings", [])),
+        "recommendation_summary": str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
         "last_updated_label": humanize_timestamp(last_updated),
         "last_updated": _to_iso(last_updated),
         "system_version": system_version,
         "candidates": candidates,
+        "measurement_summary": analysis_payload.get("measurement_summary", {}),
+        "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
         "interpretation": [
             {"label": "Confidence", "text": "Model belief strength for the current candidate."},
             {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
             {"label": "Novelty", "text": "How different the candidate is from known reference chemistry."},
             {"label": "Experiment Value", "text": "Combined prioritization score for what to test next."},
-            {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, learn reduces uncertainty."},
+            {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, and learn reduces uncertainty."},
+            {"label": "Observed value", "text": "When uploaded measurements exist, compare the ranking against those values rather than treating the model score as ground truth."},
         ],
     }

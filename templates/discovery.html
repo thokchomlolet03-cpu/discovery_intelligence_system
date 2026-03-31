@@ -32,6 +32,35 @@
       <p>These results are recommendations, not experimental truth. Use them to prioritize review and testing.</p>
     </section>
 
+    <section class="panel discovery-state-panel">
+      {% if session_view.session_id %}
+        <div class="state-icon">Session {{ session_view.session_id }}</div>
+        <h2>
+          {% if session_view.selection_reason == "requested" %}
+            Viewing the requested session.
+          {% elif session_view.selection_reason == "active" %}
+            Viewing your active session.
+          {% else %}
+            Viewing the latest completed session for this workspace.
+          {% endif %}
+        </h2>
+        <p>
+          Discovery is reading saved artifacts for this session rather than a generic global snapshot.
+          {% if workbench.source_path %}Source: {{ workbench.source_path }}.{% endif %}
+        </p>
+      {% else %}
+        <div class="state-icon">No session</div>
+        <h2>No session is selected yet.</h2>
+        <p>Run an upload analysis or open the latest completed session before using the discovery workbench.</p>
+      {% endif %}
+      <div class="cta-row">
+        <a class="button button-primary" href="/upload">Upload Data</a>
+        {% if session_view.latest_session_id and session_view.latest_session_id != session_view.session_id %}
+          <a class="button button-secondary" href="/discovery?session_id={{ session_view.latest_session_id }}">Open latest completed session</a>
+        {% endif %}
+      </div>
+    </section>
+
     <section class="discovery-summary-grid">
       <article class="panel discovery-summary-card">
         <span class="panel-label">Iteration</span>
@@ -62,6 +91,45 @@
         <strong>{{ workbench.summary.dataset_version }}</strong>
       </article>
     </section>
+
+    {% if workbench.measurement_summary or workbench.ranking_diagnostics %}
+      <section class="panel discovery-interpretation-panel">
+        <div class="section-header">
+          <div>
+            <h2>Scientific Run Context</h2>
+            <p class="helper-copy">Inspect the evidence shape, measurement coverage, and ranking diagnostics for this session.</p>
+          </div>
+        </div>
+        <div class="interpretation-grid">
+          {% if workbench.measurement_summary %}
+            <article class="interpretation-card">
+              <strong>Semantic mode</strong>
+              <p>{{ workbench.measurement_summary.semantic_mode or "Not detected" }}</p>
+            </article>
+            <article class="interpretation-card">
+              <strong>Rows with values</strong>
+              <p>{{ workbench.measurement_summary.rows_with_values or 0 }}</p>
+            </article>
+            <article class="interpretation-card">
+              <strong>Rows with labels</strong>
+              <p>{{ workbench.measurement_summary.rows_with_labels or 0 }}</p>
+            </article>
+          {% endif %}
+          {% if workbench.ranking_diagnostics.spearman_rank_correlation is not none %}
+            <article class="interpretation-card">
+              <strong>Rank correlation</strong>
+              <p>{{ "%.3f"|format(workbench.ranking_diagnostics.spearman_rank_correlation or 0) }}</p>
+            </article>
+          {% endif %}
+          {% if workbench.ranking_diagnostics.out_of_domain_rate is not none %}
+            <article class="interpretation-card">
+              <strong>Out-of-domain rate</strong>
+              <p>{{ "%.1f"|format((workbench.ranking_diagnostics.out_of_domain_rate or 0) * 100) }}%</p>
+            </article>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
 
     {% if workbench.state.kind == "ready" %}
       <section class="panel discovery-filter-panel">
@@ -244,7 +312,7 @@
           </article>
         </div>
       </section>
-    {% elif workbench.state.kind == "empty" %}
+    {% elif workbench.state.kind in ["empty", "no_session", "artifact_missing"] %}
       <section class="panel discovery-filter-panel">
         <div class="section-header">
           <div>
@@ -255,12 +323,26 @@
       </section>
 
       <section class="panel discovery-state-panel">
-        <div class="state-icon">No results</div>
-        <h2>No discovery results available yet.</h2>
-        <p>Run analysis or upload a dataset to generate recommendations.</p>
+        <div class="state-icon">
+          {% if workbench.state.kind == "artifact_missing" %}Artifact missing{% elif workbench.state.kind == "no_session" %}No session{% else %}No results{% endif %}
+        </div>
+        <h2>
+          {% if workbench.state.kind == "artifact_missing" %}
+            Saved discovery artifacts are not available for this session yet.
+          {% elif workbench.state.kind == "no_session" %}
+            No session is selected for discovery.
+          {% else %}
+            No discovery results available yet.
+          {% endif %}
+        </h2>
+        <p>{{ workbench.state.message }}</p>
         <div class="cta-row">
           <a class="button button-primary" href="/upload">Upload Data</a>
+          {% if session_view.latest_session_id and session_view.latest_session_id != session_view.session_id %}
+            <a class="button button-secondary" href="/discovery?session_id={{ session_view.latest_session_id }}">Open latest completed session</a>
+          {% else %}
           <a class="button button-secondary" href="/">Go Home</a>
+          {% endif %}
         </div>
       </section>
 
@@ -298,7 +380,7 @@
       <section class="panel discovery-state-panel">
         <div class="state-icon">Artifact error</div>
         <h2>Current decision artifact could not be loaded.</h2>
-        <p>Please rerun the pipeline or check output integrity.</p>
+        <p>{{ workbench.state.message }}</p>
         <div class="cta-row">
           <a class="button button-primary" href="{{ refresh_url }}">Refresh results</a>
           <a class="button button-secondary" href="/upload">Upload Data</a>

@@ -2,6 +2,7 @@ import unittest
 
 from system.contracts import (
     ContractValidationError,
+    validate_label_builder_config,
     validate_decision_artifact,
     validate_review_event_record,
 )
@@ -89,6 +90,20 @@ class ContractValidationTest(unittest.TestCase):
         self.assertEqual(review["status"], "approved")
         self.assertEqual(review["previous_status"], "suggested")
         self.assertEqual(review["reviewer"], "qa")
+
+    def test_label_builder_config_validates_threshold_rule(self):
+        validated = validate_label_builder_config(
+            {
+                "enabled": True,
+                "value_column": "pic50",
+                "operator": ">=",
+                "threshold": 6.0,
+            }
+        )
+
+        self.assertTrue(validated["enabled"])
+        self.assertEqual(validated["value_column"], "pic50")
+        self.assertEqual(validated["threshold"], 6.0)
 
 
 if __name__ == "__main__":

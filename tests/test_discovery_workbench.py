@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import app as discovery_app
 from system.auth import hash_password
 from system.db import ensure_database_ready, reset_database_state
-from system.db.repositories import SessionRepository, UserRepository, WorkspaceRepository
+from system.db.repositories import ArtifactRepository, SessionRepository, UserRepository, WorkspaceRepository
 from system.discovery_workbench import build_discovery_workbench
 
 
@@ -178,6 +178,40 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return self._extract_csrf_token(response.text)
 
+    def _store_result_only_session(self, session_id: str) -> None:
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            source_name="upload.csv",
+            input_type="measurement_dataset",
+            latest_job_id="job_1",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        session_dir = Path(self.tmpdir.name) / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        result_path = session_dir / "result.json"
+        result_path.write_text(
+            discovery_app.json.dumps(
+                {
+                    "decision_output": canonical_decision_output(),
+                    "analysis_report": {
+                        "warnings": [],
+                        "top_level_recommendation_summary": "Start with the top candidate.",
+                        "measurement_summary": {"semantic_mode": "measurement_dataset", "rows_with_values": 12},
+                        "ranking_diagnostics": {"out_of_domain_rate": 0.2},
+                    },
+                }
+            )
+        )
+        ArtifactRepository().register_artifact(
+            artifact_type="result_json",
+            path=result_path,
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
+
     def test_discovery_page_renders_workbench_sections(self):
         response = self.client.get("/discovery")
 
@@ -185,6 +219,46 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("Discovery Results", response.text)
         self.assertIn("Filter And Sort", response.text)
         self.assertIn("Review Workflow Summary", response.text)
+
+    def test_discovery_page_uses_latest_completed_session_when_no_query_is_provided(self):
+        self._store_result_only_session("session_latest")
+
+        response = self.client.get("/discovery")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Viewing the latest completed session", response.text)
+        self.assertIn("session_latest", response.text)
+        self.assertIn("cand_1", response.text)
+
+    def test_discovery_page_can_reopen_session_from_nested_result_payload(self):
+        self._store_result_only_session("session_result_only")
+
+        response = self.client.get("/discovery?session_id=session_result_only")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("cand_1", response.text)
+        self.assertIn("measurement_dataset", response.text)
+        self.assertNotIn("Current decision artifact could not be loaded", response.text)
+
+    def test_dashboard_page_uses_latest_completed_session_when_no_query_is_provided(self):
+        self._store_result_only_session("session_dashboard_latest")
+
+        response = self.client.get("/dashboard")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Viewing the latest completed session dashboard.", response.text)
+        self.assertIn("session_dashboard_latest", response.text)
+        self.assertIn("cand_1", response.text)
+
+    def test_dashboard_page_can_reopen_session_from_nested_result_payload(self):
+        self._store_result_only_session("session_dashboard_result_only")
+
+        response = self.client.get("/dashboard?session_id=session_dashboard_result_only")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("session_dashboard_result_only", response.text)
+        self.assertIn("measurement_dataset", response.text)
+        self.assertIn("cand_1", response.text)
 
     def test_reviews_api_accepts_bulk_payload(self):
         SessionRepository().upsert_session(

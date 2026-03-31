@@ -27,7 +27,10 @@ from system.auth import (
     require_page_auth_context,
 )
 from system.billing import LIMIT_MAX_UPLOAD_ROWS, PlanEnforcementError, billing_service
-from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
+from system.contracts import (
+    ContractValidationError,
+    validate_label_builder_config,
+)
 from system.db import ensure_database_ready, resolve_session_artifact_path
 from system.db.repositories import SessionRepository
 from system.discovery_workbench import build_discovery_workbench
@@ -54,13 +57,17 @@ from system.upload_parser import (
     session_dir,
     validation_summary,
 )
-from system.services.artifact_service import artifact_display_path
+from system.services.ingestion import normalize_input_type
+from system.session_artifacts import (
+    load_analysis_report_payload,
+    load_decision_artifact_payload,
+    load_evaluation_summary_payload,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
-DATA_DIR = BASE_DIR / "data"
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +81,9 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 job_manager = JobManager()
 session_repository = SessionRepository()
+UPLOAD_ROLE_FIELDS = ("entity_id", "smiles", "value", "label", "target", "assay", "source", "notes")
+ACTIVE_SESSION_ID_KEY = "active_session_id"
+ACTIVE_SESSION_WORKSPACE_KEY = "active_session_workspace_id"
 
 
 @app.on_event("startup")
@@ -95,10 +105,24 @@ def _load_json(path: Path | None) -> Any:
 
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     auth = get_optional_auth_context(request)
+    active_session_id = ""
+    if auth is not None:
+        stored_workspace = str(request.session.get(ACTIVE_SESSION_WORKSPACE_KEY) or "")
+        stored_session_id = str(request.session.get(ACTIVE_SESSION_ID_KEY) or "")
+        if stored_session_id and stored_workspace == auth.workspace_id:
+            try:
+                session_repository.get_session(stored_session_id, workspace_id=auth.workspace_id)
+                active_session_id = stored_session_id
+            except FileNotFoundError:
+                request.session.pop(ACTIVE_SESSION_ID_KEY, None)
+                request.session.pop(ACTIVE_SESSION_WORKSPACE_KEY, None)
     return {
         "request": request,
         **build_template_auth_context(request),
         "current_workspace_plan": billing_service.plan_summary(auth.workspace) if auth is not None else None,
+        "active_session_id": active_session_id,
+        "nav_discovery_url": f"/discovery?session_id={active_session_id}" if active_session_id else "/discovery",
+        "nav_dashboard_url": f"/dashboard?session_id={active_session_id}" if active_session_id else "/dashboard",
         **extra,
     }
 
@@ -152,6 +176,7 @@ def _create_upload_session_with_plan(
     filename: str,
     input_type: str,
 ) -> dict[str, Any]:
+    input_type = normalize_input_type(input_type)
     plan_summary = billing_service.ensure_upload_allowed(auth.workspace, creating_new_session=True)
     upload_rows_limit = plan_summary["limits"].get(LIMIT_MAX_UPLOAD_ROWS)
     try:
@@ -208,54 +233,11 @@ def load_decision_output(
     workspace_id: str | None = None,
     allow_global_fallback: bool = True,
 ) -> dict[str, Any]:
-    candidate_paths = []
-    if session_id:
-        target = session_artifact_path(session_id, "decision_output.json", workspace_id=workspace_id)
-        if target is not None:
-            candidate_paths.append(target)
-    elif allow_global_fallback:
-        candidate_paths.extend([DATA_DIR / "decision_output.json", BASE_DIR / "decision_output.json"])
-
-    default_payload = {
-        "session_id": session_id or "public",
-        "iteration": 0,
-        "summary": {"top_k": 0, "candidate_count": 0, "risk_counts": {}, "top_experiment_value": 0.0},
-        "top_experiments": [],
-        "artifact_state": "missing",
-    }
-    for path in candidate_paths:
-        if path.exists():
-            try:
-                payload = _load_json(path) or {}
-            except (json.JSONDecodeError, OSError) as exc:
-                logger.warning("Could not load decision artifact from %s: %s", path, exc)
-                return {
-                    **default_payload,
-                    "artifact_state": "error",
-                    "load_error": "Decision artifact could not be loaded.",
-                    "source_path": artifact_display_path(path),
-                }
-            source_path = artifact_display_path(path)
-            source_updated_at = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()
-            try:
-                return normalize_loaded_decision_artifact(
-                    payload,
-                    session_id=session_id,
-                    generated_at=source_updated_at,
-                    source_path=source_path,
-                    source_updated_at=source_updated_at,
-                    artifact_state="ok",
-                )
-            except ContractValidationError as exc:
-                logger.warning("Decision artifact contract validation failed for %s: %s", path, exc)
-                return {
-                    **default_payload,
-                    "artifact_state": "error",
-                    "load_error": "Decision artifact failed contract validation.",
-                    "source_path": source_path,
-                    "source_updated_at": source_updated_at,
-                }
-    return default_payload
+    return load_decision_artifact_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=allow_global_fallback,
+    )
 
 
 def load_analysis_report(
@@ -264,19 +246,11 @@ def load_analysis_report(
     workspace_id: str | None = None,
     allow_global_fallback: bool = True,
 ) -> dict[str, Any]:
-    candidate_paths = []
-    if session_id:
-        target = session_artifact_path(session_id, "analysis_report.json", workspace_id=workspace_id)
-        if target is not None:
-            candidate_paths.append(target)
-    elif allow_global_fallback:
-        candidate_paths.append(DATA_DIR / "uploads" / "latest_result.json")
-    for path in candidate_paths:
-        if path.exists():
-            payload = _load_json(path)
-            if isinstance(payload, dict):
-                return payload.get("analysis_report", payload)
-    return {}
+    return load_analysis_report_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=allow_global_fallback,
+    )
 
 
 def load_evaluation_summary(
@@ -285,21 +259,11 @@ def load_evaluation_summary(
     workspace_id: str | None = None,
     allow_global_fallback: bool = True,
 ) -> dict[str, Any]:
-    candidate_paths = []
-    if session_id:
-        target = session_artifact_path(session_id, "evaluation_summary.json", workspace_id=workspace_id)
-        if target is not None:
-            candidate_paths.append(target)
-    elif allow_global_fallback:
-        candidate_paths.extend([BASE_DIR / "evaluation_summary.json", DATA_DIR / "evaluation_summary.json"])
-    for path in candidate_paths:
-        if path.exists():
-            try:
-                payload = _load_json(path)
-            except (json.JSONDecodeError, OSError):
-                return {}
-            return payload if isinstance(payload, dict) else {}
-    return {}
+    return load_evaluation_summary_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=allow_global_fallback,
+    )
 
 
 def _job_response_payload(job: dict[str, Any]) -> dict[str, Any]:
@@ -309,6 +273,91 @@ def _job_response_payload(job: dict[str, Any]) -> dict[str, Any]:
         "result_url": f"/api/jobs/{job['job_id']}/result",
         "discovery_url": f"/discovery?session_id={job['session_id']}",
         "dashboard_url": f"/dashboard?session_id={job['session_id']}",
+    }
+
+
+def _persist_active_session(request: Request, workspace_id: str, session_id: str | None) -> None:
+    if not session_id:
+        request.session.pop(ACTIVE_SESSION_ID_KEY, None)
+        request.session.pop(ACTIVE_SESSION_WORKSPACE_KEY, None)
+        return
+    request.session[ACTIVE_SESSION_ID_KEY] = str(session_id)
+    request.session[ACTIVE_SESSION_WORKSPACE_KEY] = str(workspace_id)
+
+
+def _stored_active_session_id(request: Request, workspace_id: str) -> str | None:
+    stored_session_id = str(request.session.get(ACTIVE_SESSION_ID_KEY) or "").strip()
+    stored_workspace_id = str(request.session.get(ACTIVE_SESSION_WORKSPACE_KEY) or "").strip()
+    if not stored_session_id or stored_workspace_id != workspace_id:
+        return None
+    try:
+        session_repository.get_session(stored_session_id, workspace_id=workspace_id)
+    except FileNotFoundError:
+        request.session.pop(ACTIVE_SESSION_ID_KEY, None)
+        request.session.pop(ACTIVE_SESSION_WORKSPACE_KEY, None)
+        return None
+    return stored_session_id
+
+
+def _session_job_status(session_metadata: dict[str, Any] | None) -> str:
+    metadata = (session_metadata or {}).get("summary_metadata") if isinstance(session_metadata, dict) else {}
+    return str((metadata or {}).get("last_job_status") or "").strip().lower()
+
+
+def _session_has_results(session_id: str, workspace_id: str) -> bool:
+    for filename in ("decision_output.json", "result.json"):
+        target = session_artifact_path(session_id, filename, workspace_id=workspace_id)
+        if target is not None and target.exists():
+            return True
+    return False
+
+
+def _latest_workspace_session(workspace_id: str) -> dict[str, Any] | None:
+    sessions = session_repository.list_sessions(workspace_id, limit=25)
+    for session in sessions:
+        if _session_job_status(session) == "succeeded" and _session_has_results(session["session_id"], workspace_id):
+            return session
+    for session in sessions:
+        if _session_has_results(session["session_id"], workspace_id):
+            return session
+    return sessions[0] if sessions else None
+
+
+def _resolve_session_view(
+    request: Request,
+    auth: AuthContext,
+    requested_session_id: str | None,
+) -> dict[str, Any]:
+    latest_session = _latest_workspace_session(auth.workspace_id)
+    latest_session_id = str((latest_session or {}).get("session_id") or "")
+    stored_session_id = _stored_active_session_id(request, auth.workspace_id)
+
+    if requested_session_id:
+        _ensure_session_access(requested_session_id, auth.workspace_id)
+        resolved_session_id = requested_session_id
+        selection_reason = "requested"
+    else:
+        resolved_session_id = stored_session_id or latest_session_id or None
+        selection_reason = "active" if resolved_session_id and resolved_session_id == stored_session_id else "latest_completed"
+        if not resolved_session_id:
+            selection_reason = "none"
+
+    session_record: dict[str, Any] | None = None
+    if resolved_session_id:
+        try:
+            session_record = session_repository.get_session(resolved_session_id, workspace_id=auth.workspace_id)
+            _persist_active_session(request, auth.workspace_id, resolved_session_id)
+        except FileNotFoundError:
+            resolved_session_id = None
+            selection_reason = "none"
+
+    return {
+        "session_id": resolved_session_id,
+        "requested_session_id": requested_session_id,
+        "selection_reason": selection_reason,
+        "latest_session_id": latest_session_id or None,
+        "latest_session": latest_session,
+        "session_record": session_record,
     }
 
 
@@ -328,23 +377,48 @@ def _resolve_column_mapping(
     metadata: dict[str, Any],
     submitted_mapping: dict[str, str | None],
 ) -> dict[str, str | None]:
+    metadata_roles = metadata.get("semantic_roles") or metadata.get("inferred_mapping") or {}
     resolved = {
-        field: submitted_mapping.get(field) or (metadata.get("inferred_mapping") or {}).get(field)
-        for field in ("smiles", "biodegradable", "molecule_id", "source", "notes")
+        field: submitted_mapping.get(field) or metadata_roles.get(field)
+        for field in UPLOAD_ROLE_FIELDS
     }
     if resolved.get("smiles"):
         return resolved
 
     dataframe = load_session_dataframe(session_id, workspace_id=workspace_id)
-    inferred_mapping = infer_column_mapping(list(dataframe.columns))
+    inferred_mapping = infer_column_mapping(list(dataframe.columns), dataframe=dataframe)
     return {
         field: resolved.get(field) or inferred_mapping.get(field)
-        for field in ("smiles", "biodegradable", "molecule_id", "source", "notes")
+        for field in UPLOAD_ROLE_FIELDS
     }
+
+
+def _resolve_label_builder_config(
+    *,
+    value_column: str | None,
+    enabled: str | bool | None,
+    operator: str | None,
+    threshold: str | float | None,
+) -> dict[str, Any]:
+    enabled_flag = enabled if isinstance(enabled, bool) else str(enabled or "").strip().lower() in {"1", "true", "yes", "on"}
+    threshold_value: float | None
+    if threshold in (None, ""):
+        threshold_value = None
+    else:
+        threshold_value = float(threshold)
+    return validate_label_builder_config(
+        {
+            "enabled": enabled_flag,
+            "value_column": value_column or "",
+            "operator": operator or ">=",
+            "threshold": threshold_value,
+        }
+    )
 
 
 async def _enqueue_analysis_job(
     *,
+    request: Request,
     auth: AuthContext,
     file: UploadFile | None,
     session_id: str | None,
@@ -352,12 +426,21 @@ async def _enqueue_analysis_job(
     intent: str,
     scoring_mode: str,
     consent_choice: str,
+    value_column: str | None,
+    label_column: str | None,
+    entity_id_column: str | None,
+    target_column: str | None,
+    assay_column: str | None,
     smiles_column: str | None,
     biodegradable_column: str | None,
     molecule_id_column: str | None,
     source_column: str | None,
     notes_column: str | None,
+    label_builder_enabled: str | bool | None,
+    label_builder_operator: str | None,
+    label_builder_threshold: str | float | None,
 ) -> JSONResponse:
+    input_type = normalize_input_type(input_type)
     metadata: dict[str, Any]
     upload_rows = 0
 
@@ -370,7 +453,7 @@ async def _enqueue_analysis_job(
         billing_service.ensure_upload_allowed(auth.workspace, upload_rows=upload_rows, creating_new_session=False)
     else:
         if file is None or not file.filename:
-            raise HTTPException(status_code=400, detail="Provide a CSV file or an existing session_id.")
+            raise HTTPException(status_code=400, detail="Provide a supported data file or an existing session_id.")
         payload = await file.read()
         if not payload:
             raise HTTPException(status_code=400, detail="The uploaded file is empty.")
@@ -384,7 +467,7 @@ async def _enqueue_analysis_job(
         except PlanEnforcementError:
             raise
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Could not inspect CSV file: {exc}") from exc
+            raise HTTPException(status_code=400, detail=f"Could not inspect uploaded file: {exc}") from exc
         session_id = str(metadata["session_id"])
         upload_rows = int(((metadata.get("validation_summary") or {}).get("total_rows")) or 0)
 
@@ -392,9 +475,12 @@ async def _enqueue_analysis_job(
     billing_service.ensure_upload_allowed(auth.workspace, upload_rows=upload_rows, creating_new_session=False)
     billing_service.ensure_analysis_allowed(auth.workspace, intent=intent)
     submitted_mapping = {
+        "entity_id": entity_id_column or molecule_id_column,
         "smiles": smiles_column,
-        "biodegradable": biodegradable_column,
-        "molecule_id": molecule_id_column,
+        "value": value_column,
+        "label": label_column or biodegradable_column,
+        "target": target_column,
+        "assay": assay_column,
         "source": source_column,
         "notes": notes_column,
     }
@@ -410,6 +496,15 @@ async def _enqueue_analysis_job(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        label_builder = _resolve_label_builder_config(
+            value_column=column_mapping.get("value"),
+            enabled=label_builder_enabled,
+            operator=label_builder_operator,
+            threshold=label_builder_threshold,
+        )
+    except (ContractValidationError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid label builder configuration: {exc}") from exc
 
     job = job_manager.start_analysis_job(
         session_id=session_id,
@@ -424,8 +519,10 @@ async def _enqueue_analysis_job(
             "scoring_mode": scoring_mode,
             "consent_learning": consent_choice == "allow_learning",
             "column_mapping": column_mapping,
+            "label_builder": label_builder,
         },
     )
+    _persist_active_session(request, auth.workspace_id, session_id)
     billing_service.record_analysis_job(
         workspace_id=auth.workspace_id,
         session_id=session_id,
@@ -623,12 +720,12 @@ async def inspect_upload(
     request: Request,
     file: UploadFile = File(...),
     csrf_token: str = Form(...),
-    input_type: str = Form("molecules_to_screen_only"),
+    input_type: str = Form("measurement_dataset"),
 ) -> JSONResponse:
     auth = require_auth_context(request)
     require_csrf(request, csrf_token)
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Please upload a CSV file.")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Select a supported data file before inspection.")
 
     payload = await file.read()
     if not payload:
@@ -644,7 +741,8 @@ async def inspect_upload(
     except PlanEnforcementError:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Could not inspect CSV file: {exc}") from exc
+        raise HTTPException(status_code=400, detail=f"Could not inspect uploaded file: {exc}") from exc
+    _persist_active_session(request, auth.workspace_id, str(session_payload.get("session_id") or ""))
     return JSONResponse(session_payload)
 
 
@@ -654,14 +752,22 @@ async def validate_upload(request: Request, payload: dict[str, Any] = Body(...))
     require_csrf(request)
     session_id = payload.get("session_id")
     mapping = payload.get("mapping") or {}
+    label_builder = payload.get("label_builder") or {"enabled": False}
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id is required.")
     try:
         dataframe = load_session_dataframe(session_id, workspace_id=auth.workspace_id)
+        metadata = load_session_metadata(session_id, workspace_id=auth.workspace_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    summary = validation_summary(dataframe, mapping)
+    summary = validation_summary(
+        dataframe,
+        mapping,
+        label_builder=label_builder,
+        file_type=str(metadata.get("file_type") or ""),
+        semantic_mode=str(metadata.get("semantic_mode") or ""),
+    )
     return JSONResponse({"session_id": session_id, "validation_summary": summary})
 
 
@@ -672,19 +778,28 @@ async def upload_dataset(
     file: UploadFile | None = File(None),
     session_id: str | None = Form(None),
     csrf_token: str = Form(...),
-    input_type: str = Form("molecules_to_screen_only"),
+    input_type: str = Form("measurement_dataset"),
     intent: str = Form("rank_uploaded_molecules"),
     scoring_mode: str = Form("balanced"),
     consent_choice: str = Form("private"),
+    entity_id_column: str | None = Form(None),
     smiles_column: str | None = Form(None),
+    value_column: str | None = Form(None),
+    label_column: str | None = Form(None),
+    target_column: str | None = Form(None),
+    assay_column: str | None = Form(None),
     biodegradable_column: str | None = Form(None),
     molecule_id_column: str | None = Form(None),
     source_column: str | None = Form(None),
     notes_column: str | None = Form(None),
+    label_builder_enabled: str | None = Form(None),
+    label_builder_operator: str | None = Form(None),
+    label_builder_threshold: str | None = Form(None),
 ) -> JSONResponse:
     auth = require_auth_context(request)
     require_csrf(request, csrf_token)
     return await _enqueue_analysis_job(
+        request=request,
         auth=auth,
         file=file,
         session_id=session_id,
@@ -692,11 +807,19 @@ async def upload_dataset(
         intent=intent,
         scoring_mode=scoring_mode,
         consent_choice=consent_choice,
+        value_column=value_column,
+        label_column=label_column,
+        entity_id_column=entity_id_column,
+        target_column=target_column,
+        assay_column=assay_column,
         smiles_column=smiles_column,
         biodegradable_column=biodegradable_column,
         molecule_id_column=molecule_id_column,
         source_column=source_column,
         notes_column=notes_column,
+        label_builder_enabled=label_builder_enabled,
+        label_builder_operator=label_builder_operator,
+        label_builder_threshold=label_builder_threshold,
     )
 
 
@@ -708,27 +831,28 @@ async def discovery_page(
     auth = _page_auth_or_redirect(request)
     if isinstance(auth, RedirectResponse):
         return auth
-    _ensure_session_access(session_id, auth.workspace_id)
+    session_view = _resolve_session_view(request, auth, session_id)
+    effective_session_id = session_view["session_id"]
     workspace_plan = _workspace_plan_summary(auth)
 
     decision_output = load_decision_output(
-        session_id=session_id,
+        session_id=effective_session_id,
         workspace_id=auth.workspace_id,
         allow_global_fallback=False,
     )
     candidates = annotate_candidates_with_reviews(
         decision_output.get("top_experiments", []),
-        session_id=session_id,
+        session_id=effective_session_id,
         workspace_id=auth.workspace_id,
     )
-    review_queue = build_review_queue(candidates, session_id=session_id, workspace_id=auth.workspace_id)
+    review_queue = build_review_queue(candidates, session_id=effective_session_id, workspace_id=auth.workspace_id)
     analysis_report = load_analysis_report(
-        session_id=session_id,
+        session_id=effective_session_id,
         workspace_id=auth.workspace_id,
         allow_global_fallback=False,
     )
     evaluation_summary = load_evaluation_summary(
-        session_id=session_id,
+        session_id=effective_session_id,
         workspace_id=auth.workspace_id,
         allow_global_fallback=False,
     )
@@ -737,7 +861,7 @@ async def discovery_page(
         decision_output=workbench_decision_output,
         analysis_report=analysis_report,
         review_queue=review_queue,
-        session_id=session_id,
+        session_id=effective_session_id,
         evaluation_summary=evaluation_summary,
         system_version=app.version,
     )
@@ -747,7 +871,8 @@ async def discovery_page(
         "discovery.html",
         title="Discovery Results",
         active_page="discovery",
-        session_id=session_id,
+        session_id=effective_session_id,
+        session_view=session_view,
         decision_output=decision_output,
         analysis_report=analysis_report,
         candidates=candidates,
@@ -765,6 +890,7 @@ async def create_review(request: Request, payload: dict[str, Any] = Body(...)) -
     session_id = payload.get("session_id")
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id is required for review actions.")
+    _persist_active_session(request, auth.workspace_id, str(session_id))
     items = payload.get("items")
     reviewer_name = str(auth.user.get("display_name") or auth.user.get("email") or "unassigned").strip() or "unassigned"
     if isinstance(items, list):
@@ -859,16 +985,17 @@ async def dashboard_page(
     auth = _page_auth_or_redirect(request)
     if isinstance(auth, RedirectResponse):
         return auth
-    _ensure_session_access(session_id, auth.workspace_id)
+    session_view = _resolve_session_view(request, auth, session_id)
     workspace_plan = _workspace_plan_summary(auth)
-    dashboard_context = build_dashboard_context(session_id=session_id, workspace_id=auth.workspace_id)
+    dashboard_context = build_dashboard_context(session_id=session_view["session_id"], workspace_id=auth.workspace_id)
     return _render_template(
         request,
         "dashboard.html",
         title="Dashboard",
         active_page="dashboard",
         dashboard=dashboard_context,
-        session_id=session_id,
+        session_id=session_view["session_id"],
+        session_view=session_view,
         workspace_plan=workspace_plan,
     )
 

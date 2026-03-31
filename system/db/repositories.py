@@ -555,6 +555,18 @@ class SessionRepository:
             statement = select(func.count()).select_from(SessionModel).where(SessionModel.workspace_id == workspace_id)
             return int(db.execute(statement).scalar_one())
 
+    def list_sessions(self, workspace_id: str, *, limit: int | None = 25) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = (
+                select(SessionModel)
+                .where(SessionModel.workspace_id == workspace_id)
+                .order_by(desc(SessionModel.updated_at), desc(SessionModel.created_at))
+            )
+            if limit is not None:
+                statement = statement.limit(int(limit))
+            rows = db.execute(statement).scalars().all()
+            return [_session_payload(row) for row in rows]
+
 
 class JobRepository:
     def __init__(self, session_repository: SessionRepository | None = None) -> None:

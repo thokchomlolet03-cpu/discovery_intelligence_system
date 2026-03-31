@@ -122,6 +122,94 @@ def recommendation_summary(candidates: list[dict[str, Any]], intent: str) -> str
     return f"Start review with the highest-priority candidates and use bucket plus risk to separate testing now from later review. Current lead bucket: {bucket}; risk: {risk}."
 
 
+def _measurement_summary(validation: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "semantic_mode": str(validation.get("semantic_mode") or "").strip(),
+        "file_type": str(validation.get("file_type") or "").strip(),
+        "value_column": str(validation.get("value_column") or "").strip(),
+        "rows_with_values": int(validation.get("rows_with_values", 0) or 0),
+        "rows_without_values": int(validation.get("rows_without_values", 0) or 0),
+        "rows_with_labels": int(validation.get("rows_with_labels", 0) or 0),
+        "rows_without_labels": int(validation.get("rows_without_labels", 0) or 0),
+        "label_source": str(validation.get("label_source") or "").strip(),
+    }
+
+
+def _bucket_counts(frame: pd.DataFrame | None) -> dict[str, int]:
+    if frame is None or frame.empty:
+        return {}
+    source = "selection_bucket" if "selection_bucket" in frame.columns else "bucket" if "bucket" in frame.columns else ""
+    if not source:
+        return {}
+    counts = (
+        frame[source]
+        .fillna("unassigned")
+        .replace("", "unassigned")
+        .astype(str)
+        .value_counts()
+        .to_dict()
+    )
+    return {str(key): int(value) for key, value in counts.items()}
+
+
+def _ranking_diagnostics(frame: pd.DataFrame | None) -> dict[str, Any]:
+    if frame is None or frame.empty:
+        return {}
+
+    diagnostics: dict[str, Any] = {
+        "scored_candidates": int(len(frame)),
+        "bucket_counts": _bucket_counts(frame),
+    }
+
+    if "max_similarity" in frame.columns:
+        similarity = pd.to_numeric(frame["max_similarity"], errors="coerce")
+        if similarity.notna().any():
+            diagnostics["mean_reference_similarity"] = float(similarity.dropna().mean())
+            diagnostics["out_of_domain_rate"] = float((similarity.dropna() < 0.25).mean())
+
+    if "novelty" in frame.columns:
+        novelty = pd.to_numeric(frame["novelty"], errors="coerce")
+        if novelty.notna().any():
+            diagnostics["mean_novelty"] = float(novelty.dropna().mean())
+
+    if "value" not in frame.columns:
+        return diagnostics
+
+    observed_value = pd.to_numeric(frame["value"], errors="coerce")
+    valid = observed_value.notna()
+    if int(valid.sum()) == 0:
+        return diagnostics
+
+    diagnostics["measurement_rows_evaluated"] = int(valid.sum())
+    diagnostics["mean_observed_value"] = float(observed_value[valid].mean())
+
+    score_column = ""
+    for candidate in ("experiment_value", "priority_score", "confidence"):
+        if candidate in frame.columns:
+            score_column = candidate
+            break
+    if not score_column:
+        return diagnostics
+
+    modeled = pd.to_numeric(frame[score_column], errors="coerce")
+    aligned = pd.DataFrame({"observed": observed_value, "modeled": modeled}).dropna()
+    if aligned.empty:
+        return diagnostics
+
+    if len(aligned) >= 2:
+        diagnostics["spearman_rank_correlation"] = float(aligned["observed"].rank().corr(aligned["modeled"].rank()))
+
+    top_k = min(10, len(aligned))
+    ranked = aligned.sort_values("modeled", ascending=False)
+    diagnostics["top_k_measurement_mean"] = float(ranked.head(top_k)["observed"].mean())
+    diagnostics["overall_measurement_mean"] = float(aligned["observed"].mean())
+    diagnostics["top_k_measurement_lift"] = float(
+        diagnostics["top_k_measurement_mean"] - diagnostics["overall_measurement_mean"]
+    )
+    diagnostics["score_basis"] = score_column
+    return diagnostics
+
+
 def build_upload_session_summary(
     session_id: str,
     source_name: str,
@@ -141,6 +229,7 @@ def build_upload_session_summary(
         "input_type": input_type,
         "column_mapping": column_mapping,
         "validation_summary": validation,
+        "measurement_summary": _measurement_summary(validation),
         "intent_selected": intent,
         "mode_used": scoring_mode,
         "consent_learning": consent_learning,
@@ -156,6 +245,7 @@ def build_analysis_report(
     top_candidates: list[dict[str, Any]],
     warnings: list[str],
     product_tier: str = "standard",
+    scored_frame: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     return {
         "product_tier": product_tier,
@@ -167,6 +257,8 @@ def build_analysis_report(
         "intent_selected": intent,
         "consent_learning": consent_learning,
         "top_candidates_returned": int(len(top_candidates)),
+        "measurement_summary": _measurement_summary(validation),
+        "ranking_diagnostics": _ranking_diagnostics(scored_frame),
         "warnings": warnings,
         "top_level_recommendation_summary": recommendation_summary(top_candidates, intent),
     }

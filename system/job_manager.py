@@ -90,6 +90,52 @@ class JobManager:
         self.session_repository = session_repository or SessionRepository()
         self.artifact_repository = artifact_repository or ArtifactRepository(session_repository=self.session_repository)
 
+    def _artifact_metadata_by_type(self, result: dict[str, Any], options: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        summary = result.get("summary") or {}
+        analysis_report = result.get("analysis_report") or {}
+        decision_output = result.get("decision_output") or {}
+        review_queue = result.get("review_queue") or {}
+        upload_summary = result.get("upload_session_summary") or {}
+        evaluation_summary = result.get("evaluation_summary") or {}
+        return {
+            "result_json": {
+                "mode": result.get("mode") or "",
+                "intent": options.get("intent") or "",
+                "input_type": options.get("input_type") or "",
+            },
+            "decision_output_json": {
+                "candidate_count": int((decision_output.get("summary") or {}).get("candidate_count", summary.get("scored_candidates", 0)) or 0),
+                "top_experiment_value": float((decision_output.get("summary") or {}).get("top_experiment_value", 0.0) or 0.0),
+                "intent": options.get("intent") or "",
+                "input_type": options.get("input_type") or "",
+            },
+            "analysis_report_json": {
+                "warnings_count": len(analysis_report.get("warnings") or []),
+                "top_candidates_returned": int(analysis_report.get("top_candidates_returned", 0) or 0),
+            },
+            "analysis_report_copy_json": {
+                "warnings_count": len(analysis_report.get("warnings") or []),
+            },
+            "upload_session_summary_json": {
+                "semantic_mode": ((upload_summary.get("measurement_summary") or {}).get("semantic_mode") or ""),
+            },
+            "upload_session_summary_report_json": {
+                "semantic_mode": ((upload_summary.get("measurement_summary") or {}).get("semantic_mode") or ""),
+            },
+            "review_queue_json": {
+                "pending_review": int((review_queue.get("summary") or {}).get("pending_review", 0) or 0),
+            },
+            "review_queue_csv": {
+                "pending_review": int((review_queue.get("summary") or {}).get("pending_review", 0) or 0),
+            },
+            "evaluation_summary": {
+                "selected_model": ((evaluation_summary.get("selected_model") or {}).get("name") or ""),
+            },
+            "scored_candidates_csv": {
+                "scored_candidates": int(summary.get("scored_candidates", 0) or 0),
+            },
+        }
+
     def get_job(self, job_id: str, workspace_id: str | None = None) -> dict[str, Any]:
         return self.store.get_job(job_id, workspace_id=workspace_id)
 
@@ -229,12 +275,13 @@ class JobManager:
                 progress_percent=98,
                 progress_message="Registering generated artifacts with the control plane.",
             )
-            self.artifact_repository.register_artifacts(
+            saved_artifacts = self.artifact_repository.register_artifacts(
                 artifact_refs=result.get("artifacts") or {},
                 session_id=session_id,
                 job_id=job_id,
                 workspace_id=workspace_id,
                 created_by_user_id=job.get("created_by_user_id") or None,
+                metadata_by_type=self._artifact_metadata_by_type(result, options),
             )
         except Exception as exc:
             logger.exception("Analysis job %s failed while registering artifacts", job_id)
@@ -259,6 +306,14 @@ class JobManager:
             )
             return None
 
+        artifact_index = {
+            item["artifact_type"]: {
+                "path": item["path"],
+                "updated_at": item["updated_at"],
+                "metadata": item.get("metadata", {}),
+            }
+            for item in saved_artifacts
+        }
         artifact_refs = {
             **(result.get("artifacts") or {}),
             "discovery_url": str(result.get("discovery_url") or f"/discovery?session_id={session_id}"),
@@ -279,6 +334,7 @@ class JobManager:
                 "warnings": result.get("warnings") or [],
                 "analysis_report": result.get("analysis_report") or {},
                 "upload_session_summary": result.get("upload_session_summary") or {},
+                "artifact_index": artifact_index,
             },
         )
         self.store.update_job(

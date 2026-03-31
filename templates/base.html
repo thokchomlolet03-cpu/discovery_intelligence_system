@@ -37,7 +37,7 @@
           <nav class="site-nav">
             <a href="/" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
             {% if current_user %}
-              <a href="/upload" class="{% if active_page == 'upload' %}active{% endif %}">Upload / Analyze</a>
+              <a href="/upload" class="{% if active_page == 'upload' %}active{% endif %}">Upload</a>
               <a href="{{ nav_sessions_url }}" class="{% if active_page == 'sessions' %}active{% endif %}">Sessions</a>
               <a href="{{ nav_discovery_url }}" class="{% if active_page == 'discovery' %}active{% endif %}">Discovery</a>
               <a href="{{ nav_dashboard_url }}" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
@@ -68,7 +68,7 @@
                 <button class="button button-secondary" type="submit">Logout</button>
               </form>
             {% else %}
-              <a class="button button-secondary" href="/login">Login</a>
+              <a class="button button-secondary" href="/login">Sign in</a>
             {% endif %}
           </div>
         </div>

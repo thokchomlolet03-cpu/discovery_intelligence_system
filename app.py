@@ -659,12 +659,27 @@ async def _enqueue_analysis_job(
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     decision_output = load_decision_output()
+    auth = get_optional_auth_context(request)
+    home_session_history = {"items": [], "focus_session": None, "continuation_items": [], "archive_items": [], "counts": {}}
+    session_view = {"session_id": None, "selection_reason": "none", "latest_session_id": None, "latest_session": None, "session_record": None}
+    if auth is not None:
+        session_view = _resolve_session_view(request, auth, None)
+        sessions = session_repository.list_sessions(auth.workspace_id, limit=6)
+        home_session_history = build_session_history_context(
+            sessions,
+            workspace_id=auth.workspace_id,
+            active_session_id=str(session_view.get("session_id") or ""),
+            latest_session_id=str(session_view.get("latest_session_id") or ""),
+            job_fetcher=lambda job_id, workspace_id: job_manager.get_job(job_id, workspace_id=workspace_id),
+        )
     return _render_template(
         request,
         "index.html",
         title="Discovery Intelligence System",
         active_page="home",
         decision_output=decision_output,
+        home_session_history=home_session_history,
+        session_view=session_view,
     )
 
 

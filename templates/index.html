@@ -15,75 +15,173 @@
           chemists and R&amp;D teams, not to replace bench validation.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="/upload">Start an analysis</a>
-          {% if current_user %}
-            <a class="button button-secondary" href="/sessions">Open session history</a>
+          {% if current_user and home_session_history.focus_session %}
+            <a class="button button-primary" href="{{ home_session_history.focus_session.upload_url }}">Continue current work</a>
+            <a class="button button-secondary" href="{{ home_session_history.focus_session.discovery_url }}">Open Discovery</a>
+            <a class="button button-secondary" href="/upload?fresh=1">Start a new upload</a>
+          {% else %}
+            <a class="button button-primary" href="/upload">Start a new upload</a>
+            {% if current_user %}
+              <a class="button button-secondary" href="/sessions">Open Session History</a>
+            {% endif %}
+            <a class="button button-secondary" href="/discovery">Open Discovery</a>
           {% endif %}
-          <a class="button button-secondary" href="/discovery">Open discovery workbench</a>
-          <a class="button button-secondary" href="/dashboard">Review dashboard</a>
         </div>
         <div class="supporting-tags">
           <span class="context-chip">Guided ingestion</span>
           <span class="context-chip">Decision guidance</span>
-          <span class="context-chip">Session-backed artifacts</span>
+          <span class="context-chip">Saved session outputs</span>
         </div>
       </div>
       <aside class="hero-stat-stack">
-        <article class="stat-card">
-          <span class="panel-label">Current top K</span>
-          <strong>{{ decision_output.summary.top_k }}</strong>
-          <p>Shortlist size currently surfaced in the decision output.</p>
-        </article>
-        <article class="stat-card">
-          <span class="panel-label">Candidate count</span>
-          <strong>{{ decision_output.summary.candidate_count }}</strong>
-          <p>Total ranked candidates in the current stored decision set.</p>
-        </article>
-        <article class="stat-card">
-          <span class="panel-label">Top experiment value</span>
-          <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
-          <p>Highest current prioritization signal across the visible recommendation set.</p>
-        </article>
-        <article class="accent-card">
-          <span class="panel-label">Current snapshot</span>
-          <strong class="text-break">{{ decision_output.source_path or "No stored snapshot" }}</strong>
-          <p>The homepage highlights the latest available stored decision package rather than acting as a live session page.</p>
-        </article>
+        {% if current_user and home_session_history.focus_session %}
+          <article class="accent-card">
+            <span class="panel-label">Continue session</span>
+            <strong class="text-break">{{ home_session_history.focus_session.source_name }}</strong>
+            <p>{{ home_session_history.focus_session.recommendation_summary or "Reopen the current session and keep moving through upload, discovery, and dashboard." }}</p>
+          </article>
+          <article class="stat-card">
+            <span class="panel-label">Session status</span>
+            <strong>{{ home_session_history.focus_session.job_status_label }}</strong>
+            <p>{{ home_session_history.focus_session.semantic_mode }} with {{ home_session_history.focus_session.rows_total }} uploaded rows.</p>
+          </article>
+          <article class="stat-card">
+            <span class="panel-label">Shortlist size</span>
+            <strong>{{ home_session_history.focus_session.candidate_count }}</strong>
+            <p>{{ "%.3f"|format(home_session_history.focus_session.top_experiment_value or 0) }} top experiment value in the saved decision set.</p>
+          </article>
+          <article class="stat-card">
+            <span class="panel-label">Evidence coverage</span>
+            <strong>{{ home_session_history.focus_session.rows_with_values }}</strong>
+            <p>Rows with values and {{ home_session_history.focus_session.rows_with_labels }} rows with labels in the current focus session.</p>
+          </article>
+        {% else %}
+          <article class="stat-card">
+            <span class="panel-label">Current top K</span>
+            <strong>{{ decision_output.summary.top_k }}</strong>
+            <p>Shortlist size currently surfaced in the latest stored decision output.</p>
+          </article>
+          <article class="stat-card">
+            <span class="panel-label">Candidate count</span>
+            <strong>{{ decision_output.summary.candidate_count }}</strong>
+            <p>Total ranked candidates in the latest stored recommendation set.</p>
+          </article>
+          <article class="stat-card">
+            <span class="panel-label">Top experiment value</span>
+            <strong>{{ "%.3f"|format(decision_output.summary.top_experiment_value or 0) }}</strong>
+            <p>Highest current prioritization signal across the latest available decision output.</p>
+          </article>
+          <article class="accent-card">
+            <span class="panel-label">Current snapshot</span>
+            <strong class="text-break">{{ decision_output.source_path or "No stored snapshot" }}</strong>
+            <p>Once you start using sessions, this page will shift from orientation into a continue-work surface.</p>
+          </article>
+        {% endif %}
       </aside>
     </div>
   </section>
 
-  <section class="feature-grid">
-    <article class="panel feature-card">
-      <h2>Guide decisions, not just rankings</h2>
-      <p>
-        The workbench turns uploaded chemistry into review queues, next-step guidance, and session-backed reasoning
-        so teams can decide what to test now, what to learn from, and what to deprioritize.
-      </p>
-    </article>
-    <article class="panel feature-card">
-      <h2>Use evidence-shaped ingestion</h2>
-      <p>
-        The upload flow supports screening sets, labeled datasets, and measurement-backed scientific data so the
-        system can interpret what kind of evidence you are providing before analysis begins.
-      </p>
-    </article>
-    <article class="panel feature-card">
-      <h2>Work across durable sessions</h2>
-      <p>
-        Upload, discovery, and dashboard views can all reopen saved sessions, artifacts, and decision summaries
-        instead of behaving like a one-off scoring script.
-      </p>
-    </article>
-  </section>
+  {% if current_user and home_session_history.focus_session %}
+    <section class="panel home-continue-panel">
+      <div class="section-header">
+        <div>
+          <h2>Continue current work</h2>
+          <p class="helper-copy">Pick up the active or latest useful session without hunting through separate pages.</p>
+        </div>
+      </div>
+      <div class="home-continue-grid">
+        <article class="home-focus-card">
+          <span class="panel-label">Focus session</span>
+          <h2>{{ home_session_history.focus_session.source_name }}</h2>
+          <p>{{ home_session_history.focus_session.recommendation_summary or "Use this session as your current working context." }}</p>
+          <div class="dashboard-meta-row">
+            <span class="data-chip">Session {{ home_session_history.focus_session.session_id }}</span>
+            <span class="data-chip">{{ home_session_history.focus_session.job_status_label }}</span>
+            <span class="data-chip">{{ home_session_history.focus_session.semantic_mode }}</span>
+          </div>
+          <div class="cta-row">
+            <a class="button button-primary" href="{{ home_session_history.focus_session.upload_url }}">Continue in Upload</a>
+            <a class="button button-secondary" href="{{ home_session_history.focus_session.discovery_url }}">Open Discovery</a>
+            <a class="button button-secondary" href="{{ home_session_history.focus_session.dashboard_url }}">Open Dashboard</a>
+          </div>
+        </article>
+        <article class="home-focus-card">
+          <span class="panel-label">What to do next</span>
+          <ul class="compact-list">
+            <li>Use Upload if you need to inspect, remap, or rerun the current session.</li>
+            <li>Use Discovery when you are choosing what to test now versus hold or deprioritize.</li>
+            <li>Use Dashboard when you need to judge how much trust to place in the shortlist.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    {% if home_session_history.continuation_items %}
+      <section class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Other recent sessions</h2>
+            <p class="helper-copy">Keep nearby work visible so you can reopen it quickly without losing continuity.</p>
+          </div>
+          <a class="button button-secondary" href="/sessions">Open Full History</a>
+        </div>
+        <div class="home-session-grid">
+          {% for item in home_session_history.continuation_items[:3] %}
+            <article class="home-session-card">
+              <div class="eyebrow-row">
+                <span class="state-icon">Session {{ item.session_id }}</span>
+                <span class="context-chip">{{ item.job_status_label }}</span>
+              </div>
+              <h2>{{ item.source_name }}</h2>
+              <p>{{ item.recommendation_summary or "Reopen this session to continue review or compare it with the current focus session." }}</p>
+              <div class="dashboard-meta-row">
+                <span class="data-chip">{{ item.semantic_mode }}</span>
+                <span class="data-chip">{{ item.rows_total }} rows</span>
+                <span class="data-chip">{{ item.candidate_count }} candidates</span>
+              </div>
+              <div class="cta-row">
+                <a class="button button-secondary" href="{{ item.upload_url }}">Upload</a>
+                <a class="button button-secondary" href="{{ item.discovery_url }}">Discovery</a>
+                <a class="button button-secondary" href="{{ item.dashboard_url }}">Dashboard</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  {% else %}
+    <section class="feature-grid">
+      <article class="panel feature-card">
+        <h2>Guide decisions, not just rankings</h2>
+        <p>
+          The workbench turns uploaded chemistry into review queues, next-step guidance, and session-backed reasoning
+          so teams can decide what to test now, what to learn from, and what to deprioritize.
+        </p>
+      </article>
+      <article class="panel feature-card">
+        <h2>Use evidence-shaped ingestion</h2>
+        <p>
+          The upload flow supports screening sets, labeled datasets, and measurement-backed scientific data so the
+          system can interpret what kind of evidence you are providing before analysis begins.
+        </p>
+      </article>
+      <article class="panel feature-card">
+        <h2>Work across durable sessions</h2>
+        <p>
+          Upload, Discovery, and Dashboard can all reopen saved sessions, outputs, and decision summaries
+          instead of behaving like a one-off scoring script.
+        </p>
+      </article>
+    </section>
+  {% endif %}
 
   <section class="split-card-grid">
     <article class="panel">
-      <h2>How the product works</h2>
+      <h2>How to use the product</h2>
       <p class="pipeline-line">Upload data → validate columns → score or generate → rank → review</p>
       <p>
-        The current pipeline uses RDKit features, calibrated classification, novelty-aware ranking, and decision
-        guidance layers that turn raw scores into experimental next steps.
+        Start in Upload to shape the evidence correctly, move to Discovery for the shortlist and next-step guidance,
+        and use Dashboard when you need to judge trust, coverage, and caution.
       </p>
     </article>
     <article class="panel">
@@ -94,11 +192,11 @@
       </p>
     </article>
     <article class="panel">
-      <h2>What you receive back</h2>
-      <p>
-        Ranked candidates, decision queues, explanations, review-ready statuses, warnings, provenance, and structured
-        artifacts for discovery output, analysis reports, and review workflow summaries.
-      </p>
+      <h2>What you get back</h2>
+        <p>
+          Ranked candidates, decision queues, explanations, review-ready statuses, warnings, provenance, and structured
+          saved outputs for discovery, analysis reporting, and review workflow summaries.
+        </p>
     </article>
     <article class="panel">
       <h2>Who it is for</h2>
@@ -117,8 +215,11 @@
     <article class="panel">
       <h2>What to do next</h2>
       <p>
-        Start with Upload / Analyze, let the system inspect the evidence structure, then use Discovery for decision
-        guidance and Dashboard for session-wide interpretation.
+        {% if current_user and home_session_history.focus_session %}
+          Continue the current session if you already have active work, or start a fresh upload when you want a new evidence set.
+        {% else %}
+          Start with Upload, let the system inspect the evidence structure, then use Discovery for decision guidance and Dashboard for session-wide interpretation.
+        {% endif %}
       </p>
     </article>
   </section>

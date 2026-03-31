@@ -170,8 +170,26 @@ def build_session_history_context(
             }
         )
 
+    focus_session = next((item for item in items if item["is_active"]), None)
+    if focus_session is None:
+        focus_session = next((item for item in items if item["is_latest"]), None)
+    if focus_session is None:
+        focus_session = next((item for item in items if item["results_ready"]), None)
+    if focus_session is None and items:
+        focus_session = items[0]
+
+    continuation_items = [
+        item
+        for item in items
+        if item is not focus_session and (item["results_ready"] or item["job_status"] in {"queued", "running"})
+    ]
+    archive_items = [item for item in items if item is not focus_session and item not in continuation_items]
+
     return {
         "items": items,
+        "focus_session": focus_session,
+        "continuation_items": continuation_items,
+        "archive_items": archive_items,
         "counts": {
             "stored_sessions": len(items),
             "ready_sessions": sum(1 for item in items if item["results_ready"]),

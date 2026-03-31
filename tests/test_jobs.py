@@ -710,7 +710,8 @@ class JobRouteTest(DatabaseBackedTestCase):
             response = self.client.get("/sessions")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Session timeline", response.text)
+        self.assertIn("Continue this session first", response.text)
+        self.assertIn("Continue or compare nearby sessions", response.text)
         self.assertIn("measurements.csv", response.text)
         self.assertIn("session_running", response.text)
         self.assertIn("Priority score", response.text)
@@ -718,6 +719,60 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn("Active", response.text)
         self.assertIn(f"/discovery?session_id={session_id}", response.text)
         self.assertIn("Scoring candidates now.", response.text)
+
+    def test_home_page_promotes_continue_work_when_focus_session_exists(self):
+        inspect_response = self.client.post(
+            "/api/upload/inspect",
+            data={"csrf_token": self._authenticated_csrf(), "input_type": "measurement_dataset"},
+            files={
+                "file": (
+                    "measurements.csv",
+                    io.BytesIO(b"smiles,pic50,compound_id\nCCO,6.2,mol_1\nCCN,5.4,mol_2\n"),
+                    "text/csv",
+                )
+            },
+        )
+        session_id = inspect_response.json()["session_id"]
+        self.client.post(
+            "/api/upload/validate",
+            json={
+                "session_id": session_id,
+                "mapping": {
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "entity_id": "compound_id",
+                },
+                "label_builder": {"enabled": False, "value_column": "pic50", "operator": ">=", "threshold": ""},
+            },
+            headers={"X-CSRF-Token": self._authenticated_csrf()},
+        )
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            latest_job_id="job_done",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        self._store_ready_session_artifacts(session_id)
+
+        with patch.object(discovery_app.job_manager, "get_job") as mock_get_job:
+            mock_get_job.return_value = {
+                "job_id": "job_done",
+                "session_id": session_id,
+                "workspace_id": self.workspace["workspace_id"],
+                "status": "succeeded",
+                "progress_stage": "completed",
+                "progress_percent": 100,
+                "progress_message": "Analysis complete.",
+            }
+            self.client.get(f"/upload?session_id={session_id}")
+            response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Continue current work", response.text)
+        self.assertIn("Focus session", response.text)
+        self.assertIn("measurements.csv", response.text)
+        self.assertIn(f"/upload?session_id={session_id}", response.text)
 
     def test_job_status_endpoint_returns_persisted_job_metadata(self):
         queued_job = DatabaseJobStore().create_job(

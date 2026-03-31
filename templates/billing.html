@@ -6,30 +6,29 @@
       <div>
         <div class="eyebrow-row">
           <span class="eyebrow">Workspace billing</span>
-          <span class="context-chip">Operational control plane</span>
+          <span class="context-chip">Access and plan value</span>
         </div>
-        <h1>Manage workspace access, limits, and subscription state.</h1>
+        <h1>Understand what this plan lets your team do, what limits apply, and when an upgrade matters.</h1>
         <p class="hero-copy">
-          Discovery Intelligence keeps plan enforcement inside the app so uploads, analyses, exports, and storage
-          limits are visible alongside scientific workflow state. Paddle handles purchase, tax, and billing management
-          when an external subscription is active.
+          Billing should explain workflow access in plain terms. This page shows what the current plan enables for
+          uploads, analysis runs, exports, and session storage without forcing you to read internal billing state first.
         </p>
       </div>
       <aside class="hero-stat-stack">
         <article class="stat-card">
           <span class="panel-label">Plan</span>
           <strong>{{ workspace_plan.display_name }}</strong>
-          <p>Current billing surface for {{ current_workspace.name if current_workspace else "this workspace" }}.</p>
+          <p>Current access level for {{ current_workspace.name if current_workspace else "this workspace" }}.</p>
         </article>
         <article class="stat-card">
           <span class="panel-label">Status</span>
           <strong>{{ workspace_plan.plan_status | upper }}</strong>
-          <p>Effective access remains enforced even when external billing is not linked.</p>
+          <p>Workspace access stays enforced here even when external billing is not linked yet.</p>
         </article>
         <article class="accent-card">
-          <span class="panel-label">Provider</span>
-          <strong>{{ workspace_plan.external_billing_provider | upper if workspace_plan.external_billing_provider else "App managed" }}</strong>
-          <p>Internal plans keep the workspace operational until an external provider is attached.</p>
+          <span class="panel-label">What changes with Pro</span>
+          <strong>{{ "Decision export and higher limits" if not workspace_plan.features.decision_export else "External billing linked when needed" }}</strong>
+          <p>Use Pro when your team needs more monthly runs, larger uploads, or exportable decision packages.</p>
         </article>
       </aside>
     </div>
@@ -52,8 +51,8 @@
   <section class="panel">
     <div class="section-header">
       <div>
-        <h2>{{ workspace_plan.display_name }} Plan</h2>
-        <p class="helper-copy">Current plan status for {{ current_workspace.name if current_workspace else "this workspace" }}.</p>
+        <h2>Current workspace access</h2>
+        <p class="helper-copy">This is the current billing state and how the app is interpreting access for this workspace.</p>
       </div>
       <span class="pill">{{ workspace_plan.plan_status | upper }}</span>
     </div>
@@ -80,8 +79,8 @@
   <section class="panel">
     <div class="section-header">
       <div>
-        <h2>Included on this plan</h2>
-        <p class="helper-copy">These are the product limits currently enforced for this workspace.</p>
+        <h2>What this plan enables</h2>
+        <p class="helper-copy">These are the workflow limits and capabilities currently enforced for the workspace.</p>
       </div>
     </div>
     <div class="card-grid metrics-grid">
@@ -107,8 +106,63 @@
   <section class="panel">
     <div class="section-header">
       <div>
+        <h2>Current usage this month</h2>
+        <p class="helper-copy">These numbers show how the workspace is using the current plan in practical workflow terms.</p>
+      </div>
+    </div>
+    <div class="card-grid metrics-grid">
+      <article class="stat-card">
+        <span class="panel-label">Analyses run</span>
+        <strong>{{ workspace_plan.usage.analysis_jobs_this_month }}</strong>
+        <p>{{ workspace_plan.limits.monthly_analysis_jobs if workspace_plan.limits.monthly_analysis_jobs is not none else "Unlimited" }} allowed this month.</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Generation runs</span>
+        <strong>{{ workspace_plan.usage.candidate_generation_jobs_this_month }}</strong>
+        <p>{{ workspace_plan.limits.monthly_candidate_generation_jobs if workspace_plan.limits.monthly_candidate_generation_jobs is not none else "Unlimited" }} allowed this month.</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Uploads created</span>
+        <strong>{{ workspace_plan.usage.uploads_this_month }}</strong>
+        <p>{{ workspace_plan.usage.uploaded_rows_this_month }} uploaded rows recorded this month.</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Stored sessions</span>
+        <strong>{{ workspace_plan.usage.stored_sessions }}</strong>
+        <p>{{ workspace_plan.limits["max_stored_sessions"] if workspace_plan.limits["max_stored_sessions"] is not none else "Unlimited" }} sessions allowed on this plan.</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Exports used</span>
+        <strong>{{ workspace_plan.usage.exports_this_month }}</strong>
+        <p>{{ "Decision export is enabled." if workspace_plan.features.decision_export else "Upgrade to Pro to export decision packages." }}</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>When an upgrade matters</h2>
+        <p class="helper-copy">Upgrade only when the current plan starts limiting real workflow needs.</p>
+      </div>
+    </div>
+    <div class="info-grid">
+      <article class="panel compact-panel">
+        <span class="panel-label">Stay on the current plan when</span>
+        <p>You are still validating the workflow, running a limited number of sessions, and do not need decision-package export yet.</p>
+      </article>
+      <article class="panel compact-panel">
+        <span class="panel-label">Move to Pro when</span>
+        <p>Your team needs larger monthly throughput, exportable decision packages, or more room to operate without plan-based interruptions.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
         <h2>Billing actions</h2>
-        <p class="helper-copy">Only workspace owners can start or manage a paid subscription.</p>
+        <p class="helper-copy">Only workspace owners can start or manage a paid subscription for the workspace.</p>
       </div>
     </div>
     {% if billing_owner %}

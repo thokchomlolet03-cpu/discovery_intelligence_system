@@ -8,7 +8,7 @@
           <span class="eyebrow">Method and limitations</span>
           <span class="context-chip">Interpretation guide</span>
         </div>
-        <h1>What the system means, and what it still does not mean.</h1>
+        <h1>How to interpret the system, when to trust it more, and where to stay cautious.</h1>
         <p class="hero-copy">
           Discovery Intelligence is a session-backed decision-support system for helping researchers prioritize
           molecules for testing, review, and learning. It does not replace experiments, domain expertise, or
@@ -26,9 +26,36 @@
     </div>
   </section>
 
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>How to read the product surfaces</h2>
+        <p class="helper-copy">Each page has a different role in the decision workflow.</p>
+      </div>
+    </div>
+    <div class="workflow-stepper">
+      <article class="workflow-step workflow-step-active">
+        <strong>Upload</strong>
+        <span>Use Upload to inspect evidence, confirm mapping, and start or resume a session.</span>
+      </article>
+      <article class="workflow-step">
+        <strong>Discovery</strong>
+        <span>Use Discovery when deciding what to test now, what to hold for review, and what to deprioritize.</span>
+      </article>
+      <article class="workflow-step">
+        <strong>Dashboard</strong>
+        <span>Use Dashboard when judging how much trust to place in the shortlist and what caution signals matter.</span>
+      </article>
+      <article class="workflow-step">
+        <strong>Sessions</strong>
+        <span>Use Sessions when you need to reopen or compare durable work instead of starting over.</span>
+      </article>
+    </div>
+  </section>
+
   <section class="bento-grid">
     <article class="panel">
-      <h2>Current Pipeline</h2>
+      <h2>Current pipeline</h2>
       <p>
         The system ingests molecular data, builds RDKit-derived features, trains or reuses a calibrated classifier,
         scores confidence and uncertainty, estimates novelty relative to known chemistry, and ranks molecules by
@@ -64,7 +91,7 @@
       </p>
     </article>
     <article class="panel">
-      <h2>Appropriate Use</h2>
+      <h2>Appropriate use</h2>
       <p>
         Use the system to prioritize review and testing queues, compare candidate lists, and identify where the model
         sees high-value follow-up work. It should support planning, not replace lab validation.
@@ -72,23 +99,54 @@
     </article>
   </section>
 
-  <section class="split-card-grid">
+  <section class="info-grid">
     <article class="panel">
       <span class="panel-label">Session model</span>
-      <h2>The web product now works through durable sessions.</h2>
+      <h2>The web product works through durable sessions.</h2>
       <p>
-        Upload, Discovery, and Dashboard are designed to reopen saved artifacts, scientific summaries, and review
-        state so a run can be returned to rather than disappearing after one page load.
+        Upload, Discovery, and Dashboard reopen saved session outputs, scientific summaries, and review state so a
+        run can be returned to rather than disappearing after one page load.
       </p>
     </article>
     <article class="panel">
       <span class="panel-label">Measurement-aware evidence</span>
-      <h2>Quantitative scientific values matter.</h2>
+      <h2>Quantitative values matter when they exist.</h2>
       <p>
         When measurements such as pIC50 or other assay values are present, the system treats them as evidence about
-        the dataset structure and can use them to support ranking diagnostics, label derivation, and interpretation.
+        the dataset structure and uses them for diagnostics, label derivation, and interpretation.
       </p>
     </article>
+    <article class="panel">
+      <span class="panel-label">Trust signals</span>
+      <h2>Trust should rise or fall with the evidence.</h2>
+      <p>
+        Higher trust usually comes from stronger chemistry coverage, better alignment with observed values, and fewer
+        warnings. Lower trust usually comes from weak coverage, sparse labels, or high out-of-domain rates.
+      </p>
+    </article>
+    <article class="panel">
+      <span class="panel-label">What not to infer</span>
+      <h2>A high rank is not proof.</h2>
+      <p>
+        A top candidate is a recommendation for review or testing priority, not a guarantee of real-world
+        performance. Bench validation still decides what is true.
+      </p>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>When to trust less</h2>
+        <p class="helper-copy">These are the most common cases where the system should be treated more cautiously.</p>
+      </div>
+    </div>
+    <ul class="insight-list">
+      <li>Uploaded chemistry sits far outside the system’s stronger reference coverage.</li>
+      <li>There are few or no observed values available for cross-checking.</li>
+      <li>Label coverage is weak or the dataset is noisy or inconsistently mapped.</li>
+      <li>High uncertainty and high novelty are both present, which can make a candidate useful for learning but not reliable for immediate claims.</li>
+    </ul>
   </section>
 
   <section class="notice-panel">

@@ -11,13 +11,13 @@
         <h1>Reopen, review, and continue past molecular analysis sessions.</h1>
         <p class="hero-copy">
           This page turns upload runs into a real workspace history surface. Use it to continue an upload session,
-          reopen discovery and dashboard artifacts, and understand which sessions are ready, still running, or only
+          reopen discovery and dashboard work, and understand which sessions are ready, still running, or only
           partially inspected.
         </p>
         <div class="hero-actions">
           <a class="button button-primary" href="/upload">Start a new upload</a>
-          {% if session_view.session_id %}
-            <a class="button button-secondary" href="/discovery?session_id={{ session_view.session_id }}">Open active discovery session</a>
+          {% if session_history.focus_session %}
+            <a class="button button-secondary" href="{{ session_history.focus_session.discovery_url }}">Open Focus Discovery</a>
           {% endif %}
         </div>
       </div>
@@ -30,7 +30,7 @@
         <article class="stat-card">
           <span class="panel-label">Ready sessions</span>
           <strong>{{ session_history.counts.ready_sessions }}</strong>
-          <p>Sessions with saved discovery artifacts ready to reopen.</p>
+          <p>Sessions with saved decision work ready to reopen.</p>
         </article>
         <article class="stat-card">
           <span class="panel-label">Measurement-backed</span>
@@ -70,27 +70,164 @@
     </section>
   {% endif %}
 
-  {% if session_history["items"] %}
+  {% if session_history.focus_session %}
     <section class="panel">
       <div class="section-header">
         <div>
-          <h2>Session timeline</h2>
-          <p class="helper-copy">Sessions are ordered by most recently updated first so ongoing work stays closest to the top.</p>
+          <h2>Continue this session first</h2>
+          <p class="helper-copy">This is the clearest place to resume work without scanning the full workspace archive.</p>
+        </div>
+      </div>
+      <article class="session-history-card session-history-card-active">
+        <div class="session-history-head">
+          <div class="session-history-copy">
+            <div class="eyebrow-row">
+              <span class="state-icon">Session {{ session_history.focus_session.session_id }}</span>
+              <span class="session-state-pill session-state-pill-{{ session_history.focus_session.job_status_tone }}">{{ session_history.focus_session.job_status_label }}</span>
+              {% if session_history.focus_session.is_active %}
+                <span class="context-chip">Active</span>
+              {% elif session_history.focus_session.is_latest %}
+                <span class="context-chip">Latest completed</span>
+              {% endif %}
+            </div>
+            <h2>{{ session_history.focus_session.source_name }}</h2>
+            <p>{{ session_history.focus_session.recommendation_summary or "Reopen this session to continue upload work, inspect the shortlist, or review trust diagnostics." }}</p>
+          </div>
+          <div class="session-history-actions">
+            <a class="button button-primary" href="{{ session_history.focus_session.upload_url }}">Continue in Upload</a>
+            <a class="button button-secondary" href="{{ session_history.focus_session.discovery_url }}">Open Discovery</a>
+            <a class="button button-secondary" href="{{ session_history.focus_session.dashboard_url }}">Open Dashboard</a>
+          </div>
+        </div>
+
+        <div class="session-history-grid">
+          <article class="session-mini-card">
+            <span class="panel-label">Semantic mode</span>
+            <strong>{{ session_history.focus_session.semantic_mode }}</strong>
+            <p>Value column: {{ session_history.focus_session.value_column }}</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Rows</span>
+            <strong>{{ session_history.focus_session.rows_total }}</strong>
+            <p>{{ session_history.focus_session.valid_smiles_count }} valid SMILES and {{ session_history.focus_session.duplicate_count }} duplicates.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Scientific coverage</span>
+            <strong>{{ session_history.focus_session.rows_with_values }}</strong>
+            <p>Rows with values and {{ session_history.focus_session.rows_with_labels }} rows with labels.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Decision output</span>
+            <strong>{{ session_history.focus_session.candidate_count }}</strong>
+            <p>{{ "%.3f"|format(session_history.focus_session.top_experiment_value or 0) }} top experiment value.</p>
+          </article>
+        </div>
+
+        {% if session_history.focus_session.primary_score_label or session_history.focus_session.recommendation_summary %}
+          <div class="mini-callout">
+            {% if session_history.focus_session.primary_score_label %}
+              <span class="panel-label">Primary score</span>
+              <p>{{ session_history.focus_session.primary_score_label }}</p>
+            {% endif %}
+            {% if session_history.focus_session.recommendation_summary %}
+              <p>{{ session_history.focus_session.recommendation_summary }}</p>
+            {% endif %}
+          </div>
+        {% endif %}
+      </article>
+    </section>
+  {% endif %}
+
+  {% if session_history.continuation_items %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Continue or compare nearby sessions</h2>
+          <p class="helper-copy">Keep other ready or running sessions close by when you need to switch context without losing momentum.</p>
         </div>
       </div>
       <div class="session-history-list">
-        {% for item in session_history["items"] %}
-          <article class="session-history-card {% if item.is_active %}session-history-card-active{% endif %}">
+        {% for item in session_history.continuation_items %}
+          <article class="session-history-card">
             <div class="session-history-head">
               <div class="session-history-copy">
                 <div class="eyebrow-row">
                   <span class="state-icon">Session {{ item.session_id }}</span>
                   <span class="session-state-pill session-state-pill-{{ item.job_status_tone }}">{{ item.job_status_label }}</span>
-                  {% if item.is_active %}
-                    <span class="context-chip">Active</span>
-                  {% elif item.is_latest %}
-                    <span class="context-chip">Latest completed</span>
-                  {% endif %}
+                </div>
+                <h2>{{ item.source_name }}</h2>
+                <p>{{ item.recommendation_summary or "Reopen this session to compare it against the current focus session." }}</p>
+              </div>
+              <div class="session-history-actions">
+                <a class="button button-secondary" href="{{ item.upload_url }}">Upload</a>
+                <a class="button button-secondary" href="{{ item.discovery_url }}">Discovery</a>
+                <a class="button button-secondary" href="{{ item.dashboard_url }}">Dashboard</a>
+              </div>
+            </div>
+            <div class="session-history-grid">
+              <article class="session-mini-card">
+                <span class="panel-label">Semantic mode</span>
+                <strong>{{ item.semantic_mode }}</strong>
+                <p>Value column: {{ item.value_column }}</p>
+              </article>
+              <article class="session-mini-card">
+                <span class="panel-label">Rows</span>
+                <strong>{{ item.rows_total }}</strong>
+                <p>{{ item.valid_smiles_count }} valid SMILES and {{ item.duplicate_count }} duplicates.</p>
+              </article>
+              <article class="session-mini-card">
+                <span class="panel-label">Scientific coverage</span>
+                <strong>{{ item.rows_with_values }}</strong>
+                <p>Rows with values and {{ item.rows_with_labels }} rows with labels.</p>
+              </article>
+              <article class="session-mini-card">
+                <span class="panel-label">Decision output</span>
+                <strong>{{ item.candidate_count }}</strong>
+                <p>{{ "%.3f"|format(item.top_experiment_value or 0) }} top experiment value.</p>
+              </article>
+            </div>
+            {% if item.primary_score_label or item.recommendation_summary %}
+              <div class="mini-callout">
+                {% if item.primary_score_label %}
+                  <span class="panel-label">Primary score</span>
+                  <p>{{ item.primary_score_label }}</p>
+                {% endif %}
+                {% if item.recommendation_summary %}
+                  <p>{{ item.recommendation_summary }}</p>
+                {% endif %}
+              </div>
+            {% endif %}
+            {% if item.job_message and item.job_status in ["queued", "running", "failed"] %}
+              <div class="mini-callout {% if item.job_status == 'failed' %}mini-callout-warning{% endif %}">
+                <span class="panel-label">Latest job update</span>
+                <p>{{ item.job_message }}</p>
+                {% if item.job_progress_percent %}
+                  <p class="helper-copy">Progress: {{ item.job_progress_percent }}%</p>
+                {% endif %}
+              </div>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if session_history.archive_items %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Older workspace history</h2>
+          <p class="helper-copy">These sessions are still available, but they are less urgent than the focus and nearby sessions above.</p>
+        </div>
+      </div>
+      <div class="session-history-list">
+        {% for item in session_history.archive_items %}
+          <article class="session-history-card">
+            <div class="session-history-head">
+              <div class="session-history-copy">
+                <div class="eyebrow-row">
+                  <span class="state-icon">Session {{ item.session_id }}</span>
+                  <span class="session-state-pill session-state-pill-{{ item.job_status_tone }}">{{ item.job_status_label }}</span>
                 </div>
                 <h2>{{ item.source_name }}</h2>
                 <p>
@@ -157,13 +294,13 @@
         {% endfor %}
       </div>
     </section>
-  {% else %}
+  {% elif not session_history.focus_session and not session_history.continuation_items %}
     <section class="panel">
       <div class="state-icon">No sessions</div>
       <h2>No workspace sessions have been recorded yet.</h2>
       <p>
         Run your first upload to create a durable session. Once sessions exist, this page becomes the quickest place
-        to reopen upload state, discovery artifacts, and dashboard context.
+        to reopen upload state, discovery work, and dashboard context.
       </p>
       <div class="cta-row">
         <a class="button button-primary" href="/upload">Start the first upload</a>

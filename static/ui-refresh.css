@@ -337,6 +337,39 @@ h3 {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.home-continue-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 16px;
+}
+
+.home-focus-card,
+.home-session-card {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid rgba(124, 153, 177, 0.14);
+  border-radius: 22px;
+  background: rgba(6, 15, 22, 0.56);
+}
+
+.home-focus-card h2,
+.home-session-card h2 {
+  margin-bottom: 0;
+}
+
+.home-focus-card {
+  background:
+    radial-gradient(circle at top right, rgba(49, 196, 255, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(14, 28, 42, 0.9), rgba(8, 17, 28, 0.92));
+}
+
+.home-session-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
 .info-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
@@ -1099,7 +1132,8 @@ tbody tr:hover {
   .upload-form,
   .dashboard-grid,
   .candidate-grid,
-  .dashboard-insight-grid {
+  .dashboard-insight-grid,
+  .home-continue-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1136,7 +1170,8 @@ tbody tr:hover {
   .feature-grid,
   .bento-grid,
   .dashboard-shortlist-grid,
-  .info-grid {
+  .info-grid,
+  .home-session-grid {
     grid-template-columns: 1fr;
   }
 }

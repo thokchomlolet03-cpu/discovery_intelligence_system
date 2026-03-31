@@ -459,6 +459,86 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertEqual(analysis_options["label_builder"]["operator"], ">=")
         self.assertEqual(analysis_options["label_builder"]["threshold"], 6.0)
 
+    def test_validate_route_persists_selected_mapping_for_upload_restore(self):
+        inspect_response = self.client.post(
+            "/api/upload/inspect",
+            data={"csrf_token": self._authenticated_csrf(), "input_type": "measurement_dataset"},
+            files={
+                "file": (
+                    "measurements.csv",
+                    io.BytesIO(b"smiles,pic50,compound_id\nCCO,6.2,mol_1\nCCN,5.4,mol_2\n"),
+                    "text/csv",
+                )
+            },
+        )
+
+        self.assertEqual(inspect_response.status_code, 200)
+        session_id = inspect_response.json()["session_id"]
+
+        validate_response = self.client.post(
+            "/api/upload/validate",
+            json={
+                "session_id": session_id,
+                "mapping": {
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "entity_id": "compound_id",
+                },
+                "label_builder": {
+                    "enabled": True,
+                    "value_column": "pic50",
+                    "operator": ">=",
+                    "threshold": 6.0,
+                },
+            },
+            headers={"X-CSRF-Token": self._authenticated_csrf()},
+        )
+
+        self.assertEqual(validate_response.status_code, 200)
+        session_metadata = SessionRepository().get_session(session_id, workspace_id=self.workspace["workspace_id"])
+        upload_metadata = session_metadata["upload_metadata"]
+        self.assertEqual(upload_metadata["selected_mapping"]["value"], "pic50")
+        self.assertEqual(upload_metadata["label_builder_config"]["threshold"], 6.0)
+        self.assertEqual(upload_metadata["validation_summary"]["semantic_mode"], "measurement_dataset")
+        self.assertEqual(int(upload_metadata["validation_summary"]["rows_with_values"]), 2)
+
+    def test_upload_page_restores_active_session_context(self):
+        inspect_response = self.client.post(
+            "/api/upload/inspect",
+            data={"csrf_token": self._authenticated_csrf(), "input_type": "measurement_dataset"},
+            files={
+                "file": (
+                    "measurements.csv",
+                    io.BytesIO(b"smiles,pic50,compound_id\nCCO,6.2,mol_1\nCCN,5.4,mol_2\n"),
+                    "text/csv",
+                )
+            },
+        )
+        session_id = inspect_response.json()["session_id"]
+        self.client.post(
+            "/api/upload/validate",
+            json={
+                "session_id": session_id,
+                "mapping": {
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "entity_id": "compound_id",
+                },
+                "label_builder": {"enabled": False, "value_column": "pic50", "operator": ">=", "threshold": ""},
+            },
+            headers={"X-CSRF-Token": self._authenticated_csrf()},
+        )
+
+        response = self.client.get("/upload")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Continuing your upload session.", response.text)
+        self.assertIn("measurements.csv", response.text)
+        self.assertIn(session_id, response.text)
+        self.assertIn("Start a fresh upload", response.text)
+        self.assertIn('"selected_mapping"', response.text)
+        self.assertIn('"pic50"', response.text)
+
     def test_job_status_endpoint_returns_persisted_job_metadata(self):
         queued_job = DatabaseJobStore().create_job(
             session_id="session_1",

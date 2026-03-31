@@ -54,14 +54,16 @@ from system.upload_parser import (
     infer_column_mapping,
     load_session_dataframe,
     load_session_metadata,
+    save_session_metadata,
     session_dir,
     validation_summary,
 )
-from system.services.ingestion import normalize_input_type
+from system.services.ingestion import normalize_input_type, normalize_semantic_mapping
 from system.session_artifacts import (
     load_analysis_report_payload,
     load_decision_artifact_payload,
     load_evaluation_summary_payload,
+    load_result_payload,
 )
 
 
@@ -361,6 +363,102 @@ def _resolve_session_view(
     }
 
 
+def _persist_upload_session_state(
+    *,
+    session_id: str,
+    auth: AuthContext,
+    metadata: dict[str, Any],
+    column_mapping: dict[str, str | None],
+    label_builder: dict[str, Any],
+    validation: dict[str, Any],
+) -> dict[str, Any]:
+    selected_mapping = normalize_semantic_mapping(column_mapping)
+    payload = {
+        **metadata,
+        "session_id": session_id,
+        "filename": str(metadata.get("filename") or (session_dir(session_id) / "raw_upload.csv").name),
+        "input_type": normalize_input_type(metadata.get("input_type")),
+        "file_type": str(validation.get("file_type") or metadata.get("file_type") or ""),
+        "semantic_mode": str(validation.get("semantic_mode") or metadata.get("semantic_mode") or ""),
+        "semantic_roles": metadata.get("semantic_roles") or metadata.get("inferred_mapping") or selected_mapping,
+        "selected_mapping": selected_mapping,
+        "label_builder_config": validate_label_builder_config(label_builder),
+        "validation_summary": validation,
+    }
+    save_session_metadata(
+        session_id,
+        payload,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+    )
+    return load_session_metadata(session_id, workspace_id=auth.workspace_id)
+
+
+def _load_upload_session_context(
+    request: Request,
+    auth: AuthContext,
+    *,
+    requested_session_id: str | None = None,
+    fresh: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    if fresh:
+        return {
+            "session_id": None,
+            "requested_session_id": requested_session_id,
+            "selection_reason": "fresh",
+            "latest_session_id": None,
+            "latest_session": None,
+            "session_record": None,
+        }, None
+
+    session_view = _resolve_session_view(request, auth, requested_session_id)
+    session_id = str(session_view.get("session_id") or "").strip()
+    if not session_id:
+        return session_view, None
+
+    try:
+        metadata = load_session_metadata(session_id, workspace_id=auth.workspace_id)
+    except FileNotFoundError:
+        return session_view, None
+
+    session_record = session_view.get("session_record") if isinstance(session_view, dict) else {}
+    latest_job_id = str((session_record or {}).get("latest_job_id") or "").strip()
+    latest_job = None
+    if latest_job_id:
+        try:
+            latest_job = _job_response_payload(job_manager.get_job(latest_job_id, workspace_id=auth.workspace_id))
+        except JobNotFoundError:
+            latest_job = None
+
+    result_payload = load_result_payload(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    restored_result = result_payload.get("payload") if isinstance(result_payload.get("payload"), dict) else None
+
+    selected_mapping = metadata.get("selected_mapping") or metadata.get("semantic_roles") or metadata.get("inferred_mapping") or {}
+    label_builder_config = metadata.get("label_builder_config") or metadata.get("label_builder_suggestion") or {}
+
+    return session_view, {
+        "session_id": session_id,
+        "filename": str(metadata.get("filename") or ""),
+        "input_type": normalize_input_type(metadata.get("input_type")),
+        "file_type": str(metadata.get("file_type") or ""),
+        "semantic_mode": str(metadata.get("semantic_mode") or ""),
+        "columns": metadata.get("columns") or [],
+        "preview_rows": metadata.get("preview_rows") or [],
+        "measurement_columns": metadata.get("measurement_columns") or [],
+        "selected_mapping": selected_mapping,
+        "inferred_mapping": metadata.get("inferred_mapping") or {},
+        "label_builder_suggestion": metadata.get("label_builder_suggestion") or label_builder_config,
+        "label_builder_config": label_builder_config,
+        "validation_summary": metadata.get("validation_summary") or {},
+        "latest_job": latest_job,
+        "result": restored_result,
+    }
+
+
 def _ensure_session_access(session_id: str | None, workspace_id: str) -> None:
     if not session_id:
         return
@@ -506,6 +604,28 @@ async def _enqueue_analysis_job(
     except (ContractValidationError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=f"Invalid label builder configuration: {exc}") from exc
 
+    validation = metadata.get("validation_summary") or {}
+    try:
+        session_dataframe = load_session_dataframe(session_id, workspace_id=auth.workspace_id)
+    except FileNotFoundError:
+        session_dataframe = None
+    if session_dataframe is not None:
+        validation = validation_summary(
+            session_dataframe,
+            column_mapping,
+            label_builder=label_builder,
+            file_type=str(metadata.get("file_type") or ""),
+            semantic_mode=str(metadata.get("semantic_mode") or ""),
+        )
+        metadata = _persist_upload_session_state(
+            session_id=str(session_id),
+            auth=auth,
+            metadata=metadata,
+            column_mapping=column_mapping,
+            label_builder=label_builder,
+            validation=validation,
+        )
+
     job = job_manager.start_analysis_job(
         session_id=session_id,
         workspace_id=auth.workspace_id,
@@ -520,6 +640,7 @@ async def _enqueue_analysis_job(
             "consent_learning": consent_choice == "allow_learning",
             "column_mapping": column_mapping,
             "label_builder": label_builder,
+            "validation_context": metadata.get("validation_summary") or validation,
         },
     )
     _persist_active_session(request, auth.workspace_id, session_id)
@@ -701,17 +822,30 @@ async def paddle_webhook(request: Request) -> JSONResponse:
 
 
 @app.get("/upload", response_class=HTMLResponse)
-async def upload_page(request: Request) -> Response:
+async def upload_page(
+    request: Request,
+    session_id: str | None = Query(default=None),
+    fresh: bool = Query(default=False),
+) -> Response:
     auth = _page_auth_or_redirect(request)
     if isinstance(auth, RedirectResponse):
         return auth
     workspace_plan = _workspace_plan_summary(auth)
+    session_view, upload_session_context = _load_upload_session_context(
+        request,
+        auth,
+        requested_session_id=session_id,
+        fresh=fresh,
+    )
     return _render_template(
         request,
         "upload.html",
         title="Upload / Analyze",
         active_page="upload",
         workspace_plan=workspace_plan,
+        upload_session_context=upload_session_context,
+        session_view=session_view,
+        restored_upload_session=bool(upload_session_context),
     )
 
 
@@ -752,7 +886,7 @@ async def validate_upload(request: Request, payload: dict[str, Any] = Body(...))
     require_csrf(request)
     session_id = payload.get("session_id")
     mapping = payload.get("mapping") or {}
-    label_builder = payload.get("label_builder") or {"enabled": False}
+    submitted_label_builder = payload.get("label_builder") or {"enabled": False}
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id is required.")
     try:
@@ -761,6 +895,16 @@ async def validate_upload(request: Request, payload: dict[str, Any] = Body(...))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    try:
+        label_builder = _resolve_label_builder_config(
+            value_column=(mapping or {}).get("value"),
+            enabled=submitted_label_builder.get("enabled"),
+            operator=submitted_label_builder.get("operator"),
+            threshold=submitted_label_builder.get("threshold"),
+        )
+    except (ContractValidationError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid label builder configuration: {exc}") from exc
+
     summary = validation_summary(
         dataframe,
         mapping,
@@ -768,6 +912,15 @@ async def validate_upload(request: Request, payload: dict[str, Any] = Body(...))
         file_type=str(metadata.get("file_type") or ""),
         semantic_mode=str(metadata.get("semantic_mode") or ""),
     )
+    _persist_upload_session_state(
+        session_id=str(session_id),
+        auth=auth,
+        metadata=metadata,
+        column_mapping=mapping,
+        label_builder=label_builder,
+        validation=summary,
+    )
+    _persist_active_session(request, auth.workspace_id, str(session_id))
     return JSONResponse({"session_id": session_id, "validation_summary": summary})
 
 

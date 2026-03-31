@@ -132,6 +132,7 @@ def run_pipeline(
         df,
         column_mapping,
         label_builder=options.get("label_builder"),
+        validation_context=options.get("validation_context"),
     )
 
     _emit_progress(

@@ -277,6 +277,96 @@ class PipelineServicesTest(unittest.TestCase):
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")
     @patch("system.run_pipeline.build_prediction_result")
+    def test_run_pipeline_preserves_measurement_context_in_reports(
+        self,
+        build_prediction_result_mock,
+        persist_review_queue_mock,
+        build_discovery_result_mock,
+    ):
+        session_id = "session_measurements"
+        scored = pd.DataFrame(
+            [
+                {
+                    "smiles": "CCO",
+                    "value": 6.2,
+                    "confidence": 0.91,
+                    "uncertainty": 0.10,
+                    "novelty": 0.58,
+                    "experiment_value": 0.72,
+                    "max_similarity": 0.30,
+                    "selection_bucket": "exploit",
+                },
+                {
+                    "smiles": "CCN",
+                    "value": 5.4,
+                    "confidence": 0.61,
+                    "uncertainty": 0.22,
+                    "novelty": 0.44,
+                    "experiment_value": 0.55,
+                    "max_similarity": 0.18,
+                    "selection_bucket": "learn",
+                },
+            ]
+        )
+        build_prediction_result_mock.return_value = (
+            {
+                "mode": "prediction",
+                "message": "Ranked uploaded molecules for review using the current scoring workflow.",
+                "summary": {"scored_candidates": 2},
+                "top_candidates": [],
+                "decision_output": canonical_decision_output(session_id),
+            },
+            scored,
+            None,
+        )
+        persist_review_queue_mock.return_value = {
+            "session_id": session_id,
+            "generated_at": "2026-03-25T12:05:00+00:00",
+            "summary": {"pending_review": 1, "approved": 0, "rejected": 0, "tested": 0, "ingested": 0, "counts": {}},
+            "groups": {},
+        }
+
+        result = run_pipeline(
+            pd.DataFrame(
+                [
+                    {"smiles": "CCO", "pic50": 6.2, "compound_id": "mol_1", "assay_name": "screen_a"},
+                    {"smiles": "CCN", "pic50": 5.4, "compound_id": "mol_2", "assay_name": "screen_a"},
+                    {"smiles": "CCC", "pic50": None, "compound_id": "mol_3", "assay_name": "screen_a"},
+                ]
+            ),
+            persist_artifacts=False,
+            update_discovery_snapshot=False,
+            seed=42,
+            source_name="measurements.csv",
+            analysis_options={
+                "session_id": session_id,
+                "input_type": "measurement_dataset",
+                "intent": "rank_uploaded_molecules",
+                "scoring_mode": "balanced",
+                "consent_learning": False,
+                "column_mapping": {
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "entity_id": "compound_id",
+                    "assay": "assay_name",
+                },
+                "validation_context": {"file_type": "csv", "semantic_mode": "measurement_dataset"},
+            },
+        )
+
+        build_discovery_result_mock.assert_not_called()
+        build_prediction_result_mock.assert_called_once()
+        measurement_summary = result["upload_session_summary"]["measurement_summary"]
+        self.assertEqual(measurement_summary["semantic_mode"], "measurement_dataset")
+        self.assertEqual(measurement_summary["value_column"], "pic50")
+        self.assertEqual(int(measurement_summary["rows_with_values"]), 2)
+        self.assertEqual(result["analysis_report"]["measurement_summary"]["file_type"], "csv")
+        self.assertEqual(result["analysis_report"]["ranking_diagnostics"]["score_basis"], "experiment_value")
+        self.assertEqual(int(result["analysis_report"]["ranking_diagnostics"]["measurement_rows_evaluated"]), 2)
+
+    @patch("system.run_pipeline.build_discovery_result")
+    @patch("system.run_pipeline.persist_review_queue")
+    @patch("system.run_pipeline.build_prediction_result")
     def test_run_pipeline_emits_stage_progress_updates(
         self,
         build_prediction_result_mock,

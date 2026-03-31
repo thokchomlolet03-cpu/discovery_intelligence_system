@@ -327,8 +327,10 @@ class UploadInspectionResult(ContractBaseModel):
     preview_rows: list[dict[str, str]] = Field(default_factory=list)
     inferred_mapping: dict[str, str | None]
     semantic_roles: dict[str, str | None] = Field(default_factory=dict)
+    selected_mapping: dict[str, str | None] = Field(default_factory=dict)
     measurement_columns: list[str] = Field(default_factory=list)
     label_builder_suggestion: LabelBuilderConfig = Field(default_factory=LabelBuilderConfig)
+    label_builder_config: LabelBuilderConfig = Field(default_factory=LabelBuilderConfig)
     validation_summary: ValidationStats
     free_tier_assessment: dict[str, Any] = Field(default_factory=dict)
 
@@ -512,6 +514,12 @@ class NormalizedDatasetSummary(ContractBaseModel):
     duplicate_removed_count: int = Field(ge=0)
     rows_with_labels: int = Field(ge=0)
     rows_without_labels: int = Field(ge=0)
+    rows_with_values: int = Field(default=0, ge=0)
+    rows_without_values: int = Field(default=0, ge=0)
+    value_column: str = ""
+    semantic_mode: str = ""
+    label_source: str = ""
+    file_type: str = ""
     usable_label_count: int = Field(ge=0)
     positive_label_count: int = Field(default=0, ge=0)
     negative_label_count: int = Field(default=0, ge=0)
@@ -523,6 +531,17 @@ class NormalizedDatasetSummary(ContractBaseModel):
 
     @root_validator(pre=False)
     def _sync_counts(cls, values: dict[str, Any]) -> dict[str, Any]:
+        total_rows = _int_or_default(values.get("total_rows", 0), 0)
+        rows_with_values = _int_or_default(values.get("rows_with_values", 0), 0)
+        values["rows_with_values"] = rows_with_values
+        values["rows_without_values"] = _int_or_default(
+            values.get("rows_without_values", max(total_rows - rows_with_values, 0)),
+            max(total_rows - rows_with_values, 0),
+        )
+        values["value_column"] = _clean_text(values.get("value_column"))
+        values["semantic_mode"] = _clean_text(values.get("semantic_mode"))
+        values["label_source"] = _clean_text(values.get("label_source"))
+        values["file_type"] = _clean_text(values.get("file_type"))
         label_counts = values.get("label_counts")
         if not isinstance(label_counts, LabelCounts):
             label_counts = LabelCounts(

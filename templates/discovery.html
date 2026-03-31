@@ -107,12 +107,26 @@
               <p>{{ workbench.measurement_summary.semantic_mode or "Not detected" }}</p>
             </article>
             <article class="interpretation-card">
+              <strong>Value column</strong>
+              <p>{{ workbench.measurement_summary.value_column or "Not mapped" }}</p>
+            </article>
+            <article class="interpretation-card">
               <strong>Rows with values</strong>
               <p>{{ workbench.measurement_summary.rows_with_values or 0 }}</p>
             </article>
             <article class="interpretation-card">
               <strong>Rows with labels</strong>
               <p>{{ workbench.measurement_summary.rows_with_labels or 0 }}</p>
+            </article>
+            <article class="interpretation-card">
+              <strong>Label source</strong>
+              <p>{{ workbench.measurement_summary.label_source or "Missing" }}</p>
+            </article>
+          {% endif %}
+          {% if workbench.ranking_diagnostics.score_basis %}
+            <article class="interpretation-card">
+              <strong>Ranking basis</strong>
+              <p>{{ workbench.ranking_diagnostics.score_basis }}</p>
             </article>
           {% endif %}
           {% if workbench.ranking_diagnostics.spearman_rank_correlation is not none %}

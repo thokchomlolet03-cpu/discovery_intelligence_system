@@ -135,11 +135,19 @@ def prepare_analysis_dataframe(
     df: pd.DataFrame,
     column_mapping: dict[str, str | None],
     label_builder: dict[str, Any] | None = None,
+    validation_context: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     from system.upload_parser import build_analysis_frame, validation_summary
 
+    validation_context = validation_context or {}
     mapped = build_analysis_frame(df, column_mapping, label_builder=label_builder)
-    summary = validation_summary(df, column_mapping, label_builder=label_builder)
+    summary = validation_summary(
+        df,
+        column_mapping,
+        label_builder=label_builder,
+        file_type=str(validation_context.get("file_type") or ""),
+        semantic_mode=str(validation_context.get("semantic_mode") or ""),
+    )
 
     prepared = mapped.copy()
     prepared["smiles"] = prepared["smiles"].apply(canonicalize_smiles)

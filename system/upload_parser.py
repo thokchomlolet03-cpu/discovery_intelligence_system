@@ -166,8 +166,10 @@ def create_upload_session(
             "preview_rows": preview_rows,
             "inferred_mapping": inferred_mapping,
             "semantic_roles": semantic_roles,
+            "selected_mapping": semantic_roles,
             "measurement_columns": infer_measurement_columns(dataframe),
             "label_builder_suggestion": _default_label_builder_suggestion(semantic_roles),
+            "label_builder_config": _default_label_builder_suggestion(semantic_roles),
             "validation_summary": summary,
             "free_tier_assessment": assess_free_tier(summary),
         }

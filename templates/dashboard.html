@@ -74,8 +74,22 @@
             <strong>{{ dashboard.analysis_report.measurement_summary.semantic_mode or "Not detected" }}</strong>
           </article>
           <article class="panel">
+            <span class="panel-label">Value column</span>
+            <strong>{{ dashboard.analysis_report.measurement_summary.value_column or "Not mapped" }}</strong>
+          </article>
+          <article class="panel">
             <span class="panel-label">Rows with values</span>
             <strong>{{ dashboard.analysis_report.measurement_summary.rows_with_values or 0 }}</strong>
+          </article>
+          <article class="panel">
+            <span class="panel-label">Label source</span>
+            <strong>{{ dashboard.analysis_report.measurement_summary.label_source or "Missing" }}</strong>
+          </article>
+        {% endif %}
+        {% if dashboard.analysis_report.ranking_diagnostics.score_basis %}
+          <article class="panel">
+            <span class="panel-label">Ranking basis</span>
+            <strong>{{ dashboard.analysis_report.ranking_diagnostics.score_basis }}</strong>
           </article>
         {% endif %}
         {% if dashboard.analysis_report.ranking_diagnostics.spearman_rank_correlation is not none %}

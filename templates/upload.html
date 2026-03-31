@@ -42,6 +42,30 @@
     </section>
   {% endif %}
 
+  {% if upload_session_context %}
+    <section class="panel">
+      <div class="state-icon">Session {{ upload_session_context.session_id }}</div>
+      <h2>
+        {% if session_view.selection_reason == "requested" %}
+          Viewing the requested upload session.
+        {% elif session_view.selection_reason == "active" %}
+          Continuing your upload session.
+        {% else %}
+          Continuing the latest completed upload session.
+        {% endif %}
+      </h2>
+      <p>
+        Saved inspection, validation, and the latest analysis state are restored here so you can continue from the upload workflow.
+        {% if upload_session_context.filename %}Source: {{ upload_session_context.filename }}.{% endif %}
+      </p>
+      <div class="cta-row">
+        <a class="button button-secondary" href="/upload?fresh=1">Start a fresh upload</a>
+        <a class="button button-secondary" href="/discovery?session_id={{ upload_session_context.session_id }}">Open session results</a>
+        <a class="button button-secondary" href="/dashboard?session_id={{ upload_session_context.session_id }}">Open session dashboard</a>
+      </div>
+    </section>
+  {% endif %}
+
   <section class="step-shell">
     <article class="panel">
       <div class="step-header">
@@ -327,6 +351,7 @@
   </section>
 
   <script>
+    const initialUploadSession = {% if upload_session_context %}{{ upload_session_context | tojson | safe }}{% else %}null{% endif %};
     const state = {
       sessionId: null,
       previewRows: [],
@@ -409,6 +434,13 @@
     const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || "";
 
     const selectValue = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
+    const setChoiceValue = (name, value, containerId) => {
+      if (!value) return;
+      const target = document.querySelector(`input[name="${name}"][value="${value}"]`);
+      if (!target) return;
+      target.checked = true;
+      refreshChoiceCards(containerId);
+    };
     const mappingPayload = () => Object.fromEntries(mappingFields.map(([field, id]) => [field, document.getElementById(id).value || null]));
     const labelBuilderPayload = () => ({
       enabled: selectValue("label_builder_enabled") === "true",
@@ -631,6 +663,61 @@
       previewTableBody.innerHTML = state.previewRows.map((row) => `
         <tr>${columns.map((column) => `<td>${row[column] ?? ""}</td>`).join("")}</tr>
       `).join("");
+    };
+
+    const hydrateUploadSession = async (context) => {
+      if (!context?.session_id) return;
+
+      state.sessionId = context.session_id;
+      state.previewRows = context.preview_rows || [];
+      state.columns = context.columns || [];
+      state.semanticMode = context.semantic_mode || "";
+      state.fileType = context.file_type || "";
+      state.measurementColumns = context.measurement_columns || [];
+      state.labelBuilderSuggestion = context.label_builder_suggestion || null;
+
+      setChoiceValue("input_type", context.input_type || "measurement_dataset", "input-type-options");
+
+      const selectedMapping = context.selected_mapping || context.semantic_roles || context.inferred_mapping || {};
+      mappingFields.forEach(([field, id]) => {
+        renderSelectOptions(id, state.columns, selectedMapping[field] || context.inferred_mapping?.[field] || "");
+      });
+
+      const labelBuilderConfig = context.label_builder_config || context.label_builder_suggestion || {};
+      setChoiceValue("label_builder_enabled", String(!!labelBuilderConfig.enabled), "label-builder-options");
+      document.getElementById("label-builder-operator").value = labelBuilderConfig.operator || state.labelBuilderSuggestion?.operator || ">=";
+      document.getElementById("label-builder-threshold").value = labelBuilderConfig.threshold ?? state.labelBuilderSuggestion?.threshold ?? "";
+
+      showWorkflow();
+      renderValidation(context.validation_summary || {});
+      renderPreview();
+      inspectStatus.textContent = `Restored upload session ${context.session_id}${context.filename ? ` from ${context.filename}` : ""}.`;
+      inspectStatus.className = "status-box success";
+
+      if (context.latest_job?.status === "queued" || context.latest_job?.status === "running") {
+        renderJobProgress(context.latest_job);
+        setAnalysisStatus(context.latest_job.progress_message || "Analysis is running...");
+        await pollJob(context.latest_job.job_url);
+        return;
+      }
+
+      if (context.latest_job?.status === "failed") {
+        renderJobProgress(context.latest_job);
+        setAnalysisStatus(context.latest_job.error || "The latest analysis failed.", "error");
+      } else if (context.result) {
+        renderCompletedResult(context.result, context.latest_job || {});
+        if (context.latest_job) {
+          renderJobProgress({
+            ...context.latest_job,
+            status: "succeeded",
+            progress_stage: "completed",
+            progress_percent: 100,
+          });
+        }
+        setAnalysisStatus(context.latest_job?.progress_message || context.result.message || "Restored the latest completed analysis.", "success");
+      } else {
+        setAnalysisStatus("Session restored. You can adjust the mapping or run analysis again.");
+      }
     };
 
     const refreshValidation = async () => {
@@ -871,5 +958,9 @@
       resultShell.classList.add("hidden");
       await pollJob(body.job_url);
     });
+
+    if (initialUploadSession) {
+      hydrateUploadSession(initialUploadSession);
+    }
   </script>
 {% endblock %}

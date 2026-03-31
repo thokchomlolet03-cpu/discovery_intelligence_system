@@ -358,6 +358,7 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Viewing the latest completed session dashboard.", response.text)
         self.assertIn("session_dashboard_latest", response.text)
+        self.assertIn("Model Insight Summary", response.text)
         self.assertIn("cand_1", response.text)
 
     def test_dashboard_page_can_reopen_session_from_nested_result_payload(self):
@@ -368,6 +369,7 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("session_dashboard_result_only", response.text)
         self.assertIn("measurement_dataset", response.text)
+        self.assertIn("Shortlist Reading", response.text)
         self.assertIn("Priority Score", response.text)
 
     def test_discovery_page_backfills_measurement_context_from_upload_metadata(self):

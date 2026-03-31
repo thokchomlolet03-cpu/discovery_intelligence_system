@@ -655,6 +655,67 @@ textarea::placeholder {
   background: rgba(100, 224, 210, 0.08);
 }
 
+.data-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(141, 199, 188, 0.18);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(141, 199, 188, 0.08);
+  font-size: 0.85rem;
+}
+
+.dashboard-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dashboard-insight-grid,
+.dashboard-shortlist-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.dashboard-insight-grid {
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(220px, 1fr));
+}
+
+.dashboard-insight-callout,
+.dashboard-insight-card,
+.dashboard-shortlist-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid rgba(124, 153, 177, 0.14);
+  border-radius: 20px;
+  background: rgba(8, 17, 26, 0.78);
+}
+
+.dashboard-insight-callout h3 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.dashboard-technical-details {
+  margin-top: 18px;
+}
+
+.dashboard-shortlist-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.dashboard-shortlist-head,
+.dashboard-shortlist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid rgba(124, 153, 177, 0.14);
@@ -1037,7 +1098,8 @@ tbody tr:hover {
 
   .upload-form,
   .dashboard-grid,
-  .candidate-grid {
+  .candidate-grid,
+  .dashboard-insight-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1073,6 +1135,7 @@ tbody tr:hover {
   .card-grid,
   .feature-grid,
   .bento-grid,
+  .dashboard-shortlist-grid,
   .info-grid {
     grid-template-columns: 1fr;
   }

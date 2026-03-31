@@ -27,6 +27,13 @@ REVIEW_QUEUE_ARTIFACT_TYPES = ("review_queue_json",)
 EVOLUTION_PATHS = ("iteration_history.csv",)
 
 
+def _safe_float(value: Any, default: float | None = None) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _run_root(session_id: str | None) -> Path:
     if session_id:
         return uploaded_session_dir(session_id)
@@ -120,6 +127,121 @@ def _chart_section(title: str, description: str, fig, include_js: bool) -> dict[
         "title": title,
         "description": description,
         "chart_html": _chart_style(fig).to_html(full_html=False, include_plotlyjs="cdn" if include_js else False),
+    }
+
+
+def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    preview: list[dict[str, Any]] = []
+    for index, row in enumerate(rows[:3], start=1):
+        if not isinstance(row, dict):
+            continue
+        candidate_id = str(row.get("candidate_id") or row.get("molecule_id") or row.get("polymer") or f"cand_{index}")
+        assay = str(row.get("assay") or "").strip()
+        target = str(row.get("target") or "").strip()
+        observed_value = _safe_float(row.get("observed_value", row.get("value")))
+        preview.append(
+            {
+                "rank": int(row.get("rank") or index),
+                "candidate_id": candidate_id,
+                "smiles": str(row.get("smiles") or ""),
+                "bucket": str(row.get("bucket") or row.get("selection_bucket") or "unassigned"),
+                "status": str(row.get("status") or "suggested"),
+                "confidence": float(_safe_float(row.get("confidence"), 0.0) or 0.0),
+                "uncertainty": float(_safe_float(row.get("uncertainty"), 0.0) or 0.0),
+                "novelty": float(_safe_float(row.get("novelty"), 0.0) or 0.0),
+                "priority_score": float(_safe_float(row.get("priority_score"), 0.0) or 0.0),
+                "experiment_value": float(_safe_float(row.get("experiment_value"), 0.0) or 0.0),
+                "observed_value": observed_value,
+                "context": " / ".join(part for part in (assay, target) if part),
+            }
+        )
+    return preview
+
+
+def _dashboard_insight_summary(
+    *,
+    analysis_report: dict[str, Any],
+    review_payload: dict[str, Any],
+    top_candidates: list[dict[str, Any]],
+) -> dict[str, Any]:
+    measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
+    ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
+    recommendation_summary = str(analysis_report.get("top_level_recommendation_summary") or "").strip()
+    review_summary = review_payload.get("summary", {}) if isinstance(review_payload, dict) else {}
+
+    strengths: list[str] = []
+    cautions: list[str] = []
+    next_steps: list[str] = []
+
+    rows_with_values = int(measurement_summary.get("rows_with_values", 0) or 0)
+    if rows_with_values > 0:
+        strengths.append(f"{rows_with_values} uploaded rows include observed values, so this run can be cross-checked against measured evidence.")
+    else:
+        cautions.append("No uploaded values are available for direct cross-checking, so treat the shortlist as model-guided ranking rather than evaluated truth.")
+
+    rank_corr = _safe_float(ranking_diagnostics.get("spearman_rank_correlation"))
+    if rank_corr is not None:
+        if rank_corr >= 0.45:
+            strengths.append(f"Ranking agreement with uploaded values is reasonably positive (Spearman {rank_corr:.3f}).")
+        elif rank_corr <= 0.15:
+            cautions.append(f"Ranking agreement with uploaded values is weak (Spearman {rank_corr:.3f}), so review the shortlist with extra caution.")
+        else:
+            cautions.append(f"Ranking agreement with uploaded values is mixed (Spearman {rank_corr:.3f}), so use this run for guidance rather than strict ordering.")
+
+    out_of_domain_rate = _safe_float(ranking_diagnostics.get("out_of_domain_rate"))
+    if out_of_domain_rate is not None:
+        if out_of_domain_rate <= 0.25:
+            strengths.append(f"Most candidates remain within stronger chemistry coverage ({out_of_domain_rate * 100:.1f}% out of domain).")
+        elif out_of_domain_rate >= 0.5:
+            cautions.append(f"A large share of candidates sits outside stronger chemistry coverage ({out_of_domain_rate * 100:.1f}% out of domain).")
+        else:
+            cautions.append(f"Some candidates are near or beyond stronger chemistry coverage ({out_of_domain_rate * 100:.1f}% out of domain).")
+
+    top_k_lift = _safe_float(ranking_diagnostics.get("top_k_measurement_lift"))
+    if top_k_lift is not None:
+        if top_k_lift > 0:
+            strengths.append(f"The top-ranked slice is enriched relative to the session average (lift {top_k_lift:.3f}).")
+        elif top_k_lift < 0:
+            cautions.append(f"The top-ranked slice is not outperforming the session average (lift {top_k_lift:.3f}).")
+
+    warnings = analysis_report.get("warnings", []) if isinstance(analysis_report, dict) else []
+    for warning in warnings[:2]:
+        text = str(warning).strip()
+        if text and text not in cautions:
+            cautions.append(text)
+
+    pending_review = int(review_summary.get("pending_review", 0) or 0)
+    if pending_review > 0:
+        next_steps.append(f"{pending_review} candidates are still pending review, so align chemist attention before expanding the shortlist.")
+    elif top_candidates:
+        lead_id = str(top_candidates[0].get("candidate_id") or top_candidates[0].get("molecule_id") or top_candidates[0].get("polymer") or "the leading candidate")
+        next_steps.append(f"Start by reviewing {lead_id}, then widen into the rest of the shortlist only if the current lead survives expert scrutiny.")
+
+    if recommendation_summary:
+        next_steps.insert(0, recommendation_summary)
+
+    if strengths and len(cautions) <= 1:
+        headline = "This run is strong enough to guide near-term review."
+    elif cautions and not strengths:
+        headline = "Treat this run as exploratory guidance rather than a near-term decision."
+    else:
+        headline = "This run is useful, but the shortlist still needs deliberate scientific review."
+
+    if out_of_domain_rate is not None and out_of_domain_rate >= 0.5:
+        trust_label = "High caution"
+    elif rank_corr is not None and rank_corr >= 0.45 and (out_of_domain_rate is None or out_of_domain_rate <= 0.25):
+        trust_label = "Stronger trust"
+    elif rows_with_values > 0:
+        trust_label = "Mixed trust"
+    else:
+        trust_label = "Exploratory trust"
+
+    return {
+        "headline": headline,
+        "trust_label": trust_label,
+        "strengths": strengths[:3],
+        "cautions": cautions[:3],
+        "next_steps": next_steps[:3],
     }
 
 
@@ -341,6 +463,12 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         "warnings": warnings,
         "charts": charts,
         "top_candidates": top_candidates,
+        "shortlist_preview": _shortlist_preview(top_candidates),
+        "insight_summary": _dashboard_insight_summary(
+            analysis_report=analysis_report if isinstance(analysis_report, dict) else {},
+            review_payload=review_payload if isinstance(review_payload, dict) else {},
+            top_candidates=top_candidates,
+        ),
         "review_summary": review_payload.get("summary", {}),
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},
         "evaluation_summary": evaluation_summary if isinstance(evaluation_summary, dict) else {},

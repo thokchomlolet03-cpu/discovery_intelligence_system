@@ -16,6 +16,9 @@
         </p>
         <div class="hero-actions">
           <a class="button button-primary" href="/upload">Start an analysis</a>
+          {% if current_user %}
+            <a class="button button-secondary" href="/sessions">Open session history</a>
+          {% endif %}
           <a class="button button-secondary" href="/discovery">Open discovery workbench</a>
           <a class="button button-secondary" href="/dashboard">Review dashboard</a>
         </div>

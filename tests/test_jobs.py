@@ -336,6 +336,93 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertEqual(response.status_code, 200)
         return self._extract_csrf_token(response.text)
 
+    def _store_ready_session_artifacts(self, session_id: str, source_name: str = "measurements.csv") -> None:
+        session_dir = Path(self.tmpdir.name) / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        decision_output = {
+            "session_id": session_id,
+            "iteration": 1,
+            "generated_at": "2026-03-31T00:00:00+00:00",
+            "summary": {
+                "top_k": 1,
+                "candidate_count": 1,
+                "risk_counts": {"low": 1},
+                "top_experiment_value": 0.73,
+            },
+            "top_experiments": [
+                {
+                    "session_id": session_id,
+                    "rank": 1,
+                    "candidate_id": "cand_1",
+                    "smiles": "CCO",
+                    "canonical_smiles": "CCO",
+                    "confidence": 0.91,
+                    "uncertainty": 0.1,
+                    "novelty": 0.32,
+                    "acquisition_score": 0.74,
+                    "experiment_value": 0.73,
+                    "priority_score": 0.77,
+                    "bucket": "exploit",
+                    "risk": "low",
+                    "status": "suggested",
+                    "explanation": ["High confidence makes this a practical immediate test candidate."],
+                    "provenance": {
+                        "text": "Scored from uploaded measurement dataset.",
+                        "source_name": source_name,
+                        "source_type": "uploaded",
+                        "model_version": "rf_isotonic:isotonic",
+                    },
+                    "feasibility": {"is_feasible": True, "reason": ""},
+                    "created_at": "2026-03-31T00:00:00+00:00",
+                    "model_metadata": {
+                        "version": "rf_isotonic:isotonic",
+                        "family": "random_forest",
+                        "calibration_method": "isotonic",
+                    },
+                }
+            ],
+            "input_type": "measurement_dataset",
+            "intent": "rank_uploaded_molecules",
+            "mode_used": "balanced",
+            "product_tier": "standard",
+            "warnings": [],
+            "source_name": source_name,
+        }
+        analysis_report = {
+            "warnings": [],
+            "measurement_summary": {
+                "semantic_mode": "measurement_dataset",
+                "value_column": "pic50",
+                "rows_with_values": 2,
+                "rows_with_labels": 0,
+                "label_source": "measurement_only",
+            },
+            "ranking_policy": {"primary_score_label": "Priority score"},
+            "top_level_recommendation_summary": "Start with the top exploit candidate.",
+        }
+
+        decision_path = session_dir / "decision_output.json"
+        report_path = session_dir / "analysis_report.json"
+        decision_path.write_text(json.dumps(decision_output))
+        report_path.write_text(json.dumps(analysis_report))
+
+        artifact_repository = ArtifactRepository()
+        artifact_repository.register_artifact(
+            artifact_type="decision_output_json",
+            path=decision_path,
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
+        artifact_repository.register_artifact(
+            artifact_type="analysis_report_json",
+            path=report_path,
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+        )
+
     def test_upload_route_returns_job_handle_without_waiting_for_pipeline_completion(self):
         queued_job = DatabaseJobStore().create_job(
             session_id="session_1",
@@ -538,6 +625,99 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn("Start a fresh upload", response.text)
         self.assertIn('"selected_mapping"', response.text)
         self.assertIn('"pic50"', response.text)
+
+    def test_sessions_page_lists_workspace_history_and_active_session(self):
+        inspect_response = self.client.post(
+            "/api/upload/inspect",
+            data={"csrf_token": self._authenticated_csrf(), "input_type": "measurement_dataset"},
+            files={
+                "file": (
+                    "measurements.csv",
+                    io.BytesIO(b"smiles,pic50,compound_id\nCCO,6.2,mol_1\nCCN,5.4,mol_2\n"),
+                    "text/csv",
+                )
+            },
+        )
+        session_id = inspect_response.json()["session_id"]
+        self.client.post(
+            "/api/upload/validate",
+            json={
+                "session_id": session_id,
+                "mapping": {
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "entity_id": "compound_id",
+                },
+                "label_builder": {"enabled": False, "value_column": "pic50", "operator": ">=", "threshold": ""},
+            },
+            headers={"X-CSRF-Token": self._authenticated_csrf()},
+        )
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            latest_job_id="job_done",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        self._store_ready_session_artifacts(session_id)
+
+        SessionRepository().upsert_session(
+            session_id="session_running",
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            source_name="screening.txt",
+            input_type="structure_only_screening",
+            latest_job_id="job_running",
+            upload_metadata={
+                "filename": "screening.txt",
+                "validation_summary": {
+                    "total_rows": 4,
+                    "valid_smiles_count": 4,
+                    "duplicate_count": 0,
+                    "rows_with_values": 0,
+                    "rows_with_labels": 0,
+                    "semantic_mode": "structure_only_screening",
+                },
+            },
+            summary_metadata={"last_job_status": "running"},
+        )
+
+        with patch.object(discovery_app.job_manager, "get_job") as mock_get_job:
+            def _job_lookup(job_id: str, workspace_id: str | None = None):
+                if job_id == "job_done":
+                    return {
+                        "job_id": "job_done",
+                        "session_id": session_id,
+                        "workspace_id": self.workspace["workspace_id"],
+                        "status": "succeeded",
+                        "progress_stage": "completed",
+                        "progress_percent": 100,
+                        "progress_message": "Analysis complete.",
+                    }
+                return {
+                    "job_id": "job_running",
+                    "session_id": "session_running",
+                    "workspace_id": self.workspace["workspace_id"],
+                    "status": "running",
+                    "progress_stage": "scoring_candidates",
+                    "progress_percent": 58,
+                    "progress_message": "Scoring candidates now.",
+                }
+
+            mock_get_job.side_effect = _job_lookup
+
+            self.client.get(f"/upload?session_id={session_id}")
+            response = self.client.get("/sessions")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Session timeline", response.text)
+        self.assertIn("measurements.csv", response.text)
+        self.assertIn("session_running", response.text)
+        self.assertIn("Priority score", response.text)
+        self.assertIn("Start with the top exploit candidate.", response.text)
+        self.assertIn("Active", response.text)
+        self.assertIn(f"/discovery?session_id={session_id}", response.text)
+        self.assertIn("Scoring candidates now.", response.text)
 
     def test_job_status_endpoint_returns_persisted_job_metadata(self):
         queued_job = DatabaseJobStore().create_job(

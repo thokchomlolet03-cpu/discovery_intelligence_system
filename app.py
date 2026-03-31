@@ -59,6 +59,7 @@ from system.upload_parser import (
     validation_summary,
 )
 from system.services.ingestion import normalize_input_type, normalize_semantic_mapping
+from system.session_history import build_session_history_context
 from system.session_artifacts import (
     load_analysis_report_payload,
     load_decision_artifact_payload,
@@ -123,6 +124,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         **build_template_auth_context(request),
         "current_workspace_plan": billing_service.plan_summary(auth.workspace) if auth is not None else None,
         "active_session_id": active_session_id,
+        "nav_sessions_url": "/sessions",
         "nav_discovery_url": f"/discovery?session_id={active_session_id}" if active_session_id else "/discovery",
         "nav_dashboard_url": f"/dashboard?session_id={active_session_id}" if active_session_id else "/dashboard",
         **extra,
@@ -846,6 +848,34 @@ async def upload_page(
         upload_session_context=upload_session_context,
         session_view=session_view,
         restored_upload_session=bool(upload_session_context),
+    )
+
+
+@app.get("/sessions", response_class=HTMLResponse)
+async def sessions_page(
+    request: Request,
+    session_id: str | None = Query(default=None),
+) -> Response:
+    auth = _page_auth_or_redirect(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    workspace_plan = _workspace_plan_summary(auth)
+    session_view = _resolve_session_view(request, auth, session_id)
+    session_history = build_session_history_context(
+        session_repository.list_sessions(auth.workspace_id, limit=100),
+        workspace_id=auth.workspace_id,
+        active_session_id=str(session_view.get("session_id") or ""),
+        latest_session_id=str(session_view.get("latest_session_id") or ""),
+        job_fetcher=lambda job_id, workspace_id: job_manager.get_job(job_id, workspace_id=workspace_id),
+    )
+    return _render_template(
+        request,
+        "sessions.html",
+        title="Sessions",
+        active_page="sessions",
+        workspace_plan=workspace_plan,
+        session_view=session_view,
+        session_history=session_history,
     )
 
 

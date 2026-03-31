@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Workspace sessions</span>
+          <span class="context-chip">Durable scientific work history</span>
+        </div>
+        <h1>Reopen, review, and continue past molecular analysis sessions.</h1>
+        <p class="hero-copy">
+          This page turns upload runs into a real workspace history surface. Use it to continue an upload session,
+          reopen discovery and dashboard artifacts, and understand which sessions are ready, still running, or only
+          partially inspected.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="/upload">Start a new upload</a>
+          {% if session_view.session_id %}
+            <a class="button button-secondary" href="/discovery?session_id={{ session_view.session_id }}">Open active discovery session</a>
+          {% endif %}
+        </div>
+      </div>
+      <aside class="hero-stat-stack">
+        <article class="stat-card">
+          <span class="panel-label">Stored sessions</span>
+          <strong>{{ session_history.counts.stored_sessions }}</strong>
+          <p>Total sessions currently recorded for this workspace.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Ready sessions</span>
+          <strong>{{ session_history.counts.ready_sessions }}</strong>
+          <p>Sessions with saved discovery artifacts ready to reopen.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Measurement-backed</span>
+          <strong>{{ session_history.counts.measurement_sessions }}</strong>
+          <p>Sessions where numeric scientific values were detected and carried forward.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Running now</span>
+          <strong>{{ session_history.counts.running_sessions }}</strong>
+          <p>Uploads that still have a queued or running analysis job.</p>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  {% if session_view.session_id %}
+    <section class="session-banner">
+      <div class="state-icon">Session {{ session_view.session_id }}</div>
+      <h2>
+        {% if session_view.selection_reason == "requested" %}
+          Viewing the requested session inside workspace history.
+        {% elif session_view.selection_reason == "active" %}
+          Your active session is pinned here for quick reopening.
+        {% else %}
+          The latest completed session is highlighted here for continuity.
+        {% endif %}
+      </h2>
+      <p>
+        Use this history surface when you want durable session continuity rather than bouncing between Upload,
+        Discovery, and Dashboard individually.
+      </p>
+      <div class="cta-row">
+        <a class="button button-secondary" href="/upload?session_id={{ session_view.session_id }}">Continue in Upload</a>
+        <a class="button button-secondary" href="/discovery?session_id={{ session_view.session_id }}">Open Discovery</a>
+        <a class="button button-secondary" href="/dashboard?session_id={{ session_view.session_id }}">Open Dashboard</a>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if session_history["items"] %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Session timeline</h2>
+          <p class="helper-copy">Sessions are ordered by most recently updated first so ongoing work stays closest to the top.</p>
+        </div>
+      </div>
+      <div class="session-history-list">
+        {% for item in session_history["items"] %}
+          <article class="session-history-card {% if item.is_active %}session-history-card-active{% endif %}">
+            <div class="session-history-head">
+              <div class="session-history-copy">
+                <div class="eyebrow-row">
+                  <span class="state-icon">Session {{ item.session_id }}</span>
+                  <span class="session-state-pill session-state-pill-{{ item.job_status_tone }}">{{ item.job_status_label }}</span>
+                  {% if item.is_active %}
+                    <span class="context-chip">Active</span>
+                  {% elif item.is_latest %}
+                    <span class="context-chip">Latest completed</span>
+                  {% endif %}
+                </div>
+                <h2>{{ item.source_name }}</h2>
+                <p>
+                  Updated {{ item.updated_at }}.
+                  Created {{ item.created_at }}.
+                  Input type: {{ item.input_type or "Not specified" }}.
+                </p>
+              </div>
+              <div class="session-history-actions">
+                <a class="button button-secondary" href="{{ item.upload_url }}">Upload</a>
+                <a class="button button-secondary" href="{{ item.discovery_url }}">Discovery</a>
+                <a class="button button-secondary" href="{{ item.dashboard_url }}">Dashboard</a>
+                {% if current_workspace_plan and current_workspace_plan.features.decision_export and item.results_ready %}
+                  <a class="button button-secondary" href="{{ item.download_url }}">Download</a>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="session-history-grid">
+              <article class="session-mini-card">
+                <span class="panel-label">Semantic mode</span>
+                <strong>{{ item.semantic_mode }}</strong>
+                <p>Value column: {{ item.value_column }}</p>
+              </article>
+              <article class="session-mini-card">
+                <span class="panel-label">Rows</span>
+                <strong>{{ item.rows_total }}</strong>
+                <p>{{ item.valid_smiles_count }} valid SMILES and {{ item.duplicate_count }} duplicates.</p>
+              </article>
+              <article class="session-mini-card">
+                <span class="panel-label">Scientific coverage</span>
+                <strong>{{ item.rows_with_values }}</strong>
+                <p>Rows with values and {{ item.rows_with_labels }} rows with labels.</p>
+              </article>
+              <article class="session-mini-card">
+                <span class="panel-label">Decision output</span>
+                <strong>{{ item.candidate_count }}</strong>
+                <p>{{ "%.3f"|format(item.top_experiment_value or 0) }} top experiment value.</p>
+              </article>
+            </div>
+
+            {% if item.primary_score_label or item.recommendation_summary %}
+              <div class="mini-callout">
+                {% if item.primary_score_label %}
+                  <span class="panel-label">Primary score</span>
+                  <p>{{ item.primary_score_label }}</p>
+                {% endif %}
+                {% if item.recommendation_summary %}
+                  <p>{{ item.recommendation_summary }}</p>
+                {% endif %}
+              </div>
+            {% endif %}
+
+            {% if item.job_message and item.job_status in ["queued", "running", "failed"] %}
+              <div class="mini-callout {% if item.job_status == 'failed' %}mini-callout-warning{% endif %}">
+                <span class="panel-label">Latest job update</span>
+                <p>{{ item.job_message }}</p>
+                {% if item.job_progress_percent %}
+                  <p class="helper-copy">Progress: {{ item.job_progress_percent }}%</p>
+                {% endif %}
+              </div>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <section class="panel">
+      <div class="state-icon">No sessions</div>
+      <h2>No workspace sessions have been recorded yet.</h2>
+      <p>
+        Run your first upload to create a durable session. Once sessions exist, this page becomes the quickest place
+        to reopen upload state, discovery artifacts, and dashboard context.
+      </p>
+      <div class="cta-row">
+        <a class="button button-primary" href="/upload">Start the first upload</a>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

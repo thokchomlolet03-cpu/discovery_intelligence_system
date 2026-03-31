@@ -493,6 +493,8 @@ def normalize_candidate_rationale(
 
     strengths = cleaned.get("strengths") if isinstance(cleaned.get("strengths"), list) else []
     strengths = [str(item).strip() for item in strengths if str(item).strip()]
+    session_context = cleaned.get("session_context") if isinstance(cleaned.get("session_context"), list) else []
+    session_context = [str(item).strip() for item in session_context if str(item).strip()]
     cautions = cleaned.get("cautions") if isinstance(cleaned.get("cautions"), list) else []
     cautions = [str(item).strip() for item in cautions if str(item).strip()]
     evidence_lines = cleaned.get("evidence_lines") if isinstance(cleaned.get("evidence_lines"), list) else []
@@ -517,6 +519,7 @@ def normalize_candidate_rationale(
         "trust_summary": trust_summary,
         "recommended_action": recommended_action,
         "primary_driver": dominant_key,
+        "session_context": session_context[:3],
         "strengths": strengths[:4],
         "cautions": cautions[:4],
         "evidence_lines": evidence_lines[:5],
@@ -756,6 +759,7 @@ def normalize_candidate(
         "rationale_summary": rationale["summary"],
         "rationale_why_now": rationale["why_now"],
         "rationale_primary_driver": rationale["primary_driver"],
+        "rationale_session_context": rationale["session_context"],
         "rationale_strengths": rationale["strengths"],
         "rationale_cautions": rationale["cautions"],
         "rationale_recommended_action": rationale["recommended_action"],

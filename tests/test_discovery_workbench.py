@@ -74,6 +74,9 @@ def canonical_decision_output() -> dict:
                     "trust_summary": "Confidence is relatively stable and the chemistry remains within stronger domain coverage.",
                     "recommended_action": "Use this as a near-term testing candidate because the signal is relatively stable.",
                     "primary_driver": "confidence",
+                    "session_context": [
+                        "Priority score ranks #1 out of 1 scored candidates in this run."
+                    ],
                     "strengths": [
                         "Confidence is relatively strong at 0.910.",
                         "Reference similarity is strong enough to support more confident near-term review.",
@@ -140,6 +143,7 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["target"], "target_a")
         self.assertEqual(candidate["trust_label"], "Stronger trust")
         self.assertIn("confidence", candidate["rationale_primary_driver"])
+        self.assertTrue(candidate["rationale_session_context"])
         self.assertTrue(candidate["rationale_summary"])
         self.assertTrue(candidate["rationale_evidence_lines"])
         self.assertTrue(workbench["ranking_policy"]["weight_breakdown"])

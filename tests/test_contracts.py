@@ -53,6 +53,7 @@ def canonical_decision_artifact() -> dict:
                     "trust_summary": "The shortlist is useful for prioritization, but still needs scientist review before becoming a bench commitment.",
                     "recommended_action": "Keep this in expert review before moving it into the next testing round.",
                     "primary_driver": "confidence",
+                    "session_context": ["Priority score ranks #1 out of 1 scored candidates in this run."],
                     "strengths": ["Confidence is relatively strong at 0.740."],
                     "cautions": ["No uploaded observed value is available for direct cross-checking in this session."],
                     "evidence_lines": ["This candidate is being prioritized mainly because confidence is carrying the shortlist position."],
@@ -87,6 +88,7 @@ class ContractValidationTest(unittest.TestCase):
         self.assertEqual(validated["top_experiments"][0]["candidate_id"], "cand_1")
         self.assertEqual(validated["top_experiments"][0]["bucket"], "exploit")
         self.assertEqual(validated["top_experiments"][0]["rationale"]["primary_driver"], "confidence")
+        self.assertTrue(validated["top_experiments"][0]["rationale"]["session_context"])
 
     def test_malformed_decision_artifact_fails_schema_validation(self):
         invalid = canonical_decision_artifact()

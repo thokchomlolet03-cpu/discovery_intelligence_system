@@ -262,6 +262,13 @@
             {% if candidate.rationale_summary %}
               <p>{{ candidate.rationale_summary }}</p>
             {% endif %}
+            {% if candidate.session_context %}
+              <ul class="compact-list helper-copy">
+                {% for item in candidate.session_context %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
             <p class="helper-copy">
               Confidence {{ "%.3f"|format(candidate.confidence or 0) }},
               uncertainty {{ "%.3f"|format(candidate.uncertainty or 0) }},

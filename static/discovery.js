@@ -233,7 +233,14 @@
             <td>${badgeHtml("bucket", candidate.bucket)}</td>
             <td>${badgeHtml("risk", candidate.risk)}</td>
             <td>${badgeHtml("status", candidate.status)}</td>
-            <td>${escapeHtml(candidate.rationale_summary || candidate.explanation_short)}</td>
+            <td>
+              ${escapeHtml(candidate.rationale_summary || candidate.explanation_short)}
+              ${
+                Array.isArray(candidate.rationale_session_context) && candidate.rationale_session_context.length
+                  ? `<div class="table-subtle">${escapeHtml(candidate.rationale_session_context[0])}</div>`
+                  : ""
+              }
+            </td>
             <td>
               <div>${escapeHtml(candidate.provenance_compact)}</div>
               <div class="table-subtle">${escapeHtml(candidate.reviewed_at_label)}</div>
@@ -334,6 +341,21 @@
                   <strong>${escapeHtml(candidate.trust_label || "Mixed trust")}</strong>
                   <p>${escapeHtml(candidate.trust_summary || candidate.rationale_summary || candidate.decision_summary)}</p>
                 </section>
+
+                ${
+                  Array.isArray(candidate.rationale_session_context) && candidate.rationale_session_context.length
+                    ? `
+                      <section class="reasoning-block">
+                        <span class="panel-label">Within this run</span>
+                        <ul>
+                          ${candidate.rationale_session_context
+                            .map((line) => `<li>${escapeHtml(line)}</li>`)
+                            .join("")}
+                        </ul>
+                      </section>
+                    `
+                    : ""
+                }
 
                 <section class="score-grid">
                   ${metricCardHtml("Confidence", candidate.confidence, "confidence")}
@@ -714,6 +736,21 @@
           </article>
         </div>
       </section>
+
+      ${
+        Array.isArray(candidate.rationale_session_context) && candidate.rationale_session_context.length
+          ? `
+            <section class="detail-section">
+              <span class="panel-label">Within this run</span>
+              <ul class="detail-list">
+                ${candidate.rationale_session_context
+                  .map((line) => `<li>${escapeHtml(line)}</li>`)
+                  .join("")}
+              </ul>
+            </section>
+          `
+          : ""
+      }
 
       <section class="detail-section">
         <span class="panel-label">Signals behind the recommendation</span>

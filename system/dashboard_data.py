@@ -166,6 +166,11 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "trust_label": str(rationale.get("trust_label") or row.get("trust_label") or "").strip(),
                 "rationale_summary": str(rationale.get("summary") or "").strip(),
                 "trust_summary": str(rationale.get("trust_summary") or "").strip(),
+                "session_context": [
+                    str(item).strip()
+                    for item in (rationale.get("session_context") or [])
+                    if str(item).strip()
+                ][:2],
                 "caution": (
                     str((rationale.get("cautions") or [""])[0]).strip()
                     if isinstance(rationale.get("cautions"), list)

@@ -771,6 +771,7 @@ class CandidateRationale(ContractBaseModel):
     trust_summary: str = ""
     recommended_action: str = ""
     primary_driver: str = ""
+    session_context: list[str] = Field(default_factory=list)
     strengths: list[str] = Field(default_factory=list)
     cautions: list[str] = Field(default_factory=list)
     evidence_lines: list[str] = Field(default_factory=list)
@@ -788,7 +789,7 @@ class CandidateRationale(ContractBaseModel):
     def _clean_rationale_text(cls, value: Any) -> str:
         return _clean_text(value)
 
-    @validator("strengths", "cautions", "evidence_lines", pre=True)
+    @validator("session_context", "strengths", "cautions", "evidence_lines", pre=True)
     def _coerce_rationale_lists(cls, value: Any) -> list[str]:
         if not isinstance(value, list):
             return []

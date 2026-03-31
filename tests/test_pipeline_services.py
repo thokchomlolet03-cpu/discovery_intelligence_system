@@ -154,6 +154,7 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertTrue(candidate["score_breakdown"])
         self.assertIsInstance(candidate["rationale"], dict)
         self.assertTrue(candidate["rationale"]["summary"])
+        self.assertTrue(candidate["rationale"]["session_context"])
         self.assertTrue(candidate["trust_label"])
         self.assertTrue(candidate["domain_label"])
         self.assertIn(candidate["risk"], {"low", "medium", "high"})

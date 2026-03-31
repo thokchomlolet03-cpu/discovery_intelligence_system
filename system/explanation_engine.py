@@ -10,6 +10,7 @@ SCORE_LABELS = {
     "uncertainty": "Uncertainty",
     "novelty": "Novelty",
     "experiment_value": "Experiment value",
+    "priority_score": "Priority score",
 }
 
 
@@ -26,6 +27,90 @@ def _clamp_score(value: Any) -> float:
 
 def _clean_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _with_session_context(df: pd.DataFrame) -> pd.DataFrame:
+    contextual = df.copy()
+    session_size = int(len(contextual))
+    contextual["session_candidate_count"] = session_size
+
+    if session_size == 0:
+        return contextual
+
+    percentile_columns = (
+        "confidence",
+        "uncertainty",
+        "novelty",
+        "experiment_value",
+        "priority_score",
+        "max_similarity",
+    )
+    for column in percentile_columns:
+        target_column = f"{column}_percentile"
+        if column not in contextual.columns:
+            contextual[target_column] = 0.0
+            continue
+        values = pd.to_numeric(contextual[column], errors="coerce")
+        if values.notna().any():
+            contextual[target_column] = values.rank(method="average", pct=True).fillna(0.0)
+        else:
+            contextual[target_column] = 0.0
+
+    if "priority_score" in contextual.columns:
+        priority_values = pd.to_numeric(contextual["priority_score"], errors="coerce").fillna(0.0)
+        contextual["priority_rank"] = priority_values.rank(method="first", ascending=False).astype(int)
+    else:
+        contextual["priority_rank"] = pd.Series(range(1, session_size + 1), index=contextual.index)
+    return contextual
+
+
+def _within_run_readout(percentile: float, *, direction: str = "higher") -> str:
+    bounded = max(0.0, min(1.0, percentile))
+    if direction == "lower":
+        return f"lower than {int(round((1.0 - bounded) * 100))}% of scored candidates in this run"
+    return f"higher than {int(round(bounded * 100))}% of scored candidates in this run"
+
+
+def _score_position_line(label: str, percentile: Any, *, direction: str = "higher") -> str:
+    return f"{label} is {_within_run_readout(_safe_float(percentile), direction=direction)}."
+
+
+def _session_context_lines(
+    row,
+    *,
+    bucket: str,
+    confidence: float,
+    uncertainty: float,
+    novelty: float,
+) -> list[str]:
+    session_size = int(_safe_float(row.get("session_candidate_count"), default=0.0) or 0)
+    if session_size <= 1:
+        return ["This is currently the only scored candidate in the session, so the recommendation is based on absolute signals rather than run-relative ranking."]
+
+    priority_rank = max(int(_safe_float(row.get("priority_rank"), default=1.0) or 1), 1)
+    priority_total = max(session_size, 1)
+    lines = [
+        f"Priority score ranks #{priority_rank} out of {priority_total} scored candidates in this run.",
+        _score_position_line("Priority score", row.get("priority_score_percentile")),
+    ]
+
+    if bucket == "learn" or uncertainty >= 0.65:
+        lines.append(_score_position_line("Uncertainty", row.get("uncertainty_percentile")))
+    else:
+        lines.append(_score_position_line("Uncertainty", row.get("uncertainty_percentile"), direction="lower"))
+
+    confidence_line = _score_position_line("Confidence", row.get("confidence_percentile"))
+    novelty_line = _score_position_line("Novelty", row.get("novelty_percentile"))
+    experiment_line = _score_position_line("Experiment value", row.get("experiment_value_percentile"))
+
+    if confidence >= 0.7:
+        lines.append(confidence_line)
+    elif novelty >= 0.6:
+        lines.append(novelty_line)
+    else:
+        lines.append(experiment_line)
+
+    return lines[:3]
 
 
 def _score_breakdown(row) -> list[dict[str, Any]]:
@@ -144,6 +229,13 @@ def candidate_rationale(row) -> dict[str, Any]:
     breakdown = _score_breakdown(row)
     dominant = _dominant_component(breakdown)
     domain = _domain_context(row.get("max_similarity"))
+    session_context = _session_context_lines(
+        row,
+        bucket=bucket,
+        confidence=confidence,
+        uncertainty=uncertainty,
+        novelty=novelty,
+    )
     recommended_action = _recommended_action(bucket, confidence, uncertainty, novelty, str(domain["status"]))
     trust_label, trust_summary = _trust_label(
         confidence=confidence,
@@ -154,16 +246,22 @@ def candidate_rationale(row) -> dict[str, Any]:
     )
 
     driver_label = str(dominant.get("label") or "Experiment value")
+    priority_rank = max(int(_safe_float(row.get("priority_rank"), default=1.0) or 1), 1)
+    session_size = max(int(_safe_float(row.get("session_candidate_count"), default=1.0) or 1), 1)
     if dominant.get("key") == "uncertainty":
-        summary = "This candidate is being prioritized mainly for learning value because uncertainty is carrying a large share of the score."
+        summary = f"This candidate is being prioritized mainly for learning value because uncertainty is carrying a large share of the score, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
     elif dominant.get("key") == "novelty":
-        summary = "This candidate is being prioritized mainly because novelty is expanding chemistry coverage beyond the current reference set."
+        summary = f"This candidate is being prioritized mainly because novelty is expanding chemistry coverage beyond the current reference set, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
     elif dominant.get("key") == "confidence":
-        summary = "This candidate is being prioritized mainly because confidence is carrying the current shortlist position."
+        summary = f"This candidate is being prioritized mainly because confidence is carrying the current shortlist position, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
     else:
-        summary = "This candidate is being prioritized mainly because experiment value is carrying the current shortlist position."
+        summary = f"This candidate is being prioritized mainly because experiment value is carrying the current shortlist position, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
 
-    why_now = f"{driver_label} is the largest contributor to the current priority score."
+    driver_percentile = row.get(f"{str(dominant.get('key') or 'experiment_value')}_percentile")
+    if dominant.get("key") == "uncertainty":
+        why_now = f"{driver_label} is the largest contributor to the current priority score, and uncertainty is {_within_run_readout(_safe_float(driver_percentile))}."
+    else:
+        why_now = f"{driver_label} is the largest contributor to the current priority score, and it is {_within_run_readout(_safe_float(driver_percentile))}."
 
     strengths: list[str] = []
     cautions: list[str] = []
@@ -184,6 +282,7 @@ def candidate_rationale(row) -> dict[str, Any]:
         strengths.append(f"Novelty is low at {novelty:.3f}, which keeps the candidate closer to known chemistry.")
 
     strengths.append(str(domain["summary"]))
+    strengths.extend(line for line in session_context if line not in strengths)
 
     if measurement_value is not None:
         if assay:
@@ -202,7 +301,10 @@ def candidate_rationale(row) -> dict[str, Any]:
     elif str(domain["status"]) == "edge_of_domain":
         cautions.append("This molecule sits near the edge of stronger chemistry coverage.")
 
-    evidence_lines = [summary, why_now] + strengths[:3]
+    evidence_lines = [summary, why_now] + session_context[:2]
+    for line in strengths:
+        if line not in evidence_lines:
+            evidence_lines.append(line)
     if cautions:
         evidence_lines.append(cautions[0])
 
@@ -213,6 +315,7 @@ def candidate_rationale(row) -> dict[str, Any]:
         "trust_summary": trust_summary,
         "recommended_action": recommended_action,
         "primary_driver": str(dominant.get("key") or "experiment_value"),
+        "session_context": session_context[:3],
         "strengths": strengths[:4],
         "cautions": cautions[:4],
         "evidence_lines": evidence_lines[:5],
@@ -234,7 +337,7 @@ def candidate_short_explanation(row) -> str:
 
 
 def add_candidate_explanations(df: pd.DataFrame) -> pd.DataFrame:
-    explained = df.copy()
+    explained = _with_session_context(df.copy())
     explained["score_breakdown"] = explained.apply(_score_breakdown, axis=1)
     explained["rationale"] = explained.apply(candidate_rationale, axis=1)
     explained["explanation"] = explained["rationale"].apply(

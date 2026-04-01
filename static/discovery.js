@@ -7,6 +7,10 @@
 
   const workbench = JSON.parse(dataNode.textContent || "{}");
   const config = window.discoveryWorkbenchConfig || {};
+  const targetDefinition = workbench.target_definition || {};
+  const targetName = String(targetDefinition.target_name || "the session target");
+  const targetKind = String(targetDefinition.target_kind || "classification");
+  const modelingMode = String(workbench.modeling_mode || "");
   const statusBox = document.getElementById("discovery-feedback");
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
   const resultCountNode = document.getElementById("results-count");
@@ -109,6 +113,189 @@
 
   function metricCardHtml(label, value, tone) {
     return `<article class="score-card">${metricHtml(label, value, tone)}</article>`;
+  }
+
+  function signalLabel(kind) {
+    if (kind === "confidence") {
+      return targetKind === "regression" ? "Ranking compatibility" : `Model confidence for ${targetName}`;
+    }
+    if (kind === "uncertainty") {
+      return targetKind === "regression" ? "Prediction dispersion" : "Prediction uncertainty";
+    }
+    if (kind === "novelty") {
+      return "Structural novelty";
+    }
+    if (kind === "priority_score") {
+      return "Policy priority score";
+    }
+    if (kind === "experiment_value") {
+      return "Policy experiment value";
+    }
+    return titleCase(kind);
+  }
+
+  function nonEmptyLines(values) {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+    return values.map((value) => String(value || "").trim()).filter(Boolean);
+  }
+
+  function candidateDataFacts(candidate) {
+    const facts = candidate.data_facts && typeof candidate.data_facts === "object" ? candidate.data_facts : {};
+    const datasetType = facts.dataset_type ? titleCase(facts.dataset_type) : titleCase(targetDefinition.dataset_type || "unknown");
+    const observedValue = facts.observed_value ?? candidate.observed_value;
+    const measurementColumn = facts.measurement_column || targetDefinition.measurement_column || "";
+    const labelColumn = facts.label_column || targetDefinition.label_column || "";
+    const contextText = [facts.assay || candidate.assay, facts.target || candidate.target].filter(Boolean).join(" / ");
+    return {
+      title: datasetType || "Unknown dataset type",
+      summary: contextText || "No assay or target context was recorded for this candidate.",
+      bullets: [
+        observedValue == null ? "No observed value was uploaded for this candidate." : `Observed value: ${formatObservedValue(observedValue)}.`,
+        measurementColumn ? `Mapped measurement column: ${measurementColumn}.` : "No measurement column is mapped for this session.",
+        labelColumn ? `Mapped label column: ${labelColumn}.` : "No explicit label column is mapped for this session.",
+      ],
+    };
+  }
+
+  function candidateModelJudgment(candidate) {
+    const judgment = candidate.model_judgment && typeof candidate.model_judgment === "object" ? candidate.model_judgment : {};
+    const predictionText = candidate.normalized_explanation?.model_judgment_summary || judgment.model_summary || "Model judgment summary was not recorded.";
+    const uncertaintyText = candidate.normalized_explanation?.uncertainty_summary || "Prediction uncertainty details were not recorded.";
+    const bullets = [];
+    if (targetKind === "regression") {
+      if (judgment.predicted_value != null) {
+        bullets.push(`Predicted value: ${formatNumber(judgment.predicted_value)}.`);
+      }
+      if (judgment.prediction_dispersion != null) {
+        bullets.push(`Prediction dispersion: ${formatNumber(judgment.prediction_dispersion)}.`);
+      }
+    } else {
+      if (judgment.confidence != null) {
+        bullets.push(`${signalLabel("confidence")}: ${formatNumber(judgment.confidence)}.`);
+      }
+    }
+    if (judgment.uncertainty != null) {
+      bullets.push(`${signalLabel("uncertainty")}: ${formatNumber(judgment.uncertainty)}.`);
+    }
+    if (judgment.uncertainty_kind) {
+      bullets.push(`Uncertainty semantics: ${titleCase(judgment.uncertainty_kind)}.`);
+    }
+    return {
+      title: targetKind === "regression" ? "Continuous model judgment" : "Classification model judgment",
+      summary: predictionText,
+      bullets: [uncertaintyText].concat(bullets),
+    };
+  }
+
+  function candidateDomainAndNovelty(candidate) {
+    const domain = candidate.applicability_domain && typeof candidate.applicability_domain === "object" ? candidate.applicability_domain : {};
+    const novelty = candidate.novelty_signal && typeof candidate.novelty_signal === "object" ? candidate.novelty_signal : {};
+    const bullets = [];
+    if (domain.max_reference_similarity != null) {
+      bullets.push(`Max reference similarity: ${formatNumber(domain.max_reference_similarity)}.`);
+    }
+    if (novelty.novelty_score != null) {
+      bullets.push(`Structural novelty: ${formatNumber(novelty.novelty_score)}.`);
+    }
+    if (novelty.reference_similarity != null) {
+      bullets.push(`Reference similarity used for novelty: ${formatNumber(novelty.reference_similarity)}.`);
+    }
+    return {
+      title: candidate.domain_label || domain.support_band || "Domain and novelty",
+      summary: domain.summary || candidate.domain_summary || "Reference-similarity support was not recorded for this candidate.",
+      bullets: [
+        novelty.summary || candidate.normalized_explanation?.novelty_summary || "Novelty details were not recorded.",
+      ].concat(bullets),
+    };
+  }
+
+  function candidateDecisionPolicy(candidate) {
+    const policy = candidate.decision_policy && typeof candidate.decision_policy === "object" ? candidate.decision_policy : {};
+    const recommendation = candidate.final_recommendation && typeof candidate.final_recommendation === "object" ? candidate.final_recommendation : {};
+    const bullets = [];
+    if (policy.priority_score != null) {
+      bullets.push(`${signalLabel("priority_score")}: ${formatNumber(policy.priority_score)}.`);
+    }
+    if (policy.experiment_value != null) {
+      bullets.push(`${signalLabel("experiment_value")}: ${formatNumber(policy.experiment_value)}.`);
+    }
+    if (policy.acquisition_score != null) {
+      bullets.push(`Acquisition score: ${formatNumber(policy.acquisition_score)}.`);
+    }
+    if (policy.bucket) {
+      bullets.push(`Decision bucket: ${titleCase(policy.bucket)}.`);
+    }
+    return {
+      title: recommendation.recommended_action || candidate.decision_label || "Recommendation policy",
+      summary: recommendation.summary || policy.policy_summary || candidate.decision_summary || "Recommendation policy details were not recorded.",
+      bullets: bullets.concat(
+        recommendation.follow_up_experiment
+          ? [`Suggested follow-up: ${recommendation.follow_up_experiment}.`]
+          : []
+      ),
+    };
+  }
+
+  function bulletListHtml(items) {
+    const lines = nonEmptyLines(items);
+    if (!lines.length) {
+      return "<p class=\"helper-copy\">No additional structured details were recorded.</p>";
+    }
+    return `<ul class="detail-list">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`;
+  }
+
+  function compactScientificBlocksHtml(candidate) {
+    const blocks = [
+      { label: "Data facts", ...candidateDataFacts(candidate) },
+      { label: "Model judgment", ...candidateModelJudgment(candidate) },
+      { label: "Domain and novelty", ...candidateDomainAndNovelty(candidate) },
+      { label: "Policy and recommendation", ...candidateDecisionPolicy(candidate) },
+    ];
+    return `
+      <section class="candidate-context-grid">
+        ${blocks
+          .map(
+            (block) => `
+              <article class="context-card">
+                <span class="panel-label">${escapeHtml(block.label)}</span>
+                <strong>${escapeHtml(block.title)}</strong>
+                <p>${escapeHtml(block.summary)}</p>
+              </article>
+            `
+          )
+          .join("")}
+      </section>
+    `;
+  }
+
+  function detailedScientificBlocksHtml(candidate) {
+    const blocks = [
+      { label: "Observed facts", ...candidateDataFacts(candidate) },
+      { label: "Model judgment", ...candidateModelJudgment(candidate) },
+      { label: "Applicability and novelty", ...candidateDomainAndNovelty(candidate) },
+      { label: "Decision policy and recommendation", ...candidateDecisionPolicy(candidate) },
+    ];
+    return `
+      <section class="detail-section">
+        <span class="panel-label">Scientific structure</span>
+        <div class="detail-grid">
+          ${blocks
+            .map(
+              (block) => `
+                <article class="detail-item">
+                  <span class="panel-label">${escapeHtml(block.label)}</span>
+                  <strong>${escapeHtml(block.title)}</strong>
+                  <p>${escapeHtml(block.summary)}</p>
+                  ${bulletListHtml(block.bullets)}
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+      </section>
+    `;
   }
 
   function scoreBreakdownHtml(candidate) {
@@ -224,11 +411,11 @@
               ${candidate.trust_label ? badgeHtml("status", candidate.trust_label) : ""}
               <div class="table-subtle">${escapeHtml(candidate.suggested_next_action || candidate.decision_label)}</div>
             </td>
-            <td>${metricHtml("Confidence", candidate.confidence, "confidence")}</td>
-            <td>${metricHtml("Uncertainty", candidate.uncertainty, "uncertainty")}</td>
-            <td>${metricHtml("Novelty", candidate.novelty, "novelty")}</td>
-            <td>${metricHtml("Priority Score", candidate.priority_score, "priority")}</td>
-            <td>${metricHtml("Experiment Value", candidate.experiment_value, "experiment")}</td>
+            <td>${metricHtml(signalLabel("confidence"), candidate.confidence, "confidence")}</td>
+            <td>${metricHtml(signalLabel("uncertainty"), candidate.uncertainty, "uncertainty")}</td>
+            <td>${metricHtml(signalLabel("novelty"), candidate.novelty, "novelty")}</td>
+            <td>${metricHtml(signalLabel("priority_score"), candidate.priority_score, "priority")}</td>
+            <td>${metricHtml(signalLabel("experiment_value"), candidate.experiment_value, "experiment")}</td>
             <td>${badgeHtml("domain", candidate.domain_status)}</td>
             <td>${badgeHtml("bucket", candidate.bucket)}</td>
             <td>${badgeHtml("risk", candidate.risk)}</td>
@@ -267,11 +454,11 @@
               <th>Candidate ID</th>
               <th>SMILES</th>
               <th>Recommended Move</th>
-              <th>Confidence</th>
-              <th>Uncertainty</th>
-              <th>Novelty</th>
-              <th>Priority Score</th>
-              <th>Experiment Value</th>
+              <th>${escapeHtml(signalLabel("confidence"))}</th>
+              <th>${escapeHtml(signalLabel("uncertainty"))}</th>
+              <th>${escapeHtml(signalLabel("novelty"))}</th>
+              <th>${escapeHtml(signalLabel("priority_score"))}</th>
+              <th>${escapeHtml(signalLabel("experiment_value"))}</th>
               <th>Domain</th>
               <th>Bucket</th>
               <th>Risk</th>
@@ -336,6 +523,8 @@
                   </article>
                 </section>
 
+                ${compactScientificBlocksHtml(candidate)}
+
                 <section class="decision-summary-block">
                   <span class="panel-label">Trust read</span>
                   <strong>${escapeHtml(candidate.trust_label || "Mixed trust")}</strong>
@@ -358,11 +547,11 @@
                 }
 
                 <section class="score-grid">
-                  ${metricCardHtml("Confidence", candidate.confidence, "confidence")}
-                  ${metricCardHtml("Uncertainty", candidate.uncertainty, "uncertainty")}
-                  ${metricCardHtml("Novelty", candidate.novelty, "novelty")}
-                  ${metricCardHtml("Priority Score", candidate.priority_score, "priority")}
-                  ${metricCardHtml("Experiment Value", candidate.experiment_value, "experiment")}
+                  ${metricCardHtml(signalLabel("confidence"), candidate.confidence, "confidence")}
+                  ${metricCardHtml(signalLabel("uncertainty"), candidate.uncertainty, "uncertainty")}
+                  ${metricCardHtml(signalLabel("novelty"), candidate.novelty, "novelty")}
+                  ${metricCardHtml(signalLabel("priority_score"), candidate.priority_score, "priority")}
+                  ${metricCardHtml(signalLabel("experiment_value"), candidate.experiment_value, "experiment")}
                 </section>
 
                 <section class="decision-summary-block">
@@ -737,6 +926,8 @@
         </div>
       </section>
 
+      ${detailedScientificBlocksHtml(candidate)}
+
       ${
         Array.isArray(candidate.rationale_session_context) && candidate.rationale_session_context.length
           ? `
@@ -755,11 +946,11 @@
       <section class="detail-section">
         <span class="panel-label">Signals behind the recommendation</span>
         <div class="detail-grid">
-          <article class="detail-item">${metricHtml("Confidence", candidate.confidence, "confidence")}</article>
-          <article class="detail-item">${metricHtml("Uncertainty", candidate.uncertainty, "uncertainty")}</article>
-          <article class="detail-item">${metricHtml("Novelty", candidate.novelty, "novelty")}</article>
-          <article class="detail-item">${metricHtml("Priority score", candidate.priority_score, "priority")}</article>
-          <article class="detail-item">${metricHtml("Experiment Value", candidate.experiment_value, "experiment")}</article>
+          <article class="detail-item">${metricHtml(signalLabel("confidence"), candidate.confidence, "confidence")}</article>
+          <article class="detail-item">${metricHtml(signalLabel("uncertainty"), candidate.uncertainty, "uncertainty")}</article>
+          <article class="detail-item">${metricHtml(signalLabel("novelty"), candidate.novelty, "novelty")}</article>
+          <article class="detail-item">${metricHtml(signalLabel("priority_score"), candidate.priority_score, "priority")}</article>
+          <article class="detail-item">${metricHtml(signalLabel("experiment_value"), candidate.experiment_value, "experiment")}</article>
         </div>
       </section>
 
@@ -772,7 +963,7 @@
             <p>${escapeHtml(candidate.suggested_next_action)}</p>
           </article>
           <article class="detail-item">
-            <span class="panel-label">Primary score</span>
+            <span class="panel-label">Primary ranking signal</span>
             <strong>${escapeHtml(candidate.primary_score_label)} ${escapeHtml(formatNumber(candidate.primary_score_value))}</strong>
             <p>${escapeHtml(candidate.decision_summary)}</p>
           </article>

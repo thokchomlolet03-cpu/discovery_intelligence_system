@@ -87,6 +87,63 @@ def canonical_decision_output() -> dict:
                         "Confidence is the largest contributor to the current priority score.",
                     ],
                 },
+                "data_facts": {
+                    "observed_value": 6.4,
+                    "measurement_column": "pic50",
+                    "label_column": "",
+                    "dataset_type": "measurement_dataset",
+                    "assay": "screen_a",
+                    "target": "target_a",
+                    "source_name": "upload.csv",
+                },
+                "model_judgment": {
+                    "target_kind": "regression",
+                    "predicted_value": 6.55,
+                    "prediction_dispersion": 0.18,
+                    "uncertainty": 0.1,
+                    "uncertainty_kind": "ensemble_prediction_std",
+                    "model_summary": "The model produced a continuous target prediction and a dispersion-based uncertainty estimate.",
+                },
+                "applicability_domain": {
+                    "status": "in_domain",
+                    "max_reference_similarity": 0.63,
+                    "support_band": "Within stronger chemistry support",
+                    "summary": "Reference similarity is strong enough to support more confident near-term review.",
+                    "evidence": ["Similarity support remains above the current in-domain threshold."],
+                },
+                "novelty_signal": {
+                    "novelty_score": 0.58,
+                    "reference_similarity": 0.63,
+                    "batch_similarity": 0.41,
+                    "summary": "This candidate adds some structural novelty without leaving known chemistry entirely.",
+                },
+                "decision_policy": {
+                    "bucket": "exploit",
+                    "priority_score": 0.78,
+                    "acquisition_score": 0.77,
+                    "experiment_value": 0.72,
+                    "selection_reason": "confidence-dominant shortlist position",
+                    "policy_summary": "The decision policy is prioritizing this candidate for near-term testing based on current score stability.",
+                },
+                "final_recommendation": {
+                    "recommended_action": "Use this as a near-term testing candidate because the signal is relatively stable.",
+                    "summary": "Recommendation details are strongest for near-term review and testing.",
+                    "follow_up_experiment": "Run the next confirmatory assay against this candidate.",
+                    "trust_cautions": [],
+                },
+                "normalized_explanation": {
+                    "why_this_candidate": "This candidate is included because it remains competitive under the current decision policy.",
+                    "why_now": "Confidence is the largest contributor to the current priority score.",
+                    "supporting_evidence": [
+                        "This candidate is being prioritized mainly because confidence is carrying the shortlist position."
+                    ],
+                    "model_judgment_summary": "The model predicts a continuous value of 6.550 for target_a.",
+                    "uncertainty_summary": "Uncertainty is 0.100.",
+                    "novelty_summary": "This candidate adds some structural novelty without leaving known chemistry entirely.",
+                    "decision_policy_reason": "The decision policy is prioritizing this candidate for near-term testing based on current score stability.",
+                    "recommended_followup": "Run the next confirmatory assay against this candidate.",
+                    "trust_cautions": [],
+                },
                 "domain_status": "in_domain",
                 "domain_label": "Within stronger chemistry range",
                 "domain_summary": "Reference similarity is strong enough to support more confident near-term review.",
@@ -104,8 +161,88 @@ def canonical_decision_output() -> dict:
                     "family": "random_forest",
                     "calibration_method": "isotonic",
                 },
+                "target_definition": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "measurement_column": "pic50",
+                    "scientific_meaning": "Higher predicted values are treated as more favorable for pIC50.",
+                    "dataset_type": "measurement_dataset",
+                    "mapping_confidence": "medium",
+                    "success_definition": "Success means prioritizing molecules expected to achieve higher pIC50 values.",
+                },
             }
         ],
+        "target_definition": {
+            "target_name": "pIC50",
+            "target_kind": "regression",
+            "optimization_direction": "maximize",
+            "measurement_column": "pic50",
+            "scientific_meaning": "Higher predicted values are treated as more favorable for pIC50.",
+            "dataset_type": "measurement_dataset",
+            "mapping_confidence": "medium",
+            "success_definition": "Success means prioritizing molecules expected to achieve higher pIC50 values.",
+        },
+        "modeling_mode": "regression",
+        "decision_intent": "prioritize_experiments",
+        "run_contract": {
+            "session_id": "session_1",
+            "source_name": "upload.csv",
+            "input_type": "measurement_dataset",
+            "requested_intent": "rank_uploaded_molecules",
+            "decision_intent": "prioritize_experiments",
+            "modeling_mode": "regression",
+            "scoring_mode": "balanced",
+            "target_definition": {
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "measurement_column": "pic50",
+                "scientific_meaning": "Higher predicted values are treated as more favorable for pIC50.",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+                "success_definition": "Success means prioritizing molecules expected to achieve higher pIC50 values.",
+            },
+            "target_model_available": True,
+            "selected_model_name": "rf_regression",
+            "selected_model_family": "random_forest",
+            "training_scope": "session_trained",
+            "label_source": "continuous_measurement",
+            "feature_signature": "rdkit_descriptors_plus_morgan_fp_2048",
+            "reference_basis": {
+                "novelty_reference": "reference_dataset_similarity",
+                "applicability_reference": "reference_dataset_similarity",
+            },
+            "contract_versions": {
+                "target_contract_version": "target_definition.v1",
+                "model_contract_version": "model_contract.v1",
+                "run_contract_version": "run_contract.v1",
+            },
+        },
+        "comparison_anchors": {
+            "session_id": "session_1",
+            "source_name": "upload.csv",
+            "input_type": "measurement_dataset",
+            "target_name": "pIC50",
+            "target_kind": "regression",
+            "optimization_direction": "maximize",
+            "measurement_column": "pic50",
+            "dataset_type": "measurement_dataset",
+            "mapping_confidence": "medium",
+            "column_mapping": {"smiles": "smiles", "value": "pic50"},
+            "label_source": "continuous_measurement",
+            "decision_intent": "prioritize_experiments",
+            "modeling_mode": "regression",
+            "scoring_mode": "balanced",
+            "selected_model_name": "rf_regression",
+            "training_scope": "session_trained",
+            "target_contract_version": "target_definition.v1",
+            "model_contract_version": "model_contract.v1",
+            "scoring_policy_version": "scoring_policy.v1",
+            "explanation_contract_version": "normalized_explanation.v1",
+            "run_contract_version": "run_contract.v1",
+            "comparison_ready": True,
+        },
     }
 
 
@@ -139,6 +276,10 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["primary_score_name"], "priority_score")
         self.assertEqual(candidate["domain_status"], "in_domain")
         self.assertEqual(candidate["observed_value"], 6.4)
+        self.assertEqual(workbench["comparison_anchors"]["target_name"], "pIC50")
+        self.assertEqual(workbench["run_contract"]["selected_model_name"], "rf_regression")
+        self.assertTrue(workbench["run_provenance"]["comparison_ready"])
+        self.assertIn("rf_regression", workbench["run_provenance"]["model_summary"])
         self.assertEqual(candidate["assay"], "screen_a")
         self.assertEqual(candidate["target"], "target_a")
         self.assertEqual(candidate["trust_label"], "Stronger trust")
@@ -146,7 +287,14 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertTrue(candidate["rationale_session_context"])
         self.assertTrue(candidate["rationale_summary"])
         self.assertTrue(candidate["rationale_evidence_lines"])
+        self.assertEqual(candidate["data_facts"]["dataset_type"], "measurement_dataset")
+        self.assertEqual(candidate["applicability_domain"]["status"], "in_domain")
+        self.assertEqual(candidate["novelty_signal"]["novelty_score"], 0.58)
+        self.assertEqual(candidate["decision_policy"]["bucket"], "exploit")
+        self.assertEqual(candidate["final_recommendation"]["recommended_action"], "Use this as a near-term testing candidate because the signal is relatively stable.")
+        self.assertIn("continuous value", candidate["normalized_explanation"]["model_judgment_summary"])
         self.assertTrue(workbench["ranking_policy"]["weight_breakdown"])
+        self.assertEqual(workbench["modeling_mode"], "regression")
         self.assertEqual(workbench["decision_overview"]["groups"][0]["key"], "test_now")
         self.assertEqual(workbench["decision_overview"]["primary_group"]["key"], "test_now")
         self.assertEqual(workbench["decision_overview"]["primary_candidate"]["candidate_id"], "cand_1")

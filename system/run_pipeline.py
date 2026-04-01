@@ -19,6 +19,12 @@ from system.services.artifact_service import (
 )
 from system.services.candidate_service import out_of_domain_ratio
 from system.services.data_service import labeled_subset, prepare_analysis_dataframe
+from system.services.run_metadata_service import build_comparison_anchors, build_run_contract
+from system.services.target_definition_service import (
+    default_contract_versions,
+    infer_modeling_mode,
+    normalize_decision_intent,
+)
 from system.session_report import (
     apply_scoring_mode,
     build_analysis_report,
@@ -95,6 +101,13 @@ def _apply_result_metadata(
     warnings: list[str],
     session_summary: dict[str, Any],
     analysis_report: dict[str, Any],
+    target_definition: dict[str, Any],
+    decision_intent: str,
+    modeling_mode: str,
+    scientific_contract: dict[str, Any],
+    run_contract: dict[str, Any],
+    comparison_anchors: dict[str, Any],
+    contract_versions: dict[str, str],
 ) -> None:
     result["run_id"] = session_id
     result["session_id"] = session_id
@@ -102,8 +115,15 @@ def _apply_result_metadata(
     result["source_name"] = source_name
     result["input_type"] = input_type
     result["intent"] = intent
+    result["decision_intent"] = decision_intent
+    result["modeling_mode"] = modeling_mode
     result["scoring_mode"] = scoring_mode
     result["warnings"] = warnings
+    result["target_definition"] = target_definition
+    result["scientific_contract"] = scientific_contract
+    result["run_contract"] = run_contract
+    result["comparison_anchors"] = comparison_anchors
+    result["contract_versions"] = contract_versions
     result["upload_session_summary"] = session_summary
     result["analysis_report"] = analysis_report
     result["discovery_url"] = f"/discovery?session_id={session_id}"
@@ -144,9 +164,12 @@ def run_pipeline(
     scoring_mode, config = apply_scoring_mode(default_system_config(seed=seed), options.get("scoring_mode"))
     session_id = _resolve_session_id(options, prepared)
     summary = _validated_normalized_summary(summary, session_id, source_name)
+    target_definition = dict(summary.get("target_definition") or prepared.attrs.get("target_definition") or {})
+    contract_versions = default_contract_versions()
 
     input_type = normalize_input_type(options.get("input_type"), default="structure_only_screening")
     intent = str(options.get("intent") or "rank_uploaded_molecules")
+    decision_intent = normalize_decision_intent(intent)
     consent_learning = bool(options.get("consent_learning"))
     product_tier = str(options.get("product_tier") or "standard")
 
@@ -158,9 +181,15 @@ def run_pipeline(
     )
     domain_gap = out_of_domain_ratio(prepared, config=config)
     labeled = labeled_subset(prepared)
-    class_count = int(labeled["biodegradable"].nunique()) if not labeled.empty else 0
-    min_class_count = int(labeled["biodegradable"].value_counts().min()) if not labeled.empty else 0
-    session_training_available = class_count >= 2 and min_class_count >= 2
+    target_kind = str(target_definition.get("target_kind") or "classification")
+    if target_kind == "regression":
+        measured = pd.to_numeric(prepared.get("target_value"), errors="coerce")
+        measured = measured[measured.notna()]
+        target_model_available = int(len(measured)) >= 6 and int(measured.nunique()) >= 3
+    else:
+        class_count = int(labeled["target_label"].nunique()) if not labeled.empty and "target_label" in labeled.columns else int(labeled["biodegradable"].nunique()) if not labeled.empty else 0
+        min_class_count = int(labeled["target_label"].value_counts().min()) if not labeled.empty and "target_label" in labeled.columns else int(labeled["biodegradable"].value_counts().min()) if not labeled.empty else 0
+        target_model_available = class_count >= 2 and min_class_count >= 2
 
     _emit_progress(
         progress_callback,
@@ -169,7 +198,8 @@ def run_pipeline(
         percent=34,
     )
 
-    if intent == "generate_candidates" and session_training_available:
+    used_candidate_generation = intent == "generate_candidates" and target_kind == "classification" and target_model_available
+    if used_candidate_generation:
         result, generated, processed, scored, bundle = build_discovery_result(
             prepared,
             summary,
@@ -179,6 +209,7 @@ def run_pipeline(
             source_name,
             intent,
             scoring_mode,
+            target_definition=target_definition,
             progress_callback=progress_callback,
         )
     else:
@@ -191,11 +222,27 @@ def run_pipeline(
             source_name,
             intent,
             scoring_mode,
-            allow_session_training=session_training_available,
+            allow_session_training=target_model_available,
+            target_definition=target_definition,
             progress_callback=progress_callback,
         )
         generated = None
         processed = None
+    modeling_mode = infer_modeling_mode(
+        target_definition=target_definition,
+        decision_intent=decision_intent,
+        used_candidate_generation=used_candidate_generation,
+        target_model_available=target_model_available,
+    )
+    scientific_contract = {
+        "target_definition": target_definition,
+        "decision_intent": decision_intent,
+        "modeling_mode": modeling_mode,
+        "target_model_available": bool(target_model_available),
+        "candidate_generation_eligible": bool(intent == "generate_candidates" and target_kind == "classification" and target_model_available),
+        "used_candidate_generation": bool(used_candidate_generation),
+        "fallback_reason": "",
+    }
 
     mean_uncertainty = None
     if not scored.empty and "uncertainty" in scored.columns:
@@ -208,8 +255,44 @@ def run_pipeline(
         out_of_domain_ratio=domain_gap,
         mean_uncertainty=mean_uncertainty,
     )
-    if intent == "generate_candidates" and not session_training_available:
+    if intent == "generate_candidates" and target_kind != "classification":
+        warnings.append("Candidate generation currently supports classification-style targets only, so this run used the ranking workflow instead.")
+        scientific_contract["fallback_reason"] = "candidate_generation_requires_classification_target"
+    elif intent == "generate_candidates" and not target_model_available:
         warnings.append("The upload did not contain enough labeled examples per class for session-trained candidate generation, so the run fell back to ranking uploaded molecules.")
+        scientific_contract["fallback_reason"] = "insufficient_training_data_for_candidate_generation"
+
+    if bundle is not None:
+        bundle["contract_versions"] = contract_versions
+        bundle["target_definition"] = target_definition
+
+    run_contract = build_run_contract(
+        session_id=session_id,
+        source_name=source_name,
+        input_type=input_type,
+        requested_intent=intent,
+        decision_intent=decision_intent,
+        modeling_mode=modeling_mode,
+        scoring_mode=scoring_mode,
+        target_definition=target_definition,
+        scientific_contract=scientific_contract,
+        contract_versions=contract_versions,
+        validation_summary=summary,
+        bundle=bundle,
+    )
+    comparison_anchors = build_comparison_anchors(
+        session_id=session_id,
+        source_name=source_name,
+        input_type=input_type,
+        column_mapping=column_mapping,
+        target_definition=target_definition,
+        decision_intent=decision_intent,
+        modeling_mode=modeling_mode,
+        scoring_mode=scoring_mode,
+        contract_versions=contract_versions,
+        validation_summary=summary,
+        run_contract=run_contract,
+    )
 
     _emit_progress(
         progress_callback,
@@ -224,20 +307,32 @@ def run_pipeline(
         column_mapping=column_mapping,
         validation=summary,
         intent=intent,
+        decision_intent=decision_intent,
+        modeling_mode=modeling_mode,
         scoring_mode=scoring_mode,
         consent_learning=consent_learning,
         warnings=warnings,
         product_tier=product_tier,
+        target_definition=target_definition,
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+        contract_versions=contract_versions,
     )
     analysis_report = build_analysis_report(
         validation=summary,
         scoring_mode=scoring_mode,
         intent=intent,
+        decision_intent=decision_intent,
+        modeling_mode=modeling_mode,
         consent_learning=consent_learning,
         top_candidates=result.get("top_candidates", []),
         warnings=warnings,
         product_tier=product_tier,
         scored_frame=scored,
+        target_definition=target_definition,
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+        contract_versions=contract_versions,
     )
     _apply_result_metadata(
         result,
@@ -250,6 +345,13 @@ def run_pipeline(
         warnings=warnings,
         session_summary=session_summary,
         analysis_report=analysis_report,
+        target_definition=target_definition,
+        decision_intent=decision_intent,
+        modeling_mode=modeling_mode,
+        scientific_contract=scientific_contract,
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+        contract_versions=contract_versions,
     )
 
     _emit_progress(
@@ -263,9 +365,16 @@ def run_pipeline(
     if result.get("decision_output"):
         result["decision_output"]["input_type"] = input_type
         result["decision_output"]["intent"] = intent
+        result["decision_output"]["decision_intent"] = decision_intent
+        result["decision_output"]["modeling_mode"] = modeling_mode
         result["decision_output"]["mode_used"] = scoring_mode
         result["decision_output"]["product_tier"] = product_tier
         result["decision_output"]["warnings"] = warnings
+        result["decision_output"]["target_definition"] = target_definition
+        result["decision_output"]["scientific_contract"] = scientific_contract
+        result["decision_output"]["run_contract"] = run_contract
+        result["decision_output"]["comparison_anchors"] = comparison_anchors
+        result["decision_output"]["contract_versions"] = contract_versions
         result["decision_output"] = validate_decision_artifact(result["decision_output"])
         result["top_candidates"] = result["decision_output"].get("top_experiments", [])
 

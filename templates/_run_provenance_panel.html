@@ -1,0 +1,61 @@
+{% if run_provenance %}
+  {% set compact = compact | default(false) %}
+  {% set container_class = "mini-callout" if compact else "panel" %}
+  <section class="{{ container_class }}">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title | default("Run Provenance") }}</h2>
+        <p class="helper-copy">
+          {{ section_copy | default("This summary records what model path actually ran, whether the session is comparison-ready, and which policy contract shaped the shortlist.") }}
+        </p>
+      </div>
+      <div class="dashboard-meta-row">
+        {% if run_provenance.comparison_ready %}
+          <span class="data-chip">Comparison ready</span>
+        {% endif %}
+        {% if run_provenance.policy_version %}
+          <span class="data-chip">{{ run_provenance.policy_version }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-grid metrics-grid">
+      <article class="stat-card">
+        <span class="panel-label">Comparison basis</span>
+        <strong>{{ run_provenance.comparison_basis_label or "Not recorded" }}</strong>
+        <p>{{ run_provenance.comparison_summary or "Comparison readiness was not recorded for this session." }}</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Model provenance</span>
+        <strong>{{ run_provenance.selected_model_name or "Not recorded" }}</strong>
+        <p>{{ run_provenance.model_summary or "Model provenance was not recorded for this session." }}</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Policy contract</span>
+        <strong>{{ run_provenance.scoring_mode_label or "Not recorded" }}</strong>
+        <p>{{ run_provenance.policy_summary or "Policy version details were not recorded for this session." }}</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Reference basis</span>
+        <strong>{{ run_provenance.training_scope_label or "Not recorded" }}</strong>
+        <p>{{ run_provenance.reference_summary or run_provenance.training_scope_summary or "Reference-basis details were not recorded." }}</p>
+      </article>
+    </div>
+
+    {% if run_provenance.fallback_reason or run_provenance.cautions %}
+      <article class="dashboard-insight-card">
+        <span class="panel-label">Comparison cautions</span>
+        {% if run_provenance.fallback_reason %}
+          <p class="helper-copy">Fallback: {{ run_provenance.fallback_reason.replace("_", " ") }}</p>
+        {% endif %}
+        {% if run_provenance.cautions %}
+          <ul class="compact-list">
+            {% for item in run_provenance.cautions %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </article>
+    {% endif %}
+  </section>
+{% endif %}

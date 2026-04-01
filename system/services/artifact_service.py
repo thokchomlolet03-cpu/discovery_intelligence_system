@@ -354,11 +354,12 @@ def persist_pipeline_artifacts(
         write_dataframe(run_dir / "scored_candidates.csv", scored)
 
     if bundle is not None:
-        artifact_paths["model_bundle"] = str(run_dir / "rf_model_v1.joblib")
+        bundle_name = "rf_regression_model_v1.joblib" if str(bundle.get("model_kind") or "").strip().lower() == "regression" else "rf_model_v1.joblib"
+        artifact_paths["model_bundle"] = str(run_dir / bundle_name)
         artifact_paths["evaluation_summary"] = str(run_dir / "evaluation_summary.json")
         from system.services.training_service import save_model_bundle
 
-        save_model_bundle(bundle, run_dir / "rf_model_v1.joblib")
+        save_model_bundle(bundle, run_dir / bundle_name)
         bundle["artifact_refs"] = {
             "model_bundle": artifact_paths["model_bundle"],
             "evaluation_summary": artifact_paths["evaluation_summary"],

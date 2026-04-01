@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from system.contracts import validate_label_builder_config, validate_upload_inspection_result
+from system.contracts import validate_label_builder_config
 from system.db.repositories import ArtifactRepository, SessionRepository
 from system.services.ingestion import (
     LEGACY_INPUT_TYPES,
@@ -28,6 +28,8 @@ from system.services.ingestion import (
     summarize_validation,
 )
 from system.services.artifact_service import uploaded_session_dir, write_upload_inspection_artifact
+from system.services.run_metadata_service import build_comparison_anchors
+from system.services.target_definition_service import enrich_upload_inspection_payload
 from utils.free_paid_mode import assess_free_tier
 from utils.validation import ensure_no_duplicate_columns
 
@@ -44,6 +46,28 @@ def session_id_now() -> str:
 
 def session_dir(session_id: str) -> Path:
     return uploaded_session_dir(session_id)
+
+
+def _enrich_session_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    enriched = enrich_upload_inspection_payload(payload)
+    enriched["comparison_anchors"] = build_comparison_anchors(
+        session_id=str(enriched.get("session_id") or ""),
+        source_name=str(enriched.get("filename") or ""),
+        input_type=str(enriched.get("input_type") or ""),
+        column_mapping=(
+            enriched.get("selected_mapping")
+            or enriched.get("semantic_roles")
+            or enriched.get("inferred_mapping")
+            or {}
+        ),
+        target_definition=enriched.get("target_definition") or {},
+        decision_intent=enriched.get("decision_intent"),
+        modeling_mode="",
+        scoring_mode="",
+        contract_versions=enriched.get("contract_versions") or {},
+        validation_summary=enriched.get("validation_summary") or {},
+    )
+    return enriched
 
 
 def _register_session_artifacts(
@@ -154,7 +178,7 @@ def create_upload_session(
     raw_upload_path = target_dir / RAW_UPLOAD_NAME
     dataframe.to_csv(raw_upload_path, index=False)
 
-    payload = validate_upload_inspection_result(
+    payload = _enrich_session_payload(
         {
             "session_id": session_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -225,7 +249,7 @@ def load_session_metadata(session_id: str, workspace_id: str | None = None) -> d
         session_metadata = {}
     upload_metadata = session_metadata.get("upload_metadata") if isinstance(session_metadata, dict) else {}
     if upload_metadata:
-        return validate_upload_inspection_result(upload_metadata)
+        return _enrich_session_payload(upload_metadata)
 
     target = session_dir(session_id) / INSPECT_SUMMARY_NAME
     if workspace_id is not None and not session_metadata:
@@ -234,7 +258,7 @@ def load_session_metadata(session_id: str, workspace_id: str | None = None) -> d
         session_repository.get_session(session_id, workspace_id=workspace_id)
     if not target.exists():
         raise FileNotFoundError(f"No session metadata found for '{session_id}'.")
-    payload = validate_upload_inspection_result(json.loads(target.read_text()))
+    payload = _enrich_session_payload(json.loads(target.read_text()))
     session_repository.upsert_session(
         session_id=session_id,
         workspace_id=workspace_id,
@@ -258,7 +282,7 @@ def save_session_metadata(
     workspace_id: str,
     created_by_user_id: str | None = None,
 ) -> None:
-    validated = validate_upload_inspection_result(payload)
+    validated = _enrich_session_payload(payload)
     target_dir = uploaded_session_dir(session_id, create=True)
     write_upload_inspection_artifact(target_dir / INSPECT_SUMMARY_NAME, validated)
     session_repository.upsert_session(
@@ -339,4 +363,6 @@ def build_analysis_frame(
 
     mapped["molecule_id"] = mapped["entity_id"]
     mapped["biodegradable"] = pd.to_numeric(mapped["biodegradable"], errors="coerce").fillna(-1).astype(int)
+    mapped["target_label"] = mapped["biodegradable"]
+    mapped["target_value"] = pd.to_numeric(mapped["value"], errors="coerce")
     return mapped

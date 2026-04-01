@@ -66,6 +66,22 @@
       </div>
     </section>
 
+    {% with session_identity=session_identity, section_title="Session Identity", section_copy="This card separates the scientific target, actual model mode, and current trust framing from the recommendation policy shown below." %}
+      {% include "_session_identity_card.html" %}
+    {% endwith %}
+
+    {% with status_semantics=status_semantics, section_title="Session Status", section_copy="This summary explains whether the current recommendation artifacts are trustworthy, partially viewable, or in need of rerun." %}
+      {% include "_status_semantics_panel.html" %}
+    {% endwith %}
+
+    {% with run_provenance=workbench.run_provenance, section_title="Run Provenance", section_copy="Use this panel to see what model path actually ran, whether the session is comparison-ready, and whether any fallback changed how the shortlist should be interpreted." %}
+      {% include "_run_provenance_panel.html" %}
+    {% endwith %}
+
+    {% with active_session_comparison=active_session_comparison, section_title="Compared With Prior Run", section_copy="Use this panel to see whether the current shortlist can be read across against the nearest prior baseline in the same workspace, or whether target/model drift makes the comparison unsafe." %}
+      {% include "_active_session_comparison_panel.html" %}
+    {% endwith %}
+
     {% if workbench.measurement_summary or workbench.ranking_diagnostics %}
       <section class="panel discovery-interpretation-panel">
         <div class="section-header">
@@ -77,11 +93,11 @@
         <div class="interpretation-grid">
           {% if workbench.measurement_summary %}
             <article class="interpretation-card">
-              <strong>Semantic mode</strong>
+              <strong>Dataset interpretation mode</strong>
               <p>{{ workbench.measurement_summary.semantic_mode or "Not detected" }}</p>
             </article>
             <article class="interpretation-card">
-              <strong>Value column</strong>
+              <strong>Mapped measurement column</strong>
               <p>{{ workbench.measurement_summary.value_column or "Not mapped" }}</p>
             </article>
             <article class="interpretation-card">
@@ -99,13 +115,13 @@
           {% endif %}
           {% if workbench.ranking_policy.primary_score_label %}
             <article class="interpretation-card">
-              <strong>Primary score</strong>
+              <strong>Primary ranking signal</strong>
               <p>{{ workbench.ranking_policy.primary_score_label }}</p>
             </article>
           {% endif %}
           {% if workbench.ranking_policy.formula_label %}
             <article class="interpretation-card">
-              <strong>Ranking formula</strong>
+              <strong>Decision policy</strong>
               <p>{{ workbench.ranking_policy.formula_label }}</p>
             </article>
           {% endif %}
@@ -117,11 +133,24 @@
           {% endif %}
           {% if workbench.ranking_diagnostics.out_of_domain_rate is not none %}
             <article class="interpretation-card">
-              <strong>Out-of-domain rate</strong>
+              <strong>Weak-support rate</strong>
               <p>{{ "%.1f"|format((workbench.ranking_diagnostics.out_of_domain_rate or 0) * 100) }}%</p>
             </article>
           {% endif %}
         </div>
+        {% if workbench.interpretation %}
+          <details class="panel technical-details discovery-technical-details">
+            <summary>How to read these numbers</summary>
+            <div class="decision-weight-grid">
+              {% for item in workbench.interpretation %}
+                <article class="decision-weight-card">
+                  <span class="panel-label">{{ item.label }}</span>
+                  <p>{{ item.text }}</p>
+                </article>
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
       </section>
     {% endif %}
 
@@ -133,7 +162,7 @@
             <p class="helper-copy">Start with the clearest next move, then widen into the rest of the shortlist only if needed.</p>
           </div>
           <div class="discovery-results-meta">
-            <span class="data-chip">Primary score: {{ workbench.ranking_policy.primary_score_label }}</span>
+            <span class="data-chip">Primary ranking signal: {{ workbench.ranking_policy.primary_score_label }}</span>
             <span class="data-chip">Headline: {{ workbench.decision_overview.headline }}</span>
           </div>
         </div>
@@ -168,7 +197,7 @@
               </ul>
             {% endif %}
             <div class="discovery-results-meta">
-              <span class="data-chip">Primary score: {{ workbench.ranking_policy.primary_score_label }}</span>
+              <span class="data-chip">Primary ranking signal: {{ workbench.ranking_policy.primary_score_label }}</span>
               <span class="data-chip">Candidates in view: {{ workbench.summary.candidates_displayed }}</span>
             </div>
           </article>
@@ -178,7 +207,7 @@
               <h3>{{ workbench.decision_overview.primary_candidate.candidate_id }}</h3>
               <div class="decision-primary-meta">
                 <span class="data-chip">Rank {{ workbench.decision_overview.primary_candidate.rank }}</span>
-                <span class="data-chip">Priority {{ "%.3f"|format(workbench.decision_overview.primary_candidate.priority_score or 0) }}</span>
+                <span class="data-chip">Policy priority {{ "%.3f"|format(workbench.decision_overview.primary_candidate.priority_score or 0) }}</span>
                 <span class="data-chip">{{ workbench.ranking_policy.primary_score_label }} {{ "%.3f"|format(workbench.decision_overview.primary_candidate.primary_score_value or 0) }}</span>
               </div>
               <p>{{ workbench.decision_overview.primary_candidate.summary }}</p>
@@ -216,7 +245,7 @@
                 <p>{{ candidate.rationale_summary or candidate.decision_summary }}</p>
                 <div class="decision-shortlist-meta">
                   <span class="data-chip">{{ candidate.decision_label }}</span>
-                  <span class="data-chip">Priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
+                  <span class="data-chip">Policy priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
                   <span class="data-chip">{{ candidate.primary_score_label }} {{ "%.3f"|format(candidate.primary_score_value or 0) }}</span>
                   {% if candidate.trust_label %}
                     <span class="data-chip">{{ candidate.trust_label }}</span>
@@ -291,15 +320,15 @@
           <strong>{{ workbench.summary.candidates_displayed }}</strong>
         </article>
         <article class="panel discovery-summary-card">
-          <span class="panel-label">Top Experiment Value</span>
+          <span class="panel-label">Top policy experiment value</span>
           <strong>{{ "%.3f"|format(workbench.summary.top_experiment_value or 0) }}</strong>
         </article>
         <article class="panel discovery-summary-card">
-          <span class="panel-label">Average Confidence</span>
+          <span class="panel-label">Average model confidence signal</span>
           <strong>{{ "%.3f"|format(workbench.summary.average_confidence or 0) }}</strong>
         </article>
         <article class="panel discovery-summary-card">
-          <span class="panel-label">Average Uncertainty</span>
+          <span class="panel-label">Average prediction uncertainty</span>
           <strong>{{ "%.3f"|format(workbench.summary.average_uncertainty or 0) }}</strong>
         </article>
         <article class="panel discovery-summary-card">
@@ -360,11 +389,11 @@
           <label class="control-field">
             <span>Sort</span>
             <select id="sort-by">
-              <option value="priority_score">Priority score</option>
-              <option value="experiment_value">Experiment value</option>
-              <option value="confidence">Confidence</option>
-              <option value="uncertainty">Uncertainty</option>
-              <option value="novelty">Novelty</option>
+              <option value="priority_score">Policy priority score</option>
+              <option value="experiment_value">Policy experiment value</option>
+              <option value="confidence">Model confidence signal</option>
+              <option value="uncertainty">Prediction uncertainty</option>
+              <option value="novelty">Structural novelty</option>
               <option value="risk">Risk</option>
               <option value="latest">Latest first</option>
             </select>

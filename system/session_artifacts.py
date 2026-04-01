@@ -36,6 +36,17 @@ def _session_measurement_summary(session_id: str | None, workspace_id: str | Non
     }
 
 
+def _session_target_definition(session_id: str | None, workspace_id: str | None) -> dict[str, Any]:
+    if not session_id:
+        return {}
+    try:
+        metadata = load_session_metadata(session_id, workspace_id=workspace_id)
+    except FileNotFoundError:
+        return {}
+    payload = metadata.get("target_definition") if isinstance(metadata, dict) else {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def _backfill_measurement_summary(
     report: dict[str, Any],
     *,
@@ -66,6 +77,22 @@ def _backfill_measurement_summary(
         report = dict(report)
         report["measurement_summary"] = merged
     return report
+
+
+def _backfill_target_definition(
+    payload: dict[str, Any],
+    *,
+    session_id: str | None,
+    workspace_id: str | None,
+) -> dict[str, Any]:
+    session_target = _session_target_definition(session_id, workspace_id)
+    if not session_target:
+        return payload
+    if isinstance(payload.get("target_definition"), dict) and payload.get("target_definition"):
+        return payload
+    enriched = dict(payload)
+    enriched["target_definition"] = session_target
+    return enriched
 
 
 def _json_file_payload(path: Path | None) -> dict[str, Any]:
@@ -148,7 +175,7 @@ def load_decision_artifact_payload(
             }
         try:
             return normalize_loaded_decision_artifact(
-                artifact["payload"] or {},
+                _backfill_target_definition(artifact["payload"] or {}, session_id=session_id, workspace_id=workspace_id),
                 session_id=session_id,
                 generated_at=artifact["source_updated_at"],
                 source_path=artifact["source_path"],
@@ -174,7 +201,7 @@ def load_decision_artifact_payload(
     if isinstance(decision_payload, dict):
         try:
             return normalize_loaded_decision_artifact(
-                decision_payload,
+                _backfill_target_definition(decision_payload, session_id=session_id, workspace_id=workspace_id),
                 session_id=session_id,
                 generated_at=result_artifact.get("source_updated_at"),
                 source_path=f"{result_artifact.get('source_path')}#decision_output",
@@ -225,6 +252,7 @@ def load_analysis_report_payload(
                     session_id=session_id,
                     workspace_id=workspace_id,
                 )
+                report = _backfill_target_definition(report, session_id=session_id, workspace_id=workspace_id)
                 return {
                     **report,
                     "artifact_state": "ok",
@@ -245,6 +273,7 @@ def load_analysis_report_payload(
             session_id=session_id,
             workspace_id=workspace_id,
         )
+        report = _backfill_target_definition(report, session_id=session_id, workspace_id=workspace_id)
         return {
             **report,
             "artifact_state": "ok",

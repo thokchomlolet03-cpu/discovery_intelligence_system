@@ -9,10 +9,17 @@ from system.services.data_service import canonicalize_smiles
 from system.services.runtime_config import resolve_system_config
 
 
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def risk_level(row, config=None):
     cfg = resolve_system_config(config)
-    uncertainty = float(row.get("uncertainty", 0.0))
-    confidence = float(row.get("confidence", 0.0))
+    uncertainty = _safe_float(row.get("uncertainty", 0.0))
+    confidence = _safe_float(row.get("confidence", 0.0))
 
     if uncertainty > cfg.decision.high_risk_uncertainty:
         return "high"
@@ -21,16 +28,35 @@ def risk_level(row, config=None):
     return "medium"
 
 
-def decision_explanations(row):
+def decision_explanations(row, target_definition=None):
+    target_definition = target_definition or {}
+    target_name = str(target_definition.get("target_name") or "").strip().lower()
+    biodegradability_mode = "biodegrad" in target_name
     explanations = []
     if float(row.get("rdkit_logp", row.get("logp", 0.0))) < HYDROPHILIC_LOGP_THRESHOLD:
-        explanations.append("low logP -> likely biodegradable")
+        explanations.append(
+            "low logP -> likely biodegradable"
+            if biodegradability_mode
+            else "low logP is one of the chemistry features influencing this model judgment"
+        )
     if float(row.get("mw", 0.0)) < LOW_MW_THRESHOLD:
-        explanations.append("low molecular weight -> degradability favorable")
+        explanations.append(
+            "low molecular weight -> degradability favorable"
+            if biodegradability_mode
+            else "low molecular weight is one of the chemistry features influencing this model judgment"
+        )
     if float(row.get("h_acceptors", 0.0)) >= HIGH_H_ACCEPTORS_THRESHOLD:
-        explanations.append("high H-bond acceptors -> biodegradable tendency")
+        explanations.append(
+            "high H-bond acceptors -> biodegradable tendency"
+            if biodegradability_mode
+            else "high H-bond acceptors are one of the chemistry features influencing this model judgment"
+        )
     if not explanations:
-        explanations.append("no strong rule-based biodegradability signal detected")
+        explanations.append(
+            "no strong rule-based biodegradability signal detected"
+            if biodegradability_mode
+            else "no strong rule-based chemistry signal was recorded for this candidate"
+        )
     return explanations
 
 
@@ -101,13 +127,15 @@ def _prediction_row_payload(row, rank: int) -> dict[str, object]:
         "candidate_id": _candidate_id(row, rank),
         "smiles": str(row.get("smiles") or "").strip(),
         "canonical_smiles": _canonical_smiles(row),
-        "confidence": float(row.get("confidence", 0.0) or 0.0),
-        "uncertainty": float(row.get("uncertainty", 0.0) or 0.0),
-        "novelty": float(row.get("novelty", 0.0) or 0.0),
+        "confidence": _safe_float(row.get("confidence"), None),
+        "uncertainty": _safe_float(row.get("uncertainty"), None),
+        "novelty": _safe_float(row.get("novelty", 0.0) or 0.0),
+        "predicted_value": row.get("predicted_value"),
+        "prediction_dispersion": row.get("prediction_dispersion"),
         "feasibility": _feasibility(row),
         "prediction_metadata": {
             "model_version": str(row.get("model_version") or "").strip(),
-            "priority_score": float(row.get("priority_score", row.get("experiment_value", 0.0)) or 0.0),
+            "priority_score": _safe_float(row.get("priority_score", row.get("experiment_value", 0.0)) or 0.0),
         },
     }
 
@@ -140,6 +168,7 @@ def build_decision_package(df, iteration, config=None, session_id: str | None = 
     prediction_rows = []
     selection_rows = []
     effective_session_id = session_id or "public"
+    target_definition = dict(df.attrs.get("target_definition") or {})
     for rank, (_, row) in enumerate(ranked.iterrows(), start=1):
         risk = risk_level(row, config=cfg)
         risk_counts[risk] += 1
@@ -152,18 +181,18 @@ def build_decision_package(df, iteration, config=None, session_id: str | None = 
                 "candidate_id": _candidate_id(row, rank),
                 "smiles": str(row.get("smiles") or "").strip(),
                 "canonical_smiles": _canonical_smiles(row),
-                "confidence": float(row.get("confidence", 0.0) or 0.0),
-                "uncertainty": float(row.get("uncertainty", 0.0) or 0.0),
-                "novelty": float(row.get("novelty", 0.0) or 0.0),
-                "acquisition_score": float(
+                "confidence": _safe_float(row.get("confidence"), None),
+                "uncertainty": _safe_float(row.get("uncertainty"), None),
+                "novelty": _safe_float(row.get("novelty", 0.0) or 0.0),
+                "acquisition_score": _safe_float(
                     row.get("final_score", row.get("score", row.get("priority_score", row.get("experiment_value", 0.0))))
                     or 0.0
                 ),
-                "experiment_value": float(row.get("experiment_value", 0.0) or 0.0),
+                "experiment_value": _safe_float(row.get("experiment_value", 0.0) or 0.0),
                 "bucket": row.get("bucket") or row.get("selection_bucket") or "learn",
                 "risk": risk,
                 "status": row.get("status") or "suggested",
-                "explanation": row.get("explanation") or row.get("short_explanation") or decision_explanations(row),
+                "explanation": row.get("explanation") or row.get("short_explanation") or decision_explanations(row, target_definition=target_definition),
                 "provenance": _provenance(row),
                 "feasibility": _feasibility(row),
                 "created_at": row.get("created_at") or row.get("timestamp") or generated_at,
@@ -175,6 +204,14 @@ def build_decision_package(df, iteration, config=None, session_id: str | None = 
                 "target": row.get("target") or "",
                 "score_breakdown": row.get("score_breakdown") or [],
                 "rationale": row.get("rationale"),
+                "target_definition": row.get("target_definition") or target_definition,
+                "data_facts": row.get("data_facts") or {},
+                "model_judgment": row.get("model_judgment") or {},
+                "applicability_domain": row.get("applicability_domain") or {},
+                "novelty_signal": row.get("novelty_signal") or {},
+                "decision_policy": row.get("decision_policy") or {},
+                "final_recommendation": row.get("final_recommendation") or {},
+                "normalized_explanation": row.get("normalized_explanation") or {},
                 "domain_status": row.get("domain_status") or "",
                 "domain_label": row.get("domain_label") or "",
                 "domain_summary": row.get("domain_summary") or "",
@@ -222,5 +259,6 @@ def build_decision_package(df, iteration, config=None, session_id: str | None = 
             "top_experiment_value": float(top_experiments[0]["experiment_value"]) if top_experiments else 0.0,
         },
         "top_experiments": top_experiments,
+        "target_definition": target_definition,
         }
     )

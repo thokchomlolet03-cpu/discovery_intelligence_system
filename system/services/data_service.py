@@ -9,6 +9,7 @@ from rdkit import Chem, DataStructs, RDLogger
 from rdkit.Chem import AllChem, Descriptors
 
 from core.constants import preferred_data_path
+from system.services.target_definition_service import infer_target_definition
 from system.services.runtime_config import resolve_system_config
 
 
@@ -123,12 +124,19 @@ def load_dataset(path=DEFAULT_DATA_PATH, featurize=True):
 
 def clean_labels(df):
     cleaned = df.copy()
-    cleaned = cleaned[cleaned["biodegradable"].isin([-1, 0, 1])].reset_index(drop=True)
+    label_column = "target_label" if "target_label" in cleaned.columns else "biodegradable"
+    cleaned = cleaned[cleaned[label_column].isin([-1, 0, 1])].reset_index(drop=True)
     return cleaned
 
 
 def labeled_subset(df):
-    return df[df["biodegradable"].isin([0, 1])].copy()
+    label_column = "target_label" if "target_label" in df.columns else "biodegradable"
+    return df[df[label_column].isin([0, 1])].copy()
+
+
+def regression_subset(df):
+    target_column = "target_value" if "target_value" in df.columns else "value"
+    return df[pd.to_numeric(df[target_column], errors="coerce").notna()].copy()
 
 
 def prepare_analysis_dataframe(
@@ -153,6 +161,7 @@ def prepare_analysis_dataframe(
     prepared["smiles"] = prepared["smiles"].apply(canonicalize_smiles)
     prepared = prepared[prepared["smiles"].notna()].reset_index(drop=True)
     prepared["biodegradable"] = pd.to_numeric(prepared["biodegradable"], errors="coerce").fillna(-1).astype(int)
+    prepared["target_label"] = pd.to_numeric(prepared.get("target_label", prepared["biodegradable"]), errors="coerce").fillna(-1).astype(int)
     if "entity_id" not in prepared.columns:
         prepared["entity_id"] = ""
     prepared["entity_id"] = prepared["entity_id"].fillna("").astype(str)
@@ -163,6 +172,7 @@ def prepare_analysis_dataframe(
         prepared["value"] = pd.to_numeric(prepared["value"], errors="coerce")
     else:
         prepared["value"] = pd.Series([np.nan] * len(prepared), index=prepared.index)
+    prepared["target_value"] = pd.to_numeric(prepared.get("target_value", prepared["value"]), errors="coerce")
     if "target" not in prepared.columns:
         prepared["target"] = ""
     if "assay" not in prepared.columns:
@@ -182,6 +192,15 @@ def prepare_analysis_dataframe(
         raise ValueError("No valid SMILES remained after applying the selected column mapping.")
     summary["duplicate_count"] = max(int(summary.get("duplicate_count", 0)), int(before_dedup - len(prepared)))
     summary["analyzed_rows"] = int(len(prepared))
+    target_definition = infer_target_definition(
+        mapping=column_mapping,
+        validation_summary=summary,
+        label_builder=label_builder,
+    )
+    prepared.attrs["target_definition"] = target_definition
+    prepared.attrs["measurement_column"] = target_definition.get("measurement_column") or ""
+    prepared.attrs["label_column"] = target_definition.get("label_column") or ""
+    summary["target_definition"] = target_definition
     return prepared, summary
 
 
@@ -216,6 +235,7 @@ __all__ = [
     "load_dataset",
     "molecule_from_smiles",
     "prepare_analysis_dataframe",
+    "regression_subset",
     "reference_smiles_from_dataset",
     "resolve_system_config",
 ]

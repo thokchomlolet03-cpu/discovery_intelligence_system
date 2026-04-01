@@ -10,6 +10,8 @@ import plotly.express as px
 from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
 from system.db import resolve_artifact_path
 from system.review_manager import build_review_queue
+from system.services.run_metadata_service import build_run_provenance
+from system.services.session_identity_service import build_metric_interpretation, domain_chip_label
 from system.session_artifacts import (
     load_analysis_report_payload,
     load_decision_artifact_payload,
@@ -177,7 +179,10 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     else ""
                 ),
                 "primary_driver": str(rationale.get("primary_driver") or primary_driver).strip(),
-                "domain_label": str(row.get("domain_label") or "").strip(),
+                "domain_label": str(row.get("domain_label") or domain_chip_label(row.get("domain_status"))).strip(),
+                "model_judgment": row.get("model_judgment") if isinstance(row.get("model_judgment"), dict) else {},
+                "decision_policy": row.get("decision_policy") if isinstance(row.get("decision_policy"), dict) else {},
+                "target_definition": row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {},
             }
         )
     return preview
@@ -340,10 +345,41 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         review_payload = build_review_queue(decision_rows, session_id=session_id, workspace_id=workspace_id)
 
     warnings = analysis_report.get("warnings", []) if isinstance(analysis_report, dict) else []
+    target_definition = analysis_report.get("target_definition") if isinstance(analysis_report, dict) and isinstance(analysis_report.get("target_definition"), dict) else {}
+    if not target_definition and isinstance(decision_payload.get("target_definition"), dict):
+        target_definition = decision_payload.get("target_definition") or {}
+    modeling_mode = str(
+        (analysis_report.get("modeling_mode") if isinstance(analysis_report, dict) else "")
+        or decision_payload.get("modeling_mode")
+        or ""
+    ).strip()
+    metric_interpretation = build_metric_interpretation(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        ranking_policy=analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {},
+    )
+    run_contract = (
+        analysis_report.get("run_contract")
+        if isinstance(analysis_report, dict) and isinstance(analysis_report.get("run_contract"), dict)
+        else decision_payload.get("run_contract")
+        if isinstance(decision_payload.get("run_contract"), dict)
+        else {}
+    )
+    comparison_anchors = (
+        analysis_report.get("comparison_anchors")
+        if isinstance(analysis_report, dict) and isinstance(analysis_report.get("comparison_anchors"), dict)
+        else decision_payload.get("comparison_anchors")
+        if isinstance(decision_payload.get("comparison_anchors"), dict)
+        else {}
+    )
+    run_provenance = build_run_provenance(
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+    )
     cards = [
         {"label": "Dataset rows", "value": int(len(dataset)) if not dataset.empty else 0},
         {"label": "Scored candidates", "value": int(len(candidates)) if not candidates.empty else len(decision_rows)},
-        {"label": "Top experiment value", "value": f"{float((decision_payload.get('summary') or {}).get('top_experiment_value', 0.0)):.3f}"},
+        {"label": "Top policy experiment value", "value": f"{float((decision_payload.get('summary') or {}).get('top_experiment_value', 0.0)):.3f}"},
         {"label": "Pending review", "value": int((review_payload.get("summary") or {}).get("pending_review", 0))},
     ]
     measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
@@ -353,7 +389,7 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     if ranking_diagnostics.get("out_of_domain_rate") is not None:
         cards.append(
             {
-                "label": "OOD rate",
+                "label": "Weak-support rate",
                 "value": f"{100 * float(ranking_diagnostics.get('out_of_domain_rate', 0.0)):.1f}%",
             }
         )
@@ -389,10 +425,15 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         include_js = False
 
     if not candidates.empty:
+        confidence_title = "Confidence Distribution"
+        confidence_description = "Higher values indicate stronger model confidence, but not experimental truth."
+        if str(target_definition.get("target_kind") or "").strip().lower() == "regression":
+            confidence_title = "Ranking Compatibility Distribution"
+            confidence_description = "Higher values indicate stronger ranking compatibility with the target direction, not classification confidence."
         charts.append(
             _chart_section(
-                "Confidence Distribution",
-                "Higher values indicate stronger model confidence, but not experimental truth.",
+                confidence_title,
+                confidence_description,
                 px.histogram(candidates, x="confidence", nbins=20),
                 include_js,
             )
@@ -482,6 +523,7 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     return {
         "state": state,
         "session_id": session_id,
+        "artifact_state": decision_payload.get("artifact_state") or "",
         "source_path": decision_payload.get("source_path") or "",
         "source_updated_at": decision_payload.get("source_updated_at") or "",
         "cards": cards,
@@ -497,4 +539,11 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         "review_summary": review_payload.get("summary", {}),
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},
         "evaluation_summary": evaluation_summary if isinstance(evaluation_summary, dict) else {},
+        "target_definition": target_definition,
+        "run_contract": run_contract,
+        "comparison_anchors": comparison_anchors,
+        "run_provenance": run_provenance,
+        "modeling_mode": modeling_mode,
+        "decision_intent": str((analysis_report.get("decision_intent") if isinstance(analysis_report, dict) else "") or decision_payload.get("decision_intent") or "").strip(),
+        "metric_interpretation": metric_interpretation,
     }

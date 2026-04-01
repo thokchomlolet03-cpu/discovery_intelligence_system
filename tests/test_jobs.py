@@ -87,6 +87,81 @@ class JobManagerTest(DatabaseBackedTestCase):
                 "mode": "prediction",
                 "summary": {"analyzed_rows": 3},
                 "warnings": ["warn"],
+                "target_definition": {
+                    "target_name": "biodegradability",
+                    "target_kind": "classification",
+                    "optimization_direction": "classify",
+                    "label_column": "biodegradable",
+                    "scientific_meaning": "The model estimates whether a molecule belongs to the positive class for biodegradability.",
+                    "dataset_type": "labeled_dataset",
+                    "mapping_confidence": "high",
+                    "success_definition": "Success means prioritizing molecules likely to belong to the positive class for biodegradability.",
+                },
+                "decision_intent": "prioritize_experiments",
+                "modeling_mode": "binary_classification",
+                "contract_versions": {
+                    "target_contract_version": "target_definition.v1",
+                    "model_contract_version": "model_contract.v1",
+                    "run_contract_version": "run_contract.v1",
+                },
+                "run_contract": {
+                    "session_id": "session_1",
+                    "source_name": "upload.csv",
+                    "input_type": "experimental_results",
+                    "requested_intent": "rank_uploaded_molecules",
+                    "decision_intent": "prioritize_experiments",
+                    "modeling_mode": "binary_classification",
+                    "scoring_mode": "balanced",
+                    "target_definition": {
+                        "target_name": "biodegradability",
+                        "target_kind": "classification",
+                        "optimization_direction": "classify",
+                        "label_column": "biodegradable",
+                        "scientific_meaning": "The model estimates whether a molecule belongs to the positive class for biodegradability.",
+                        "dataset_type": "labeled_dataset",
+                        "mapping_confidence": "high",
+                        "success_definition": "Success means prioritizing molecules likely to belong to the positive class for biodegradability.",
+                    },
+                    "target_model_available": True,
+                    "selected_model_name": "rf_isotonic",
+                    "selected_model_family": "random_forest",
+                    "training_scope": "session_trained",
+                    "label_source": "explicit",
+                    "feature_signature": "rdkit_descriptors_plus_morgan_fp_2048",
+                    "reference_basis": {
+                        "novelty_reference": "reference_dataset_similarity",
+                        "applicability_reference": "reference_dataset_similarity",
+                    },
+                    "contract_versions": {
+                        "target_contract_version": "target_definition.v1",
+                        "model_contract_version": "model_contract.v1",
+                        "run_contract_version": "run_contract.v1",
+                    },
+                },
+                "comparison_anchors": {
+                    "session_id": "session_1",
+                    "source_name": "upload.csv",
+                    "input_type": "experimental_results",
+                    "target_name": "biodegradability",
+                    "target_kind": "classification",
+                    "optimization_direction": "classify",
+                    "label_column": "biodegradable",
+                    "dataset_type": "labeled_dataset",
+                    "mapping_confidence": "high",
+                    "column_mapping": {"smiles": "smiles", "label": "biodegradable"},
+                    "label_source": "explicit",
+                    "decision_intent": "prioritize_experiments",
+                    "modeling_mode": "binary_classification",
+                    "scoring_mode": "balanced",
+                    "selected_model_name": "rf_isotonic",
+                    "training_scope": "session_trained",
+                    "target_contract_version": "target_definition.v1",
+                    "model_contract_version": "model_contract.v1",
+                    "scoring_policy_version": "scoring_policy.v1",
+                    "explanation_contract_version": "normalized_explanation.v1",
+                    "run_contract_version": "run_contract.v1",
+                    "comparison_ready": True,
+                },
                 "analysis_report": {"warnings": ["warn"]},
                 "upload_session_summary": {"session_id": "session_1"},
                 "artifacts": {"result_json": str(result_path)},
@@ -126,6 +201,10 @@ class JobManagerTest(DatabaseBackedTestCase):
         self.assertEqual(stored["artifact_refs"]["result_json"], str(result_path))
         self.assertIn("result_json", {artifact["artifact_type"] for artifact in artifacts})
         self.assertEqual(session_metadata["summary_metadata"]["last_job_status"], "succeeded")
+        self.assertEqual(session_metadata["summary_metadata"]["status_semantics"]["status_code"], "results_ready")
+        self.assertTrue(session_metadata["summary_metadata"]["status_semantics"]["viewable_artifacts"])
+        self.assertEqual(session_metadata["summary_metadata"]["run_contract"]["selected_model_name"], "rf_isotonic")
+        self.assertEqual(session_metadata["summary_metadata"]["comparison_anchors"]["run_contract_version"], "run_contract.v1")
 
     def test_job_lifecycle_ignores_directory_artifact_refs(self):
         result_path = Path(self.tmpdir.name) / "result.json"
@@ -208,6 +287,8 @@ class JobManagerTest(DatabaseBackedTestCase):
         self.assertIn("ValueError", stored["error"])
         self.assertEqual(session_metadata["summary_metadata"]["last_job_status"], "failed")
         self.assertIn("bad input for scientific pipeline", session_metadata["summary_metadata"]["last_error"])
+        self.assertEqual(session_metadata["summary_metadata"]["status_semantics"]["status_code"], "analysis_failed")
+        self.assertFalse(session_metadata["summary_metadata"]["status_semantics"]["viewable_artifacts"])
 
     def test_job_failure_sanitizes_sensitive_error_text(self):
         def failing_runner(dataframe, **kwargs):
@@ -388,6 +469,49 @@ class JobRouteTest(DatabaseBackedTestCase):
             "product_tier": "standard",
             "warnings": [],
             "source_name": source_name,
+            "target_definition": {
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "measurement_column": "pic50",
+                "scientific_meaning": "Higher predicted values are treated as more favorable for pIC50.",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+                "success_definition": "Success means prioritizing molecules expected to achieve higher pIC50 values.",
+            },
+            "decision_intent": "prioritize_experiments",
+            "modeling_mode": "regression",
+            "comparison_anchors": {
+                "session_id": session_id,
+                "source_name": source_name,
+                "input_type": "measurement_dataset",
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "measurement_column": "pic50",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+                "column_mapping": {"smiles": "smiles", "value": "pic50", "entity_id": "compound_id"},
+                "label_source": "continuous_measurement",
+                "decision_intent": "prioritize_experiments",
+                "modeling_mode": "regression",
+                "scoring_mode": "balanced",
+                "selected_model_name": "rf_regression",
+                "training_scope": "session_trained",
+                "target_contract_version": "target_definition.v1",
+                "model_contract_version": "model_contract.v1",
+                "scoring_policy_version": "scoring_policy.v1",
+                "explanation_contract_version": "normalized_explanation.v1",
+                "run_contract_version": "run_contract.v1",
+                "comparison_ready": True,
+            },
+            "contract_versions": {
+                "target_contract_version": "target_definition.v1",
+                "model_contract_version": "model_contract.v1",
+                "scoring_policy_version": "scoring_policy.v1",
+                "explanation_contract_version": "normalized_explanation.v1",
+                "run_contract_version": "run_contract.v1",
+            },
         }
         analysis_report = {
             "warnings": [],
@@ -400,6 +524,9 @@ class JobRouteTest(DatabaseBackedTestCase):
             },
             "ranking_policy": {"primary_score_label": "Priority score"},
             "top_level_recommendation_summary": "Start with the top exploit candidate.",
+            "decision_intent": "prioritize_experiments",
+            "modeling_mode": "regression",
+            "mode_used": "balanced",
         }
 
         decision_path = session_dir / "decision_output.json"
@@ -588,6 +715,8 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertEqual(upload_metadata["label_builder_config"]["threshold"], 6.0)
         self.assertEqual(upload_metadata["validation_summary"]["semantic_mode"], "measurement_dataset")
         self.assertEqual(int(upload_metadata["validation_summary"]["rows_with_values"]), 2)
+        self.assertEqual(upload_metadata["comparison_anchors"]["target_name"], "pic50")
+        self.assertEqual(upload_metadata["comparison_anchors"]["measurement_column"], "pic50")
 
     def test_upload_page_restores_active_session_context(self):
         inspect_response = self.client.post(
@@ -716,9 +845,100 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn("session_running", response.text)
         self.assertIn("Priority score", response.text)
         self.assertIn("Start with the top exploit candidate.", response.text)
+        self.assertIn("Comparison basis", response.text)
+        self.assertIn("Read-across snapshot", response.text)
+        self.assertIn("Side-By-Side Scientific Comparison", response.text)
+        self.assertIn("Target Contract", response.text)
+        self.assertIn("Model Path", response.text)
+        self.assertIn("Policy Contract", response.text)
+        self.assertIn("Outcome Signals", response.text)
+        self.assertIn("Bucket mix:", response.text)
+        self.assertIn("Trust profile:", response.text)
+        self.assertIn("Candidate overlap:", response.text)
+        self.assertIn("Compared with focus session", response.text)
+        self.assertIn("Not directly comparable", response.text)
+        self.assertIn("pIC50", response.text)
+        self.assertIn("scoring_policy.v1", response.text)
         self.assertIn("Active", response.text)
         self.assertIn(f"/discovery?session_id={session_id}", response.text)
         self.assertIn("Scoring candidates now.", response.text)
+
+    def test_discovery_and_dashboard_surface_run_provenance(self):
+        SessionRepository().upsert_session(
+            session_id="baseline_session",
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            source_name="baseline_measurements.csv",
+            input_type="measurement_dataset",
+            latest_job_id="job_baseline",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        self._store_ready_session_artifacts("baseline_session", source_name="baseline_measurements.csv")
+
+        inspect_response = self.client.post(
+            "/api/upload/inspect",
+            data={"csrf_token": self._authenticated_csrf(), "input_type": "measurement_dataset"},
+            files={
+                "file": (
+                    "measurements.csv",
+                    io.BytesIO(b"smiles,pic50,compound_id\nCCO,6.2,mol_1\nCCN,5.4,mol_2\n"),
+                    "text/csv",
+                )
+            },
+        )
+        session_id = inspect_response.json()["session_id"]
+        self.client.post(
+            "/api/upload/validate",
+            json={
+                "session_id": session_id,
+                "mapping": {
+                    "smiles": "smiles",
+                    "value": "pic50",
+                    "entity_id": "compound_id",
+                },
+                "label_builder": {"enabled": False, "value_column": "pic50", "operator": ">=", "threshold": ""},
+            },
+            headers={"X-CSRF-Token": self._authenticated_csrf()},
+        )
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            latest_job_id="job_done",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        self._store_ready_session_artifacts(session_id)
+
+        with patch.object(discovery_app.job_manager, "get_job") as mock_get_job:
+            mock_get_job.return_value = {
+                "job_id": "job_done",
+                "session_id": session_id,
+                "workspace_id": self.workspace["workspace_id"],
+                "status": "succeeded",
+                "progress_stage": "completed",
+                "progress_percent": 100,
+                "progress_message": "Analysis complete.",
+            }
+            discovery_response = self.client.get(f"/discovery?session_id={session_id}")
+            dashboard_response = self.client.get(f"/dashboard?session_id={session_id}")
+
+        self.assertEqual(discovery_response.status_code, 200)
+        self.assertIn("Run Provenance", discovery_response.text)
+        self.assertIn("Compared With Prior Run", discovery_response.text)
+        self.assertIn("Comparison ready", discovery_response.text)
+        self.assertIn("rf_regression", discovery_response.text)
+        self.assertIn("scoring_policy.v1", discovery_response.text)
+        self.assertIn("baseline_measurements.csv", discovery_response.text)
+        self.assertIn("Directly comparable", discovery_response.text)
+
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertIn("Run Provenance", dashboard_response.text)
+        self.assertIn("Compared With Prior Run", dashboard_response.text)
+        self.assertIn("Comparison ready", dashboard_response.text)
+        self.assertIn("rf_regression", dashboard_response.text)
+        self.assertIn("normalized_explanation.v1", dashboard_response.text)
+        self.assertIn("baseline_measurements.csv", dashboard_response.text)
+        self.assertIn("Directly comparable", dashboard_response.text)
 
     def test_home_page_promotes_continue_work_when_focus_session_exists(self):
         inspect_response = self.client.post(

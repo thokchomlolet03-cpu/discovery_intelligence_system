@@ -1,0 +1,65 @@
+{% if session_identity %}
+  {% set compact = compact | default(false) %}
+  {% set container_class = "mini-callout" if compact else "panel" %}
+  <section class="{{ container_class }}">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title | default("Session Identity") }}</h2>
+        <p class="helper-copy">
+          {{ section_copy | default("This card states the scientific target, actual model mode, and current session status for the restored workflow.") }}
+        </p>
+      </div>
+      {% if session_identity.session_status %}
+        <div class="dashboard-meta-row">
+          <span class="session-state-pill session-state-pill-{{ session_identity.session_status_tone or 'muted' }}">
+            {{ session_identity.session_status.replace("_", " ") | title }}
+          </span>
+          {% if session_identity.current_job_status %}
+            <span class="data-chip">Job {{ session_identity.current_job_status.replace("_", " ") }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card-grid metrics-grid">
+      <article class="stat-card">
+        <span class="panel-label">Target property</span>
+        <strong>{{ session_identity.target_definition.target_name or "Not specified" }}</strong>
+        <p>{{ session_identity.target_definition.scientific_meaning or "Scientific meaning was not recorded for this session." }}</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Target kind</span>
+        <strong>{{ session_identity.target_definition.target_kind.replace("_", " ") | title if session_identity.target_definition.target_kind else "Not specified" }}</strong>
+        <p>Goal: {{ session_identity.target_definition.optimization_direction.replace("_", " ") | title if session_identity.target_definition.optimization_direction else "Not specified" }}</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Dataset type</span>
+        <strong>{{ session_identity.target_definition.dataset_type.replace("_", " ") | title if session_identity.target_definition.dataset_type else "Not specified" }}</strong>
+        <p>Mapping confidence: {{ session_identity.target_definition.mapping_confidence | title if session_identity.target_definition.mapping_confidence else "Unknown" }}</p>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Modeling mode</span>
+        <strong>{{ session_identity.modeling_mode_label or "Not recorded" }}</strong>
+        <p>Decision intent: {{ session_identity.decision_intent_label or "Not recorded" }}</p>
+      </article>
+    </div>
+
+    <div class="dashboard-insight-grid">
+      <article class="dashboard-insight-card">
+        <span class="panel-label">Scientific purpose</span>
+        <p>{{ session_identity.scientific_purpose or "Scientific purpose was not recorded for this session." }}</p>
+      </article>
+      <article class="dashboard-insight-card">
+        <span class="panel-label">Trust summary</span>
+        <p>{{ session_identity.trust_summary or "No trust summary is available for this session yet." }}</p>
+      </article>
+      <article class="dashboard-insight-card">
+        <span class="panel-label">Latest result summary</span>
+        <p>{{ session_identity.latest_result_summary or "No result summary is available yet." }}</p>
+        {% if session_identity.created_at_label and session_identity.created_at_label != "Not available" %}
+          <p class="helper-copy">Created {{ session_identity.created_at_label }}.</p>
+        {% endif %}
+      </article>
+    </div>
+  </section>
+{% endif %}

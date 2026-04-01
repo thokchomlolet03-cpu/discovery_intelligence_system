@@ -100,6 +100,36 @@
           </div>
         </div>
 
+        {% with session_identity=session_history.focus_session.session_identity, compact=true, section_title="Scientific identity", section_copy="This session summary keeps the target, model mode, and trust framing visible when you reopen older work." %}
+          {% include "_session_identity_card.html" %}
+        {% endwith %}
+
+        {% with status_semantics=session_history.focus_session.status_semantics, compact=true, section_title="Status truth", section_copy="This summary explains whether the saved upload, validation, artifacts, and recommendations are still safe to act on." %}
+          {% include "_status_semantics_panel.html" %}
+        {% endwith %}
+
+        {% if session_history.focus_session.comparison_basis_label %}
+          <div class="mini-callout">
+            <span class="panel-label">Comparison basis</span>
+            <p>{{ session_history.focus_session.comparison_basis_label }}</p>
+            {% if session_history.focus_session.comparison_anchors.fallback_reason %}
+              <p class="helper-copy">Fallback: {{ session_history.focus_session.comparison_anchors.fallback_reason.replace("_", " ") }}</p>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% if session_history.comparison_overview and session_history.comparison_overview.comparisons %}
+          <div class="mini-callout">
+            <span class="panel-label">Read-across snapshot</span>
+            <p>
+              {{ session_history.comparison_overview.counts.directly_comparable }} directly comparable,
+              {{ session_history.comparison_overview.counts.partially_comparable }} partially comparable,
+              {{ session_history.comparison_overview.counts.not_comparable }} not directly comparable.
+            </p>
+            <p class="helper-copy">Use this to decide whether nearby sessions should be compared scientifically or treated as a different workflow.</p>
+          </div>
+        {% endif %}
+
         <div class="session-history-grid">
           <article class="session-mini-card">
             <span class="panel-label">Semantic mode</span>
@@ -137,6 +167,10 @@
       </article>
     </section>
   {% endif %}
+
+  {% with comparison_matrix=session_history.comparison_matrix, section_title="Side-By-Side Scientific Comparison", section_copy="Use this matrix to compare target contract, model provenance, policy version, and shortlist-level outcome signals across the focus session and nearby workspace runs." %}
+    {% include "_session_comparison_matrix.html" %}
+  {% endwith %}
 
   {% if session_history.continuation_items %}
     <section class="panel">
@@ -196,6 +230,30 @@
                   <p>{{ item.recommendation_summary }}</p>
                 {% endif %}
               </div>
+            {% endif %}
+            {% if item.status_semantics %}
+              <div class="mini-callout">
+                <span class="panel-label">Status truth</span>
+                <p>{{ item.status_semantics.headline }}</p>
+                {% if item.status_semantics.viewable_artifacts %}
+                  <p class="helper-copy">Saved artifacts remain viewable for this session.</p>
+                {% elif item.status_semantics.usable_validation %}
+                  <p class="helper-copy">Validation is usable, but the final recommendation package is not ready yet.</p>
+                {% else %}
+                  <p class="helper-copy">Use the saved upload context first before trusting downstream recommendations.</p>
+                {% endif %}
+              </div>
+            {% endif %}
+            {% if item.comparison_basis_label %}
+              <div class="mini-callout">
+                <span class="panel-label">Comparison basis</span>
+                <p>{{ item.comparison_basis_label }}</p>
+              </div>
+            {% endif %}
+            {% if item.comparison_to_focus %}
+              {% with comparison=item.comparison_to_focus, compact=true, section_title="Compared with focus session", section_copy="This tells you whether the current session can be read across against the focus session or whether target/mode drift makes the comparison unsafe." %}
+                {% include "_session_comparison_panel.html" %}
+              {% endwith %}
             {% endif %}
             {% if item.job_message and item.job_status in ["queued", "running", "failed"] %}
               <div class="mini-callout {% if item.job_status == 'failed' %}mini-callout-warning{% endif %}">
@@ -279,6 +337,31 @@
                   <p>{{ item.recommendation_summary }}</p>
                 {% endif %}
               </div>
+            {% endif %}
+
+            {% if item.status_semantics %}
+              <div class="mini-callout">
+                <span class="panel-label">Status truth</span>
+                <p>{{ item.status_semantics.headline }}</p>
+                {% if item.status_semantics.viewable_artifacts %}
+                  <p class="helper-copy">Saved artifacts remain viewable for this older session.</p>
+                {% elif item.status_semantics.usable_validation %}
+                  <p class="helper-copy">The session can be rerun, but the final recommendation package is not saved yet.</p>
+                {% else %}
+                  <p class="helper-copy">Treat this as saved upload context rather than a ready recommendation package.</p>
+                {% endif %}
+              </div>
+            {% endif %}
+            {% if item.comparison_basis_label %}
+              <div class="mini-callout">
+                <span class="panel-label">Comparison basis</span>
+                <p>{{ item.comparison_basis_label }}</p>
+              </div>
+            {% endif %}
+            {% if item.comparison_to_focus %}
+              {% with comparison=item.comparison_to_focus, compact=true, section_title="Compared with focus session", section_copy="This tells you whether the current session can be read across against the focus session or whether target/mode drift makes the comparison unsafe." %}
+                {% include "_session_comparison_panel.html" %}
+              {% endwith %}
             {% endif %}
 
             {% if item.job_message and item.job_status in ["queued", "running", "failed"] %}

@@ -236,6 +236,7 @@ def train_model(df, random_state=42, config=None):
 
     return {
         "model": final_model,
+        "model_kind": "classification",
         "features": list(X.columns),
         "descriptor_features": list(DESCRIPTOR_COLUMNS),
         "fingerprint_bits": int(len(features) - len(DESCRIPTOR_COLUMNS)),
@@ -310,27 +311,40 @@ def extract_feature_importances(bundle):
 
 
 def bundle_evaluation_summary(bundle):
+    model_kind = str(bundle.get("model_kind") or "classification").strip().lower()
     selected_model = bundle.get("selected_model", {})
     holdout = (bundle.get("metrics") or {}).get("holdout", {})
     diagnostic_flags: list[str] = []
     warnings: list[str] = []
-    if float(holdout.get("exact_confidence_rate_raw", 0.0) or 0.0) >= 0.5:
-        diagnostic_flags.append("confidence_saturation")
-        warnings.append("A large share of raw holdout probabilities saturated at exactly 0 or 1.")
-    if float(holdout.get("balanced_accuracy", 0.0) or 0.0) < 0.6:
-        warnings.append("Holdout balanced accuracy is currently below 0.60.")
+    if model_kind == "classification":
+        if float(holdout.get("exact_confidence_rate_raw", 0.0) or 0.0) >= 0.5:
+            diagnostic_flags.append("confidence_saturation")
+            warnings.append("A large share of raw holdout probabilities saturated at exactly 0 or 1.")
+        if float(holdout.get("balanced_accuracy", 0.0) or 0.0) < 0.6:
+            warnings.append("Holdout balanced accuracy is currently below 0.60.")
+    else:
+        if float(holdout.get("r2", 0.0) or 0.0) < 0.0:
+            warnings.append("Holdout R^2 is currently below 0, so regression generalization is weak.")
+        if float(holdout.get("rmse", 0.0) or 0.0) <= 0.0:
+            diagnostic_flags.append("degenerate_regression_error")
 
     payload = {
         "schema_version": "training_result.v1",
         "model_family": "random_forest",
+        "model_type": model_kind,
         "calibration_method": selected_model.get("calibration_method") or "",
+        "training_scope": bundle.get("training_scope") or "",
+        "model_source": bundle.get("model_source") or "",
         "training_sample_size": int(bundle.get("training_sample_size", 0) or 0),
         "class_balance": bundle.get("class_balance") or {"positive": 0, "negative": 0, "unlabeled": 0},
         "evaluation_metrics": bundle.get("metrics", {}),
+        "regression_metrics": bundle.get("regression_metrics", {}),
         "warnings": warnings,
         "diagnostic_flags": diagnostic_flags,
         "artifact_refs": bundle.get("artifact_refs", {}),
         "selected_model": bundle.get("selected_model", {}),
+        "target_definition": bundle.get("target_definition", {}) or {},
+        "contract_versions": bundle.get("contract_versions", {}) or {},
         "benchmark": bundle.get("benchmark", []),
         "metrics": bundle.get("metrics", {}),
         "thresholds": bundle.get("thresholds", {}),
@@ -360,4 +374,3 @@ __all__ = [
     "summarize_series",
     "train_model",
 ]
-

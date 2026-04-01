@@ -6,6 +6,8 @@ from typing import Any
 
 from system.contracts import ContractValidationError, validate_decision_artifact, validate_review_event_record
 from system.review_manager import STATUS_ORDER, normalize_status
+from system.services.run_metadata_service import build_run_provenance
+from system.services.session_identity_service import build_metric_interpretation
 from system.session_report import ranking_policy as build_ranking_policy
 
 
@@ -677,6 +679,14 @@ def normalize_candidate(
         observed_value = None
     assay = str(candidate.get("assay") or "").strip()
     target = str(candidate.get("target") or "").strip()
+    target_definition = candidate.get("target_definition") if isinstance(candidate.get("target_definition"), dict) else {}
+    data_facts = candidate.get("data_facts") if isinstance(candidate.get("data_facts"), dict) else {}
+    model_judgment = candidate.get("model_judgment") if isinstance(candidate.get("model_judgment"), dict) else {}
+    applicability_domain = candidate.get("applicability_domain") if isinstance(candidate.get("applicability_domain"), dict) else {}
+    novelty_signal = candidate.get("novelty_signal") if isinstance(candidate.get("novelty_signal"), dict) else {}
+    decision_policy = candidate.get("decision_policy") if isinstance(candidate.get("decision_policy"), dict) else {}
+    final_recommendation = candidate.get("final_recommendation") if isinstance(candidate.get("final_recommendation"), dict) else {}
+    normalized_explanation = candidate.get("normalized_explanation") if isinstance(candidate.get("normalized_explanation"), dict) else {}
     domain = domain_summary(candidate.get("max_similarity"))
     if candidate.get("domain_status") or candidate.get("domain_label") or candidate.get("domain_summary"):
         domain = {
@@ -791,6 +801,14 @@ def normalize_candidate(
         "observed_value": observed_value,
         "assay": assay,
         "target": target,
+        "target_definition": target_definition,
+        "data_facts": data_facts,
+        "model_judgment": model_judgment,
+        "applicability_domain": applicability_domain,
+        "novelty_signal": novelty_signal,
+        "decision_policy": decision_policy,
+        "final_recommendation": final_recommendation,
+        "normalized_explanation": normalized_explanation,
         "max_similarity": domain.get("max_similarity"),
         "domain_status": domain.get("status"),
         "domain_label": domain.get("label"),
@@ -848,6 +866,35 @@ def build_discovery_workbench(
     artifact_state = str(decision_output.get("artifact_state") or "ok")
     analysis_payload = analysis_report if isinstance(analysis_report, dict) else {}
     ranking_policy = normalize_ranking_policy(analysis_payload)
+    target_definition = (
+        decision_output.get("target_definition") if isinstance(decision_output.get("target_definition"), dict) else {}
+    ) or (
+        analysis_payload.get("target_definition") if isinstance(analysis_payload.get("target_definition"), dict) else {}
+    )
+    modeling_mode = str(
+        decision_output.get("modeling_mode")
+        or analysis_payload.get("modeling_mode")
+        or ""
+    ).strip()
+    interpretation = build_metric_interpretation(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        ranking_policy=ranking_policy,
+    )
+    run_contract = (
+        decision_output.get("run_contract") if isinstance(decision_output.get("run_contract"), dict) else {}
+    ) or (
+        analysis_payload.get("run_contract") if isinstance(analysis_payload.get("run_contract"), dict) else {}
+    )
+    comparison_anchors = (
+        decision_output.get("comparison_anchors") if isinstance(decision_output.get("comparison_anchors"), dict) else {}
+    ) or (
+        analysis_payload.get("comparison_anchors") if isinstance(analysis_payload.get("comparison_anchors"), dict) else {}
+    )
+    run_provenance = build_run_provenance(
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+    )
     if artifact_state == "error":
         state = {
             "kind": "error",
@@ -873,18 +920,13 @@ def build_discovery_workbench(
             "last_updated": _to_iso(decision_output.get("source_updated_at")),
             "system_version": system_version,
             "candidates": [],
+            "target_definition": target_definition,
             "measurement_summary": analysis_payload.get("measurement_summary", {}),
             "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
             "ranking_policy": ranking_policy,
             "decision_overview": decision_overview([]),
-            "interpretation": [
-                {"label": "Confidence", "text": "Model belief strength for the current candidate."},
-                {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
-                {"label": "Novelty", "text": "How different the candidate is from known reference chemistry."},
-                {"label": "Experiment Value", "text": "Model-estimated downstream value for prioritizing experimental work."},
-                {"label": "Priority score", "text": "Weighted ranking score that determines shortlist order for the current run."},
-                {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, learn reduces uncertainty."},
-            ],
+            "interpretation": interpretation,
+            "run_provenance": run_provenance,
         }
 
     if artifact_state == "missing":
@@ -914,18 +956,13 @@ def build_discovery_workbench(
                 "last_updated": _to_iso(decision_output.get("source_updated_at")),
                 "system_version": system_version,
                 "candidates": [],
+                "target_definition": target_definition,
                 "measurement_summary": analysis_payload.get("measurement_summary", {}),
                 "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
                 "ranking_policy": ranking_policy,
                 "decision_overview": decision_overview([]),
-                "interpretation": [
-                    {"label": "Confidence", "text": "Model belief strength for the current candidate."},
-                    {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
-                    {"label": "Novelty", "text": "How different the candidate is from known reference chemistry."},
-                    {"label": "Experiment Value", "text": "Model-estimated downstream value for prioritizing experimental work."},
-                    {"label": "Priority score", "text": "Weighted ranking score that determines shortlist order for the current run."},
-                    {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, learn reduces uncertainty."},
-                ],
+                "interpretation": interpretation,
+                "run_provenance": run_provenance,
             }
         raw_candidates = validated_output.get("top_experiments", [])
         candidates_input = raw_candidates if isinstance(raw_candidates, list) else []
@@ -981,6 +1018,17 @@ def build_discovery_workbench(
         "state": state,
         "session_id": session_id,
         "source_path": validated_output.get("source_path") or "decision_output.json",
+        "target_definition": validated_output.get("target_definition") or analysis_payload.get("target_definition") or {},
+        "scientific_contract": validated_output.get("scientific_contract") or {},
+        "run_contract": validated_output.get("run_contract") or analysis_payload.get("run_contract") or {},
+        "comparison_anchors": validated_output.get("comparison_anchors") or analysis_payload.get("comparison_anchors") or {},
+        "run_provenance": build_run_provenance(
+            run_contract=validated_output.get("run_contract") or analysis_payload.get("run_contract") or {},
+            comparison_anchors=validated_output.get("comparison_anchors") or analysis_payload.get("comparison_anchors") or {},
+        ),
+        "contract_versions": validated_output.get("contract_versions") or analysis_payload.get("contract_versions") or {},
+        "modeling_mode": modeling_mode,
+        "decision_intent": str(validated_output.get("decision_intent") or analysis_payload.get("decision_intent") or "").strip(),
         "summary": {
             "iteration": iteration,
             **summary,
@@ -1005,13 +1053,5 @@ def build_discovery_workbench(
         "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
         "ranking_policy": ranking_policy,
         "decision_overview": decision_overview(candidates),
-        "interpretation": [
-            {"label": "Confidence", "text": "Model belief strength for the current candidate."},
-            {"label": "Uncertainty", "text": "How unsure the model is about this recommendation."},
-            {"label": "Novelty", "text": "How different the candidate is from known reference chemistry."},
-            {"label": "Experiment Value", "text": "Model-estimated downstream value for prioritizing experimental work."},
-            {"label": "Priority score", "text": "Weighted ranking score that determines shortlist order for the current run."},
-            {"label": "Bucket", "text": "Exploit uses known good patterns, explore expands chemistry, and learn reduces uncertainty."},
-            {"label": "Observed value", "text": "When uploaded measurements exist, compare the ranking against those values rather than treating the model score as ground truth."},
-        ],
+        "interpretation": interpretation,
     }

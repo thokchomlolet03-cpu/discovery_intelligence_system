@@ -121,6 +121,51 @@ class WorkspaceUsageEventType(str, Enum):
     decision_exported = "decision_exported"
 
 
+class TargetKind(str, Enum):
+    classification = "classification"
+    regression = "regression"
+
+
+class OptimizationDirection(str, Enum):
+    maximize = "maximize"
+    minimize = "minimize"
+    classify = "classify"
+    hit_range = "hit_range"
+
+
+class DatasetType(str, Enum):
+    structure_only = "structure_only"
+    measurement_dataset = "measurement_dataset"
+    labeled_dataset = "labeled_dataset"
+
+
+class MappingConfidence(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class DecisionIntent(str, Enum):
+    prioritize_experiments = "prioritize_experiments"
+    estimate_labels = "estimate_labels"
+    generate_candidates = "generate_candidates"
+    reduce_uncertainty = "reduce_uncertainty"
+
+
+class ModelingMode(str, Enum):
+    binary_classification = "binary_classification"
+    regression = "regression"
+    mutation_based_candidate_generation = "mutation_based_candidate_generation"
+    ranking_only = "ranking_only"
+
+
+class DomainStatus(str, Enum):
+    in_domain = "in_domain"
+    near_boundary = "near_boundary"
+    out_of_domain = "out_of_domain"
+    unknown = "unknown"
+
+
 BUCKET_VALUES = tuple(item.value for item in Bucket)
 RISK_LEVEL_VALUES = tuple(item.value for item in RiskLevel)
 REVIEW_STATUS_VALUES = tuple(item.value for item in ReviewStatus)
@@ -128,6 +173,13 @@ WORKSPACE_ROLE_VALUES = tuple(item.value for item in WorkspaceRole)
 WORKSPACE_PLAN_TIER_VALUES = tuple(item.value for item in WorkspacePlanTier)
 WORKSPACE_PLAN_STATUS_VALUES = tuple(item.value for item in WorkspacePlanStatus)
 WORKSPACE_USAGE_EVENT_TYPE_VALUES = tuple(item.value for item in WorkspaceUsageEventType)
+TARGET_KIND_VALUES = tuple(item.value for item in TargetKind)
+OPTIMIZATION_DIRECTION_VALUES = tuple(item.value for item in OptimizationDirection)
+DATASET_TYPE_VALUES = tuple(item.value for item in DatasetType)
+MAPPING_CONFIDENCE_VALUES = tuple(item.value for item in MappingConfidence)
+DECISION_INTENT_VALUES = tuple(item.value for item in DecisionIntent)
+MODELING_MODE_VALUES = tuple(item.value for item in ModelingMode)
+DOMAIN_STATUS_VALUES = tuple(item.value for item in DomainStatus)
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -315,6 +367,513 @@ class LabelBuilderConfig(ContractBaseModel):
         return values
 
 
+class DerivedLabelRule(ContractBaseModel):
+    source_column: str = ""
+    operator: str = ">="
+    threshold: float | None = None
+    positive_label: int = Field(default=1)
+    negative_label: int = Field(default=0)
+    rule_reason: str = ""
+
+    @validator("source_column", "operator", "rule_reason", pre=True, always=True)
+    def _clean_rule_text(cls, value: Any, field) -> str:
+        default = ">=" if field.name == "operator" else ""
+        return _clean_text(value, default=default)
+
+
+class TargetDefinition(ContractBaseModel):
+    schema_version: str = "target_definition.v1"
+    target_name: str = ""
+    target_kind: TargetKind = TargetKind.classification
+    optimization_direction: OptimizationDirection = OptimizationDirection.classify
+    measurement_column: str = ""
+    label_column: str = ""
+    measurement_unit: str = ""
+    scientific_meaning: str = ""
+    assay_context: str = ""
+    dataset_type: DatasetType = DatasetType.structure_only
+    mapping_confidence: MappingConfidence = MappingConfidence.low
+    derived_label_rule: DerivedLabelRule | None = None
+    success_definition: str = ""
+    target_notes: str = ""
+
+    @validator(
+        "target_name",
+        "measurement_column",
+        "label_column",
+        "measurement_unit",
+        "scientific_meaning",
+        "assay_context",
+        "success_definition",
+        "target_notes",
+        pre=True,
+        always=True,
+    )
+    def _clean_target_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("target_kind", pre=True)
+    def _clean_target_kind(cls, value: Any) -> str:
+        return _clean_text(value, default=TargetKind.classification.value).lower()
+
+    @validator("optimization_direction", pre=True)
+    def _clean_optimization_direction(cls, value: Any) -> str:
+        return _clean_text(value, default=OptimizationDirection.classify.value).lower()
+
+    @validator("dataset_type", pre=True)
+    def _clean_dataset_type(cls, value: Any) -> str:
+        return _clean_text(value, default=DatasetType.structure_only.value).lower()
+
+    @validator("mapping_confidence", pre=True)
+    def _clean_mapping_confidence(cls, value: Any) -> str:
+        return _clean_text(value, default=MappingConfidence.low.value).lower()
+
+
+class SessionIdentity(ContractBaseModel):
+    schema_version: str = "session_identity.v1"
+    session_id: str
+    source_name: str = ""
+    created_at: datetime | None = None
+    created_at_label: str = ""
+    workspace_id: str = ""
+    target_definition: TargetDefinition | None = None
+    modeling_mode: ModelingMode | None = None
+    modeling_mode_label: str = ""
+    decision_intent: DecisionIntent | None = None
+    decision_intent_label: str = ""
+    session_status: str = ""
+    session_status_tone: str = ""
+    current_job_status: JobStatus | None = None
+    scientific_purpose: str = ""
+    trust_summary: str = ""
+    latest_result_summary: str = ""
+
+    @validator(
+        "session_id",
+        "source_name",
+        "created_at_label",
+        "workspace_id",
+        "modeling_mode_label",
+        "decision_intent_label",
+        "session_status",
+        "session_status_tone",
+        "scientific_purpose",
+        "trust_summary",
+        "latest_result_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_identity_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("created_at", pre=True)
+    def _coerce_identity_created_at(cls, value: Any) -> Any:
+        return _coerce_datetime(value)
+
+    @validator("decision_intent", pre=True)
+    def _clean_identity_decision_intent(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("modeling_mode", pre=True)
+    def _clean_identity_modeling_mode(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("current_job_status", pre=True)
+    def _clean_identity_job_status(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+
+class StatusSemantics(ContractBaseModel):
+    schema_version: str = "status_semantics.v1"
+    status_code: str = ""
+    status_tone: str = ""
+    where_failed: str = ""
+    usable_upload: bool = False
+    usable_validation: bool = False
+    viewable_artifacts: bool = False
+    trustworthy_recommendations: bool = False
+    rerun_possible: bool = False
+    can_open_discovery: bool = False
+    can_open_dashboard: bool = False
+    available_artifacts: list[str] = Field(default_factory=list)
+    headline: str = ""
+    detail: str = ""
+    next_steps: list[str] = Field(default_factory=list)
+    last_error: str = ""
+
+    @validator(
+        "status_code",
+        "status_tone",
+        "where_failed",
+        "headline",
+        "detail",
+        "last_error",
+        pre=True,
+        always=True,
+    )
+    def _clean_status_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("available_artifacts", "next_steps", pre=True)
+    def _clean_status_lists(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class RunContract(ContractBaseModel):
+    schema_version: str = "run_contract.v1"
+    session_id: str = ""
+    source_name: str = ""
+    input_type: str = ""
+    requested_intent: str = ""
+    decision_intent: DecisionIntent | None = None
+    modeling_mode: ModelingMode | None = None
+    scoring_mode: str = ""
+    target_definition: TargetDefinition | None = None
+    target_model_available: bool = False
+    candidate_generation_requested: bool = False
+    candidate_generation_eligible: bool = False
+    used_candidate_generation: bool = False
+    fallback_reason: str = ""
+    selected_model_name: str = ""
+    selected_model_family: str = ""
+    calibration_method: str = ""
+    training_scope: str = ""
+    label_source: str = ""
+    feature_signature: str = ""
+    reference_basis: dict[str, str] = Field(default_factory=dict)
+    contract_versions: dict[str, str] = Field(default_factory=dict)
+
+    @validator(
+        "session_id",
+        "source_name",
+        "input_type",
+        "requested_intent",
+        "scoring_mode",
+        "fallback_reason",
+        "selected_model_name",
+        "selected_model_family",
+        "calibration_method",
+        "training_scope",
+        "label_source",
+        "feature_signature",
+        pre=True,
+        always=True,
+    )
+    def _clean_run_contract_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("decision_intent", pre=True)
+    def _clean_run_contract_intent(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("modeling_mode", pre=True)
+    def _clean_run_contract_mode(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("reference_basis", "contract_versions", pre=True)
+    def _clean_run_contract_mapping(cls, value: Any) -> dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        payload: dict[str, str] = {}
+        for key, item in value.items():
+            cleaned_key = _clean_text(key)
+            cleaned_value = _clean_text(item)
+            if cleaned_key and cleaned_value:
+                payload[cleaned_key] = cleaned_value
+        return payload
+
+
+class ComparisonAnchors(ContractBaseModel):
+    schema_version: str = "comparison_anchors.v1"
+    session_id: str = ""
+    source_name: str = ""
+    input_type: str = ""
+    target_name: str = ""
+    target_kind: TargetKind = TargetKind.classification
+    optimization_direction: OptimizationDirection = OptimizationDirection.classify
+    measurement_column: str = ""
+    label_column: str = ""
+    measurement_unit: str = ""
+    dataset_type: DatasetType = DatasetType.structure_only
+    mapping_confidence: MappingConfidence = MappingConfidence.low
+    column_mapping: dict[str, str] = Field(default_factory=dict)
+    label_source: str = ""
+    decision_intent: DecisionIntent | None = None
+    modeling_mode: ModelingMode | None = None
+    scoring_mode: str = ""
+    selected_model_name: str = ""
+    training_scope: str = ""
+    target_contract_version: str = ""
+    model_contract_version: str = ""
+    scoring_policy_version: str = ""
+    explanation_contract_version: str = ""
+    run_contract_version: str = ""
+    fallback_reason: str = ""
+    comparison_ready: bool = False
+
+    @validator(
+        "session_id",
+        "source_name",
+        "input_type",
+        "target_name",
+        "measurement_column",
+        "label_column",
+        "measurement_unit",
+        "label_source",
+        "scoring_mode",
+        "selected_model_name",
+        "training_scope",
+        "target_contract_version",
+        "model_contract_version",
+        "scoring_policy_version",
+        "explanation_contract_version",
+        "run_contract_version",
+        "fallback_reason",
+        pre=True,
+        always=True,
+    )
+    def _clean_comparison_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("target_kind", pre=True)
+    def _clean_comparison_target_kind(cls, value: Any) -> str:
+        return _clean_text(value, default=TargetKind.classification.value).lower()
+
+    @validator("optimization_direction", pre=True)
+    def _clean_comparison_direction(cls, value: Any) -> str:
+        return _clean_text(value, default=OptimizationDirection.classify.value).lower()
+
+    @validator("dataset_type", pre=True)
+    def _clean_comparison_dataset_type(cls, value: Any) -> str:
+        return _clean_text(value, default=DatasetType.structure_only.value).lower()
+
+    @validator("mapping_confidence", pre=True)
+    def _clean_comparison_mapping_confidence(cls, value: Any) -> str:
+        return _clean_text(value, default=MappingConfidence.low.value).lower()
+
+    @validator("decision_intent", pre=True)
+    def _clean_comparison_intent(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("modeling_mode", pre=True)
+    def _clean_comparison_mode(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("column_mapping", pre=True)
+    def _clean_comparison_mapping(cls, value: Any) -> dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        payload: dict[str, str] = {}
+        for key, item in value.items():
+            cleaned_key = _clean_text(key)
+            cleaned_value = _clean_text(item)
+            if cleaned_key and cleaned_value:
+                payload[cleaned_key] = cleaned_value
+        return payload
+
+
+class ApplicabilityDomainAssessment(ContractBaseModel):
+    status: DomainStatus = DomainStatus.unknown
+    max_reference_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    support_band: str = ""
+    summary: str = ""
+    evidence: list[str] = Field(default_factory=list)
+
+    @validator("status", pre=True)
+    def _clean_domain_status(cls, value: Any) -> str:
+        return _clean_text(value, default=DomainStatus.unknown.value).lower()
+
+    @validator("support_band", "summary", pre=True, always=True)
+    def _clean_domain_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("max_reference_similarity", pre=True)
+    def _coerce_similarity(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("evidence", pre=True)
+    def _coerce_domain_evidence(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class NoveltySignal(ContractBaseModel):
+    novelty_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    reference_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    batch_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    summary: str = ""
+
+    @validator("novelty_score", "reference_similarity", "batch_similarity", pre=True)
+    def _coerce_novelty_float(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("summary", pre=True, always=True)
+    def _clean_novelty_summary(cls, value: Any) -> str:
+        return _clean_text(value)
+
+
+class ModelJudgment(ContractBaseModel):
+    target_kind: TargetKind = TargetKind.classification
+    predicted_label: int | None = None
+    positive_class_name: str = ""
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    uncertainty: float | None = Field(default=None, ge=0.0, le=1.0)
+    uncertainty_kind: str = ""
+    predicted_value: float | None = None
+    prediction_dispersion: float | None = Field(default=None, ge=0.0)
+    model_summary: str = ""
+
+    @validator("target_kind", pre=True)
+    def _clean_model_target_kind(cls, value: Any) -> str:
+        return _clean_text(value, default=TargetKind.classification.value).lower()
+
+    @validator("positive_class_name", "uncertainty_kind", "model_summary", pre=True, always=True)
+    def _clean_model_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("confidence", "uncertainty", "predicted_value", "prediction_dispersion", pre=True)
+    def _coerce_model_float(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+
+class ScientificDataFacts(ContractBaseModel):
+    observed_value: float | None = None
+    measurement_column: str = ""
+    label_column: str = ""
+    dataset_type: DatasetType | None = None
+    assay: str = ""
+    target: str = ""
+    source_name: str = ""
+
+    @validator("observed_value", pre=True)
+    def _coerce_observed_value(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("measurement_column", "label_column", "assay", "target", "source_name", pre=True, always=True)
+    def _clean_data_fact_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("dataset_type", pre=True)
+    def _clean_data_dataset_type(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+
+class DecisionPolicyTrace(ContractBaseModel):
+    bucket: Bucket | None = None
+    priority_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    acquisition_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    experiment_value: float | None = Field(default=None, ge=0.0, le=1.0)
+    selection_reason: str = ""
+    policy_summary: str = ""
+
+    @validator("bucket", pre=True)
+    def _clean_policy_bucket(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _normalize_bucket(value)
+
+    @validator("priority_score", "acquisition_score", "experiment_value", pre=True)
+    def _coerce_policy_float(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("selection_reason", "policy_summary", pre=True, always=True)
+    def _clean_policy_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+
+class ScientificRecommendation(ContractBaseModel):
+    recommended_action: str = ""
+    summary: str = ""
+    follow_up_experiment: str = ""
+    trust_cautions: list[str] = Field(default_factory=list)
+
+    @validator("recommended_action", "summary", "follow_up_experiment", pre=True, always=True)
+    def _clean_recommendation_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("trust_cautions", pre=True)
+    def _coerce_recommendation_cautions(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class NormalizedExplanation(ContractBaseModel):
+    why_this_candidate: str = ""
+    why_now: str = ""
+    supporting_evidence: list[str] = Field(default_factory=list)
+    model_judgment_summary: str = ""
+    uncertainty_summary: str = ""
+    novelty_summary: str = ""
+    decision_policy_reason: str = ""
+    recommended_followup: str = ""
+    trust_cautions: list[str] = Field(default_factory=list)
+
+    @validator(
+        "why_this_candidate",
+        "why_now",
+        "model_judgment_summary",
+        "uncertainty_summary",
+        "novelty_summary",
+        "decision_policy_reason",
+        "recommended_followup",
+        pre=True,
+        always=True,
+    )
+    def _clean_normalized_explanation_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("supporting_evidence", "trust_cautions", pre=True)
+    def _coerce_explanation_lists(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
 class UploadInspectionResult(ContractBaseModel):
     schema_version: str = "upload_inspection.v1"
     session_id: str
@@ -332,11 +891,21 @@ class UploadInspectionResult(ContractBaseModel):
     label_builder_suggestion: LabelBuilderConfig = Field(default_factory=LabelBuilderConfig)
     label_builder_config: LabelBuilderConfig = Field(default_factory=LabelBuilderConfig)
     validation_summary: ValidationStats
+    target_definition: TargetDefinition | None = None
+    decision_intent: DecisionIntent | None = None
+    comparison_anchors: ComparisonAnchors | None = None
+    contract_versions: dict[str, str] = Field(default_factory=dict)
     free_tier_assessment: dict[str, Any] = Field(default_factory=dict)
 
     @validator("filename", "input_type", "session_id", "file_type", "semantic_mode", pre=True)
     def _strip_required_text(cls, value: Any) -> str:
         return _clean_text(value)
+
+    @validator("decision_intent", pre=True)
+    def _clean_inspection_decision_intent(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
 
 
 class SessionMetadata(ContractBaseModel):
@@ -528,6 +1097,8 @@ class NormalizedDatasetSummary(ContractBaseModel):
     missing_fields: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     can_run_analysis: bool
+    target_definition: TargetDefinition | None = None
+    contract_versions: dict[str, str] = Field(default_factory=dict)
 
     @root_validator(pre=False)
     def _sync_counts(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -562,14 +1133,20 @@ class BenchmarkModelResult(ContractBaseModel):
 class TrainingResult(ContractBaseModel):
     schema_version: str = "training_result.v1"
     model_family: str
+    model_type: str = ""
     calibration_method: str
+    training_scope: str = ""
+    model_source: str = ""
     training_sample_size: int = Field(ge=0)
     class_balance: LabelCounts = Field(default_factory=LabelCounts)
     evaluation_metrics: dict[str, Any] = Field(default_factory=dict)
+    regression_metrics: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     diagnostic_flags: list[str] = Field(default_factory=list)
     artifact_refs: dict[str, str] = Field(default_factory=dict)
     selected_model: dict[str, Any] = Field(default_factory=dict)
+    target_definition: TargetDefinition | None = None
+    contract_versions: dict[str, str] = Field(default_factory=dict)
     benchmark: list[BenchmarkModelResult] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
     thresholds: dict[str, Any] = Field(default_factory=dict)
@@ -582,6 +1159,8 @@ class TrainingResult(ContractBaseModel):
             values["calibration_method"] = _clean_text(selected.get("calibration_method"))
         if not values.get("model_family"):
             values["model_family"] = _infer_model_family(selected.get("name"), selected.get("name"))
+        if not values.get("model_type"):
+            values["model_type"] = _clean_text(values.get("model_type")) or "classification"
         if not values.get("evaluation_metrics"):
             values["evaluation_metrics"] = dict(values.get("metrics") or {})
         return values
@@ -640,15 +1219,26 @@ class CandidatePredictionRow(ContractBaseModel):
     candidate_id: str
     smiles: str
     canonical_smiles: str
-    confidence: float = Field(ge=0.0, le=1.0)
-    uncertainty: float = Field(ge=0.0, le=1.0)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    uncertainty: float | None = Field(default=None, ge=0.0, le=1.0)
     novelty: float = Field(ge=0.0, le=1.0)
+    predicted_value: float | None = None
+    prediction_dispersion: float | None = Field(default=None, ge=0.0)
     feasibility: FeasibilityInfo = Field(default_factory=FeasibilityInfo)
     prediction_metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("candidate_id", "smiles", "canonical_smiles", pre=True)
     def _strip_prediction_text(cls, value: Any) -> str:
         return _clean_text(value)
+
+    @validator("confidence", "uncertainty", "predicted_value", "prediction_dispersion", pre=True)
+    def _coerce_prediction_float(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
 
 class SelectionResultRow(ContractBaseModel):
@@ -802,8 +1392,8 @@ class DecisionArtifactRow(ContractBaseModel):
     candidate_id: str
     smiles: str
     canonical_smiles: str
-    confidence: float = Field(ge=0.0, le=1.0)
-    uncertainty: float = Field(ge=0.0, le=1.0)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    uncertainty: float | None = Field(default=None, ge=0.0, le=1.0)
     novelty: float = Field(ge=0.0, le=1.0)
     acquisition_score: float = Field(ge=0.0, le=1.0)
     experiment_value: float = Field(ge=0.0, le=1.0)
@@ -822,6 +1412,14 @@ class DecisionArtifactRow(ContractBaseModel):
     target: str = ""
     score_breakdown: list[ScoreBreakdownItem] = Field(default_factory=list)
     rationale: CandidateRationale | None = None
+    target_definition: TargetDefinition | None = None
+    data_facts: ScientificDataFacts | None = None
+    model_judgment: ModelJudgment | None = None
+    applicability_domain: ApplicabilityDomainAssessment | None = None
+    novelty_signal: NoveltySignal | None = None
+    decision_policy: DecisionPolicyTrace | None = None
+    final_recommendation: ScientificRecommendation | None = None
+    normalized_explanation: NormalizedExplanation | None = None
     domain_status: str = ""
     domain_label: str = ""
     domain_summary: str = ""
@@ -900,7 +1498,7 @@ class DecisionArtifactRow(ContractBaseModel):
     def _coerce_reviewed_at(cls, value: Any) -> Any:
         return _coerce_datetime(value)
 
-    @validator("priority_score", "max_similarity", "observed_value", pre=True)
+    @validator("confidence", "uncertainty", "priority_score", "max_similarity", "observed_value", pre=True)
     def _coerce_optional_float(cls, value: Any) -> Any:
         if value in (None, "", "nan"):
             return None
@@ -955,6 +1553,13 @@ class DecisionArtifact(ContractBaseModel):
     product_tier: str = ""
     warnings: list[str] = Field(default_factory=list)
     source_name: str = ""
+    target_definition: TargetDefinition | None = None
+    decision_intent: DecisionIntent | None = None
+    modeling_mode: ModelingMode | None = None
+    scientific_contract: dict[str, Any] = Field(default_factory=dict)
+    run_contract: RunContract | None = None
+    comparison_anchors: ComparisonAnchors | None = None
+    contract_versions: dict[str, str] = Field(default_factory=dict)
     artifact_state: ArtifactState | None = None
     source_path: str | None = None
     source_updated_at: datetime | None = None
@@ -963,6 +1568,18 @@ class DecisionArtifact(ContractBaseModel):
     @validator("session_id", "input_type", "intent", "mode_used", "product_tier", "source_name", pre=True, always=True)
     def _clean_artifact_text(cls, value: Any) -> str:
         return _clean_text(value)
+
+    @validator("decision_intent", pre=True)
+    def _clean_artifact_decision_intent(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("modeling_mode", pre=True)
+    def _clean_artifact_modeling_mode(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
 
     @validator("generated_at", "source_updated_at", pre=True)
     def _coerce_artifact_datetime(cls, value: Any) -> Any:
@@ -1083,6 +1700,50 @@ def validate_label_builder_config(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(LabelBuilderConfig, payload))
 
 
+def validate_target_definition(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(TargetDefinition, payload))
+
+
+def validate_session_identity(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(SessionIdentity, payload))
+
+
+def validate_status_semantics(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(StatusSemantics, payload))
+
+
+def validate_run_contract(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(RunContract, payload))
+
+
+def validate_comparison_anchors(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ComparisonAnchors, payload))
+
+
+def validate_normalized_explanation(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(NormalizedExplanation, payload))
+
+
+def validate_model_judgment(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ModelJudgment, payload))
+
+
+def validate_applicability_domain(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ApplicabilityDomainAssessment, payload))
+
+
+def validate_novelty_signal(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(NoveltySignal, payload))
+
+
+def validate_decision_policy_trace(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(DecisionPolicyTrace, payload))
+
+
+def validate_scientific_recommendation(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ScientificRecommendation, payload))
+
+
 def validate_session_metadata(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(SessionMetadata, payload))
 
@@ -1174,8 +1835,8 @@ def _canonical_decision_row(
         "candidate_id": candidate_id,
         "smiles": _clean_text(row.get("smiles")),
         "canonical_smiles": _clean_text(row.get("canonical_smiles")) or _clean_text(row.get("smiles")),
-        "confidence": float(row.get("confidence", 0.0) or 0.0),
-        "uncertainty": float(row.get("uncertainty", 0.0) or 0.0),
+        "confidence": row.get("confidence"),
+        "uncertainty": row.get("uncertainty"),
         "novelty": float(row.get("novelty", 0.0) or 0.0),
         "acquisition_score": float(
             row.get("acquisition_score", row.get("final_score", row.get("score", row.get("priority_score", row.get("experiment_value", 0.0)))))
@@ -1200,6 +1861,14 @@ def _canonical_decision_row(
         "target": row.get("target") or "",
         "score_breakdown": row.get("score_breakdown") or [],
         "rationale": row.get("rationale"),
+        "target_definition": row.get("target_definition") or {},
+        "data_facts": row.get("data_facts") or {},
+        "model_judgment": row.get("model_judgment") or {},
+        "applicability_domain": row.get("applicability_domain") or {},
+        "novelty_signal": row.get("novelty_signal") or {},
+        "decision_policy": row.get("decision_policy") or {},
+        "final_recommendation": row.get("final_recommendation") or {},
+        "normalized_explanation": row.get("normalized_explanation") or {},
         "domain_status": row.get("domain_status") or "",
         "domain_label": row.get("domain_label") or "",
         "domain_summary": row.get("domain_summary") or "",
@@ -1259,6 +1928,13 @@ def normalize_loaded_decision_artifact(
         "product_tier": payload.get("product_tier") or "",
         "warnings": payload.get("warnings") or [],
         "source_name": payload.get("source_name") or "",
+        "target_definition": payload.get("target_definition") or {},
+        "decision_intent": payload.get("decision_intent") or payload.get("intent") or "",
+        "modeling_mode": payload.get("modeling_mode") or "",
+        "scientific_contract": payload.get("scientific_contract") or {},
+        "run_contract": payload.get("run_contract") or {},
+        "comparison_anchors": payload.get("comparison_anchors") or {},
+        "contract_versions": payload.get("contract_versions") or {},
         "artifact_state": artifact_state or payload.get("artifact_state"),
         "source_path": source_path or payload.get("source_path"),
         "source_updated_at": source_updated_at or payload.get("source_updated_at"),

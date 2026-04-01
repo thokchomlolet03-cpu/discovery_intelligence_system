@@ -6,7 +6,7 @@
       <div>
         <div class="eyebrow-row">
           <span class="eyebrow">Guided upload</span>
-          <span class="context-chip">Universal ingestion surface</span>
+          <span class="context-chip">Target-aware ingestion</span>
         </div>
         <h1>Upload and analyze molecular evidence without losing context.</h1>
         <p class="hero-copy">
@@ -85,6 +85,14 @@
       </div>
     </section>
   {% endif %}
+
+  {% with session_identity=session_identity, section_title="Session Identity", section_copy="This restored session now records the target property, target kind, model mode, and current trust framing before analysis continues." %}
+    {% include "_session_identity_card.html" %}
+  {% endwith %}
+
+  {% with status_semantics=status_semantics, section_title="Session Status", section_copy="This summary tells you whether inspection, validation, artifacts, and reruns are currently usable for this session." %}
+    {% include "_status_semantics_panel.html" %}
+  {% endwith %}
 
   <section class="workflow-stepper" aria-label="Upload workflow overview">
     <article class="workflow-step workflow-step-active">
@@ -834,14 +842,17 @@
 
       if (context.latest_job?.status === "queued" || context.latest_job?.status === "running") {
         renderJobProgress(context.latest_job);
-        setAnalysisStatus(context.latest_job.progress_message || "Recommendation is running...");
+        setAnalysisStatus(statusHeadline(context.latest_job, context.latest_job.progress_message || "Recommendation is running..."));
         await pollJob(context.latest_job.job_url);
         return;
       }
 
       if (context.latest_job?.status === "failed") {
         renderJobProgress(context.latest_job);
-        setAnalysisStatus(context.latest_job.error || "The latest recommendation run failed.", "error");
+        setAnalysisStatus(
+          statusHeadline(context.latest_job, context.latest_job.error || "The latest recommendation run failed."),
+          "error",
+        );
       } else if (context.result) {
         renderCompletedResult(context.result, context.latest_job || {});
         if (context.latest_job) {
@@ -852,7 +863,10 @@
             progress_percent: 100,
           });
         }
-        setAnalysisStatus(context.latest_job?.progress_message || context.result.message || "Restored the latest completed recommendation run.", "success");
+        setAnalysisStatus(
+          statusHeadline(context.latest_job, context.latest_job?.progress_message || context.result.message || "Restored the latest completed recommendation run."),
+          "success",
+        );
       } else {
         setAnalysisStatus("Session restored. You can adjust the mapping or generate a new recommendation.");
       }
@@ -1024,6 +1038,8 @@
       resultShell.classList.remove("hidden");
     };
 
+    const statusHeadline = (payload, fallback) => payload?.status_semantics?.headline || fallback;
+
     const fetchAndRenderResult = async (jobBody) => {
       const response = await fetch(jobBody.result_url);
       const body = await response.json();
@@ -1058,7 +1074,7 @@
       state.sessionId = body.session_id || state.sessionId;
       renderJobProgress(body);
       if (body.status === "queued" || body.status === "running") {
-        setAnalysisStatus(body.progress_message || "Recommendation is running...");
+        setAnalysisStatus(statusHeadline(body, body.progress_message || "Recommendation is running..."));
         state.jobPollHandle = window.setTimeout(() => pollJob(jobUrl), 1200);
         return;
       }
@@ -1066,7 +1082,7 @@
       clearJobPoll();
       if (body.status === "failed") {
         renderJobProgress(body);
-        setAnalysisStatus(body.error || "Recommendation failed.", "error");
+        setAnalysisStatus(statusHeadline(body, body.error || "Recommendation failed."), "error");
         resultShell.classList.add("hidden");
         if (technicalDetails) technicalDetails.open = false;
         return;
@@ -1130,7 +1146,7 @@
       state.jobId = body.job_id;
       state.sessionId = body.session_id || state.sessionId;
       renderJobProgress(body);
-      setAnalysisStatus(body.progress_message || `Job ${body.job_id} queued.`);
+      setAnalysisStatus(statusHeadline(body, body.progress_message || `Job ${body.job_id} queued.`));
       resultShell.classList.add("hidden");
       if (technicalDetails) technicalDetails.open = false;
       await pollJob(body.job_url);

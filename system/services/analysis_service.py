@@ -16,9 +16,10 @@ from models.train_model import train_model as train_modular_model
 from selection.scorer import score_candidates
 from selection.selector import select_candidates
 from system.services.candidate_service import candidate_similarity_table
-from system.services.data_service import labeled_subset, reference_smiles_from_dataset
+from system.services.data_service import labeled_subset, reference_smiles_from_dataset, regression_subset
 from system.services.decision_service import decorate_candidates
 from system.services.prediction_service import predict_with_model
+from system.services.regression_service import train_regression_model
 from system.services.training_service import load_model_bundle
 
 
@@ -46,6 +47,7 @@ def build_discovery_result(
     source_name: str,
     intent: str,
     scoring_mode: str,
+    target_definition: dict[str, Any] | None = None,
     progress_callback: ProgressCallback | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     labeled_df = labeled_subset(df)
@@ -68,6 +70,8 @@ def build_discovery_result(
         config=config,
         random_state=seed,
     )
+    bundle["target_definition"] = dict(target_definition or {})
+    bundle["training_scope"] = "session_trained"
 
     _emit_progress(
         progress_callback,
@@ -117,7 +121,16 @@ def build_discovery_result(
     scored = score_candidates(scored, config=config)
     scored["experiment_value"] = scored.apply(lambda row: compute_experiment_value(row, config=config), axis=1)
     scored = select_candidates(scored, min(config.loop.candidates_per_round, len(scored)), config=config)
-    scored = decorate_candidates(scored, mode="discovery", source_name=source_name, bundle=bundle, intent=intent, scoring_mode=scoring_mode)
+    scored.attrs["target_definition"] = dict(target_definition or {})
+    scored = decorate_candidates(
+        scored,
+        mode="discovery",
+        source_name=source_name,
+        bundle=bundle,
+        intent=intent,
+        scoring_mode=scoring_mode,
+        target_definition=target_definition,
+    )
 
     suggested = suggest_experiments(scored, top_k=min(config.decision.top_k, len(scored)), config=config)
     decision = build_decision_package(scored, iteration=1, config=config, session_id=session_id)
@@ -150,9 +163,12 @@ def build_prediction_result(
     intent: str,
     scoring_mode: str,
     allow_session_training: bool,
+    target_definition: dict[str, Any] | None = None,
     progress_callback: ProgressCallback | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, dict[str, Any] | None]:
     bundle = None
+    target_definition = dict(target_definition or {})
+    target_kind = str(target_definition.get("target_kind") or "classification").strip().lower()
     _emit_progress(
         progress_callback,
         stage="scoring_candidates",
@@ -180,7 +196,32 @@ def build_prediction_result(
         }
         return result, feasible, bundle
 
-    if allow_session_training:
+    if target_kind == "regression":
+        measured_df = regression_subset(df)
+        if measured_df.empty:
+            raise ValueError("This session target is configured as a continuous measurement, but no measured target values were available for regression.")
+        if not allow_session_training:
+            raise ValueError(
+                "This session target is configured as a continuous measurement, but the upload does not contain enough measured rows for a regression model."
+            )
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Training a session-specific regression model from measured rows.",
+            percent=54,
+        )
+        bundle = train_regression_model(df, random_state=seed, config=config)
+        bundle["target_definition"] = target_definition
+        bundle["training_scope"] = "session_trained"
+        _emit_progress(
+            progress_callback,
+            stage="scoring_candidates",
+            message="Running regression inference on uploaded molecules.",
+            percent=64,
+        )
+        _, clean_features = build_features(feasible, feature_contract=bundle.get("features"))
+        scored = predict_with_model(bundle, clean_features, config=bundle.get("config"))
+    elif allow_session_training:
         labeled_df = labeled_subset(df)
         _emit_progress(
             progress_callback,
@@ -201,6 +242,8 @@ def build_prediction_result(
             config=config,
             random_state=seed,
         )
+        bundle["target_definition"] = target_definition
+        bundle["training_scope"] = "session_trained"
         _emit_progress(
             progress_callback,
             stage="scoring_candidates",
@@ -225,6 +268,9 @@ def build_prediction_result(
             percent=48,
         )
         bundle = load_model_bundle(model_path)
+        bundle["target_definition"] = target_definition
+        bundle["training_scope"] = "baseline_bundle"
+        bundle["model_source"] = str(model_path)
         _emit_progress(
             progress_callback,
             stage="scoring_candidates",
@@ -248,12 +294,25 @@ def build_prediction_result(
     )
     scored = score_candidates(scored, config=config)
     scored["experiment_value"] = scored.apply(lambda row: compute_experiment_value(row, config=config), axis=1)
-    scored = decorate_candidates(scored, mode="prediction", source_name=source_name, bundle=bundle, intent=intent, scoring_mode=scoring_mode)
+    scored.attrs["target_definition"] = target_definition
+    scored = decorate_candidates(
+        scored,
+        mode="prediction",
+        source_name=source_name,
+        bundle=bundle,
+        intent=intent,
+        scoring_mode=scoring_mode,
+        target_definition=target_definition,
+    )
     decision = build_decision_package(scored, iteration=1, config=config, session_id=session_id)
 
     result = {
         "mode": "prediction",
-        "message": "Ranked uploaded molecules for review using the current scoring workflow.",
+        "message": (
+            "Ranked uploaded molecules for review using a continuous-target regression workflow."
+            if target_kind == "regression"
+            else "Ranked uploaded molecules for review using the current scoring workflow."
+        ),
         "summary": {
             **summary,
             "scored_candidates": int(len(scored)),

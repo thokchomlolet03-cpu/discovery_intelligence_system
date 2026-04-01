@@ -150,7 +150,7 @@ def _domain_context(max_similarity: Any) -> dict[str, Any]:
         }
     if similarity < 0.45:
         return {
-            "status": "edge_of_domain",
+            "status": "near_boundary",
             "label": "Near the edge of domain coverage",
             "summary": "Similarity is moderate, so the ranking is still useful but should not be treated as a near-certain read.",
         }
@@ -218,6 +218,9 @@ def candidate_rationale(row) -> dict[str, Any]:
     confidence = _clamp_score(row.get("confidence"))
     uncertainty = _clamp_score(row.get("uncertainty"))
     novelty = _clamp_score(row.get("novelty"))
+    target_definition = row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {}
+    target_name = _clean_text(target_definition.get("target_name") or row.get("target"))
+    target_kind = _clean_text(target_definition.get("target_kind") or "classification")
     measurement_value = row.get("value")
     try:
         measurement_value = float(measurement_value)
@@ -252,6 +255,11 @@ def candidate_rationale(row) -> dict[str, Any]:
         summary = f"This candidate is being prioritized mainly for learning value because uncertainty is carrying a large share of the score, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
     elif dominant.get("key") == "novelty":
         summary = f"This candidate is being prioritized mainly because novelty is expanding chemistry coverage beyond the current reference set, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
+    elif target_kind == "regression" and row.get("predicted_value") is not None:
+        summary = (
+            f"This candidate is being prioritized for {target_name or 'the session target'} because the model predicts "
+            f"{float(row.get('predicted_value')):.3f} and it ranks #{priority_rank} out of {session_size} by priority score in this run."
+        )
     elif dominant.get("key") == "confidence":
         summary = f"This candidate is being prioritized mainly because confidence is carrying the current shortlist position, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
     else:
@@ -266,7 +274,11 @@ def candidate_rationale(row) -> dict[str, Any]:
     strengths: list[str] = []
     cautions: list[str] = []
 
-    if confidence >= 0.8:
+    if target_kind == "regression" and row.get("predicted_value") is not None:
+        strengths.append(
+            f"Predicted {target_name or 'target'} value is {float(row.get('predicted_value')):.3f}."
+        )
+    elif confidence >= 0.8:
         strengths.append(f"Confidence is relatively strong at {confidence:.3f}.")
     elif confidence <= 0.35:
         cautions.append(f"Confidence is low at {confidence:.3f}, so treat the recommendation as exploratory.")
@@ -298,7 +310,7 @@ def candidate_rationale(row) -> dict[str, Any]:
 
     if str(domain["status"]) == "out_of_domain":
         cautions.append("This molecule sits outside stronger chemistry coverage, so transferability is weaker.")
-    elif str(domain["status"]) == "edge_of_domain":
+    elif str(domain["status"]) == "near_boundary":
         cautions.append("This molecule sits near the edge of stronger chemistry coverage.")
 
     evidence_lines = [summary, why_now] + session_context[:2]
@@ -336,8 +348,10 @@ def candidate_short_explanation(row) -> str:
     return summary or "Recommendation details unavailable."
 
 
-def add_candidate_explanations(df: pd.DataFrame) -> pd.DataFrame:
+def add_candidate_explanations(df: pd.DataFrame, target_definition: dict[str, Any] | None = None) -> pd.DataFrame:
     explained = _with_session_context(df.copy())
+    if target_definition:
+        explained["target_definition"] = [target_definition for _ in range(len(explained))]
     explained["score_breakdown"] = explained.apply(_score_breakdown, axis=1)
     explained["rationale"] = explained.apply(candidate_rationale, axis=1)
     explained["explanation"] = explained["rationale"].apply(

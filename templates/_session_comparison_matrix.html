@@ -1,0 +1,153 @@
+{% if comparison_matrix and comparison_matrix.rows %}
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title | default("Side-By-Side Scientific Comparison") }}</h2>
+        <p class="helper-copy">
+          {{ section_copy | default("This matrix compares the focus session against nearby workspace sessions using target contract, model provenance, policy version, and shortlist-level outcome signals.") }}
+        </p>
+      </div>
+      <div class="dashboard-meta-row">
+        <span class="data-chip">{{ comparison_matrix.counts.directly_comparable }} directly comparable</span>
+        <span class="data-chip">{{ comparison_matrix.counts.partially_comparable }} partially comparable</span>
+        <span class="data-chip">{{ comparison_matrix.counts.not_comparable }} not directly comparable</span>
+      </div>
+    </div>
+
+    {% if comparison_matrix.focus_basis_label %}
+      <div class="mini-callout">
+        <span class="panel-label">Focus comparison basis</span>
+        <p>{{ comparison_matrix.focus_basis_label }}</p>
+      </div>
+    {% endif %}
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Session</th>
+            <th>Comparison</th>
+            <th>Target Contract</th>
+            <th>Model Path</th>
+            <th>Policy Contract</th>
+            <th>Coverage</th>
+            <th>Outcome Signals</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison_matrix.rows %}
+            <tr>
+              <td>
+                <strong>{{ row.source_name }}</strong>
+                <div class="helper-copy">Session {{ row.session_id }}</div>
+                {% if row.is_focus %}
+                  <div class="helper-copy">Reference session</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="session-state-pill session-state-pill-{{ row.comparison.tone or 'muted' }}">
+                  {{ row.comparison.label or "Not recorded" }}
+                </span>
+                <div class="helper-copy">{{ row.comparison.summary or "Comparison summary not recorded." }}</div>
+              </td>
+              <td>
+                <strong>{{ row.target_name }}</strong>
+                <div class="helper-copy">{{ row.target_kind_label }} / {{ row.goal_label }}</div>
+                <div class="helper-copy">{{ row.measurement_or_label }}</div>
+              </td>
+              <td>
+                <strong>{{ row.modeling_mode_label }}</strong>
+                <div class="helper-copy">{{ row.model_name }}</div>
+                <div class="helper-copy">{{ row.training_scope_label }}</div>
+              </td>
+              <td>
+                <strong>{{ row.decision_intent_label }}</strong>
+                <div class="helper-copy">{{ row.policy_version }}</div>
+              </td>
+              <td>
+                <div><strong>{{ row.rows_total }}</strong> rows</div>
+                <div class="helper-copy">
+                  {% if row.is_focus %}
+                    Reference row count
+                  {% elif row.rows_total_delta > 0 %}
+                    +{{ row.rows_total_delta }} vs focus
+                  {% elif row.rows_total_delta < 0 %}
+                    {{ row.rows_total_delta }} vs focus
+                  {% else %}
+                    Same row count as focus
+                  {% endif %}
+                </div>
+                <div><strong>{{ row.rows_with_values }}</strong> rows with values</div>
+                <div class="helper-copy">
+                  {% if row.is_focus %}
+                    Reference measurement coverage
+                  {% elif row.rows_with_values_delta > 0 %}
+                    +{{ row.rows_with_values_delta }} vs focus
+                  {% elif row.rows_with_values_delta < 0 %}
+                    {{ row.rows_with_values_delta }} vs focus
+                  {% else %}
+                    Same measurement coverage as focus
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <div><strong>{{ row.candidate_count }}</strong> scored candidates</div>
+                <div class="helper-copy">
+                  {% if row.is_focus %}
+                    Reference shortlist size
+                  {% elif row.candidate_count_delta > 0 %}
+                    +{{ row.candidate_count_delta }} vs focus
+                  {% elif row.candidate_count_delta < 0 %}
+                    {{ row.candidate_count_delta }} vs focus
+                  {% else %}
+                    Same shortlist size as focus
+                  {% endif %}
+                </div>
+                <div>
+                  <strong>
+                    {% if row.top_experiment_value is not none %}
+                      {{ "%.3f"|format(row.top_experiment_value) }}
+                    {% else %}
+                      Not recorded
+                    {% endif %}
+                  </strong>
+                  top policy experiment value
+                </div>
+                <div class="helper-copy">
+                  {% if row.is_focus %}
+                    Reference policy value
+                  {% elif row.top_experiment_value_delta is not none and row.top_experiment_value_delta > 0 %}
+                    +{{ "%.3f"|format(row.top_experiment_value_delta) }} vs focus
+                  {% elif row.top_experiment_value_delta is not none and row.top_experiment_value_delta < 0 %}
+                    {{ "%.3f"|format(row.top_experiment_value_delta) }} vs focus
+                  {% elif row.top_experiment_value_delta is not none %}
+                    Same as focus
+                  {% else %}
+                    Not compared directly
+                  {% endif %}
+                </div>
+                <div class="helper-copy">Bucket mix: {{ row.bucket_summary }}</div>
+                <div class="helper-copy">Leading bucket: {{ row.leading_bucket_label }}</div>
+                <div class="helper-copy">Trust profile: {{ row.trust_summary }}</div>
+                <div class="helper-copy">Dominant trust: {{ row.dominant_trust_label }}</div>
+                <div class="helper-copy">{{ row.diagnostics_summary }}</div>
+                <div class="helper-copy">Candidate overlap: {{ row.candidate_comparison_summary }}</div>
+              </td>
+              <td>
+                {% if not row.is_focus %}
+                  <div class="cta-row">
+                    <a class="button button-secondary" href="{{ row.discovery_url }}">Discovery</a>
+                    <a class="button button-secondary" href="{{ row.dashboard_url }}">Dashboard</a>
+                  </div>
+                {% else %}
+                  <div class="helper-copy">You are already here.</div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}

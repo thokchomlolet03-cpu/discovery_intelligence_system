@@ -87,6 +87,7 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(int(summary["duplicate_count"]), 1)
         self.assertEqual(int(summary["analyzed_rows"]), 1)
         self.assertEqual(int(summary["invalid_smiles_count"]), 1)
+        self.assertEqual(summary["target_definition"]["target_kind"], "classification")
 
     def test_prepare_analysis_dataframe_builds_labels_from_measurements(self):
         frame = pd.DataFrame(
@@ -120,6 +121,8 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(int(summary["rows_with_labels"]), 2)
         self.assertEqual(summary["label_source"], "derived")
         self.assertEqual(summary["semantic_mode"], "measurement_dataset")
+        self.assertEqual(summary["target_definition"]["target_kind"], "classification")
+        self.assertEqual(summary["target_definition"]["derived_label_rule"]["threshold"], 6.0)
 
     def test_decorate_candidates_assigns_ids_buckets_and_review_defaults(self):
         frame = pd.DataFrame(
@@ -158,6 +161,9 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertTrue(candidate["trust_label"])
         self.assertTrue(candidate["domain_label"])
         self.assertIn(candidate["risk"], {"low", "medium", "high"})
+        self.assertIsInstance(candidate["model_judgment"], dict)
+        self.assertIsInstance(candidate["decision_policy"], dict)
+        self.assertIsInstance(candidate["normalized_explanation"], dict)
 
     @patch("system.services.candidate_service.max_similarity_to_reference", return_value=0.1)
     @patch("system.services.candidate_service.build_reference_fingerprints", return_value=[("ref", object())])
@@ -274,11 +280,18 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(result["decision_output"]["session_id"], session_id)
         self.assertEqual(result["decision_output"]["input_type"], "structure_only_screening")
         self.assertEqual(result["decision_output"]["intent"], "rank_uploaded_molecules")
+        self.assertEqual(result["decision_output"]["decision_intent"], "prioritize_experiments")
         self.assertEqual(result["top_candidates"][0]["candidate_id"], "cand_1")
         self.assertEqual(result["review_queue"]["session_id"], session_id)
         self.assertEqual(result["artifacts"], {})
         self.assertEqual(result["discovery_url"], f"/discovery?session_id={session_id}")
         self.assertEqual(result["dashboard_url"], f"/dashboard?session_id={session_id}")
+        self.assertEqual(result["target_definition"]["target_name"], "biodegradability")
+        self.assertEqual(result["modeling_mode"], "ranking_only")
+        self.assertEqual(result["run_contract"]["requested_intent"], "rank_uploaded_molecules")
+        self.assertEqual(result["comparison_anchors"]["target_name"], "biodegradability")
+        self.assertEqual(result["decision_output"]["comparison_anchors"]["run_contract_version"], "run_contract.v1")
+        self.assertEqual(result["analysis_report"]["comparison_anchors"]["scoring_mode"], "balanced")
 
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")
@@ -371,6 +384,12 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(int(result["analysis_report"]["ranking_diagnostics"]["measurement_rows_evaluated"]), 2)
         self.assertEqual(result["analysis_report"]["ranking_policy"]["primary_score"], "priority_score")
         self.assertIn("weights", result["analysis_report"]["ranking_policy"])
+        self.assertEqual(result["target_definition"]["target_kind"], "regression")
+        self.assertEqual(result["analysis_report"]["modeling_mode"], "ranking_only")
+        self.assertEqual(result["run_contract"]["target_definition"]["target_kind"], "regression")
+        self.assertEqual(result["run_contract"]["label_source"], "continuous_measurement")
+        self.assertEqual(result["comparison_anchors"]["scoring_policy_version"], "scoring_policy.v1")
+        self.assertEqual(result["upload_session_summary"]["comparison_anchors"]["measurement_column"], "pic50")
 
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")

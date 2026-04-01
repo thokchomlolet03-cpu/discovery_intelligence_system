@@ -252,10 +252,16 @@ def build_upload_session_summary(
     column_mapping: dict[str, str | None],
     validation: dict[str, Any],
     intent: str,
+    decision_intent: str,
+    modeling_mode: str,
     scoring_mode: str,
     consent_learning: bool,
     warnings: list[str],
     product_tier: str = "standard",
+    target_definition: dict[str, Any] | None = None,
+    run_contract: dict[str, Any] | None = None,
+    comparison_anchors: dict[str, Any] | None = None,
+    contract_versions: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     return {
         "session_id": session_id,
@@ -266,9 +272,15 @@ def build_upload_session_summary(
         "validation_summary": validation,
         "measurement_summary": _measurement_summary(validation),
         "intent_selected": intent,
+        "decision_intent": decision_intent,
+        "modeling_mode": modeling_mode,
         "mode_used": scoring_mode,
         "consent_learning": consent_learning,
         "warnings": warnings,
+        "target_definition": target_definition or {},
+        "run_contract": run_contract or {},
+        "comparison_anchors": comparison_anchors or {},
+        "contract_versions": contract_versions or {},
     }
 
 
@@ -276,11 +288,17 @@ def build_analysis_report(
     validation: dict[str, Any],
     scoring_mode: str,
     intent: str,
+    decision_intent: str,
+    modeling_mode: str,
     consent_learning: bool,
     top_candidates: list[dict[str, Any]],
     warnings: list[str],
     product_tier: str = "standard",
     scored_frame: pd.DataFrame | None = None,
+    target_definition: dict[str, Any] | None = None,
+    run_contract: dict[str, Any] | None = None,
+    comparison_anchors: dict[str, Any] | None = None,
+    contract_versions: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     return {
         "product_tier": product_tier,
@@ -290,6 +308,8 @@ def build_analysis_report(
         "duplicates": int(validation.get("duplicate_count", 0)),
         "mode_used": scoring_mode,
         "intent_selected": intent,
+        "decision_intent": decision_intent,
+        "modeling_mode": modeling_mode,
         "consent_learning": consent_learning,
         "top_candidates_returned": int(len(top_candidates)),
         "measurement_summary": _measurement_summary(validation),
@@ -297,4 +317,8 @@ def build_analysis_report(
         "ranking_policy": ranking_policy(intent, scoring_mode),
         "warnings": warnings,
         "top_level_recommendation_summary": recommendation_summary(top_candidates, intent),
+        "target_definition": target_definition or {},
+        "run_contract": run_contract or {},
+        "comparison_anchors": comparison_anchors or {},
+        "contract_versions": contract_versions or {},
     }

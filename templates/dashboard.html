@@ -59,6 +59,22 @@
     </div>
   </section>
 
+  {% with session_identity=session_identity, section_title="Session Identity", section_copy="This card states what target the session is about, what kind of model was used, and how to frame trust before reading the dashboard." %}
+    {% include "_session_identity_card.html" %}
+  {% endwith %}
+
+  {% with status_semantics=status_semantics, section_title="Session Status", section_copy="This summary explains whether the current dashboard is backed by trustworthy saved artifacts, partial artifacts, or a failed run." %}
+    {% include "_status_semantics_panel.html" %}
+  {% endwith %}
+
+  {% with run_provenance=dashboard.run_provenance, section_title="Run Provenance", section_copy="Use this panel to see what model path actually ran, whether the session is comparison-ready, and which policy contract shaped the shortlist." %}
+    {% include "_run_provenance_panel.html" %}
+  {% endwith %}
+
+  {% with active_session_comparison=active_session_comparison, section_title="Compared With Prior Run", section_copy="Use this panel to see whether the current session can be read across against the nearest prior baseline in the same workspace, or whether target/model drift makes the comparison unsafe." %}
+    {% include "_active_session_comparison_panel.html" %}
+  {% endwith %}
+
   {% if dashboard.insight_summary %}
     <section class="panel dashboard-insight-panel">
       <div class="section-header">
@@ -153,7 +169,7 @@
       <div class="card-grid metrics-grid">
         {% if dashboard.analysis_report.measurement_summary %}
           <article class="stat-card">
-            <span class="panel-label">Semantic mode</span>
+            <span class="panel-label">Dataset interpretation mode</span>
             <strong>{{ dashboard.analysis_report.measurement_summary.semantic_mode or "Not detected" }}</strong>
           </article>
           <article class="stat-card">
@@ -171,13 +187,13 @@
         {% endif %}
         {% if ranking_policy.get("primary_score_label") %}
           <article class="stat-card">
-            <span class="panel-label">Primary score</span>
+            <span class="panel-label">Primary ranking signal</span>
             <strong>{{ ranking_policy.get("primary_score_label") }}</strong>
           </article>
         {% endif %}
         {% if ranking_policy.get("formula_label") %}
           <article class="stat-card">
-            <span class="panel-label">Ranking formula</span>
+            <span class="panel-label">Decision policy</span>
             <strong>{{ ranking_policy.get("formula_label") }}</strong>
           </article>
         {% endif %}
@@ -189,11 +205,24 @@
         {% endif %}
         {% if dashboard.analysis_report.ranking_diagnostics.out_of_domain_rate is not none %}
           <article class="stat-card">
-            <span class="panel-label">Out-of-domain rate</span>
+            <span class="panel-label">Weak-support rate</span>
             <strong>{{ "%.1f"|format((dashboard.analysis_report.ranking_diagnostics.out_of_domain_rate or 0) * 100) }}%</strong>
           </article>
         {% endif %}
       </div>
+      {% if dashboard.metric_interpretation %}
+        <details class="panel technical-details dashboard-technical-details">
+          <summary>How to read these signals</summary>
+          <div class="decision-weight-grid">
+            {% for item in dashboard.metric_interpretation %}
+              <article class="decision-weight-card">
+                <span class="panel-label">{{ item.label }}</span>
+                <p>{{ item.text }}</p>
+              </article>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
       {% if ranking_policy.get("formula_summary") or ranking_policy.get("formula_text") %}
         <details class="panel technical-details dashboard-technical-details">
           <summary>How the shortlist was ranked</summary>
@@ -252,8 +281,8 @@
               <span class="data-chip">{{ candidate.bucket }}</span>
             </div>
             <div class="dashboard-shortlist-meta">
-              <span class="data-chip">Priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
-              <span class="data-chip">Experiment value {{ "%.3f"|format(candidate.experiment_value or 0) }}</span>
+              <span class="data-chip">Policy priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
+              <span class="data-chip">Policy experiment value {{ "%.3f"|format(candidate.experiment_value or 0) }}</span>
               <span class="data-chip">Status {{ candidate.status }}</span>
               {% if candidate.trust_label %}
                 <span class="data-chip">{{ candidate.trust_label }}</span>

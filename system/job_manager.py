@@ -9,6 +9,7 @@ from typing import Any, Callable
 from system.contracts import ContractValidationError, JobStatus
 from system.db.repositories import ArtifactRepository, JobRepository, SessionRepository
 from system.run_pipeline import run_pipeline
+from system.services.status_semantics_service import persisted_status_snapshot
 from system.upload_parser import load_session_dataframe, load_session_metadata, session_dir, session_id_now
 
 
@@ -169,7 +170,16 @@ class JobManager:
             source_name=source_name,
             input_type=str((analysis_options or {}).get("input_type") or ""),
             latest_job_id=job["job_id"],
-            summary_metadata={"last_job_status": job["status"], "last_error": ""},
+            summary_metadata={
+                "last_job_status": job["status"],
+                "last_error": "",
+                "status_semantics": persisted_status_snapshot(
+                    status=job["status"],
+                    progress_stage=DEFAULT_JOB_STAGE,
+                    error="",
+                    viewable_artifacts=False,
+                ),
+            },
         )
         thread = threading.Thread(
             target=self.run_analysis_job,
@@ -216,7 +226,16 @@ class JobManager:
             source_name=source_name or "",
             input_type=str(options.get("input_type") or ""),
             latest_job_id=job_id,
-            summary_metadata={"last_job_status": JobStatus.running.value, "last_error": ""},
+            summary_metadata={
+                "last_job_status": JobStatus.running.value,
+                "last_error": "",
+                "status_semantics": persisted_status_snapshot(
+                    status=JobStatus.running.value,
+                    progress_stage="loading_session",
+                    error="",
+                    viewable_artifacts=False,
+                ),
+            },
         )
 
         try:
@@ -264,7 +283,16 @@ class JobManager:
                 source_name=resolved_source_name,
                 input_type=str(options.get("input_type") or ""),
                 latest_job_id=job_id,
-                summary_metadata={"last_job_status": JobStatus.failed.value, "last_error": error_message},
+                summary_metadata={
+                    "last_job_status": JobStatus.failed.value,
+                    "last_error": error_message,
+                    "status_semantics": persisted_status_snapshot(
+                        status=JobStatus.failed.value,
+                        progress_stage=current_job.get("progress_stage") or "preparing_dataset",
+                        error=error_message,
+                        viewable_artifacts=False,
+                    ),
+                },
             )
             return None
 
@@ -302,7 +330,16 @@ class JobManager:
                 source_name=resolved_source_name,
                 input_type=str(options.get("input_type") or ""),
                 latest_job_id=job_id,
-                summary_metadata={"last_job_status": JobStatus.failed.value, "last_error": error_message},
+                summary_metadata={
+                    "last_job_status": JobStatus.failed.value,
+                    "last_error": error_message,
+                    "status_semantics": persisted_status_snapshot(
+                        status=JobStatus.failed.value,
+                        progress_stage="finalizing_artifacts",
+                        error=error_message,
+                        viewable_artifacts=False,
+                    ),
+                },
             )
             return None
 
@@ -329,9 +366,21 @@ class JobManager:
             summary_metadata={
                 "last_job_status": JobStatus.succeeded.value,
                 "last_error": "",
+                "status_semantics": persisted_status_snapshot(
+                    status=JobStatus.succeeded.value,
+                    progress_stage="completed",
+                    error="",
+                    viewable_artifacts=True,
+                ),
                 "mode": result.get("mode"),
                 "summary": result.get("summary") or {},
                 "warnings": result.get("warnings") or [],
+                "target_definition": result.get("target_definition") or {},
+                "decision_intent": result.get("decision_intent") or "",
+                "modeling_mode": result.get("modeling_mode") or "",
+                "contract_versions": result.get("contract_versions") or {},
+                "run_contract": result.get("run_contract") or {},
+                "comparison_anchors": result.get("comparison_anchors") or {},
                 "analysis_report": result.get("analysis_report") or {},
                 "upload_session_summary": result.get("upload_session_summary") or {},
                 "artifact_index": artifact_index,

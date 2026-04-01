@@ -1,0 +1,66 @@
+{% if status_semantics %}
+  {% set compact = compact | default(false) %}
+  {% set container_class = "mini-callout" if compact else "panel" %}
+  <section class="{{ container_class }}">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title | default("Session Status") }}</h2>
+        <p class="helper-copy">
+          {{ section_copy | default("This status summary explains what remains usable, what can still be trusted, and what to do next.") }}
+        </p>
+      </div>
+      <div class="dashboard-meta-row">
+        <span class="session-state-pill session-state-pill-{{ status_semantics.status_tone or 'muted' }}">
+          {{ status_semantics.status_code.replace("_", " ") | title }}
+        </span>
+        {% if status_semantics.rerun_possible %}
+          <span class="data-chip">Rerun possible</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <article class="dashboard-insight-callout">
+      <span class="panel-label">Current state</span>
+      <h3>{{ status_semantics.headline }}</h3>
+      <p>{{ status_semantics.detail }}</p>
+      {% if status_semantics.last_error %}
+        <p class="helper-copy">Latest error: {{ status_semantics.last_error }}</p>
+      {% endif %}
+    </article>
+
+    <div class="card-grid metrics-grid">
+      <article class="stat-card">
+        <span class="panel-label">Upload usable</span>
+        <strong>{{ "Yes" if status_semantics.usable_upload else "No" }}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Validation usable</span>
+        <strong>{{ "Yes" if status_semantics.usable_validation else "No" }}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Artifacts viewable</span>
+        <strong>{{ "Yes" if status_semantics.viewable_artifacts else "No" }}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="panel-label">Recommendations trustworthy</span>
+        <strong>{{ "Yes" if status_semantics.trustworthy_recommendations else "No" }}</strong>
+      </article>
+    </div>
+
+    {% if status_semantics.available_artifacts %}
+      <div class="discovery-results-meta">
+        {% for item in status_semantics.available_artifacts %}
+          <span class="data-chip">{{ item }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if status_semantics.next_steps %}
+      <ul class="compact-list">
+        {% for item in status_semantics.next_steps %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endif %}

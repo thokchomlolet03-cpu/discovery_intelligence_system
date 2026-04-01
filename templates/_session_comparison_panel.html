@@ -1,0 +1,97 @@
+{% if comparison %}
+  {% set compact = compact | default(false) %}
+  {% set container_class = "mini-callout" if compact else "panel" %}
+  <section class="{{ container_class }}">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title | default("Comparison Readiness") }}</h2>
+        <p class="helper-copy">
+          {{ section_copy | default("This panel explains whether two sessions can be read across cleanly, cautiously, or not at all.") }}
+        </p>
+      </div>
+      <div class="dashboard-meta-row">
+        <span class="session-state-pill session-state-pill-{{ comparison.tone or 'muted' }}">
+          {{ comparison.label or "Comparison not recorded" }}
+        </span>
+      </div>
+    </div>
+
+    <article class="dashboard-insight-card">
+      <span class="panel-label">Comparison summary</span>
+      <p>{{ comparison.summary or "Comparison details are not available for this session pair." }}</p>
+    </article>
+
+    {% if comparison.matches %}
+      <div class="mini-callout">
+        <span class="panel-label">Shared basis</span>
+        <ul class="compact-list">
+          {% for item in comparison.matches %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if comparison.differences %}
+      <div class="mini-callout">
+        <span class="panel-label">Meaningful differences</span>
+        <ul class="compact-list">
+          {% for item in comparison.differences %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if comparison.outcome_differences %}
+      <div class="mini-callout">
+        <span class="panel-label">Outcome-level differences</span>
+        <ul class="compact-list">
+          {% for item in comparison.outcome_differences %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if comparison.candidate_comparison_summary %}
+      <div class="mini-callout">
+        <span class="panel-label">Lead-set overlap</span>
+        <p>{{ comparison.candidate_comparison_summary }}</p>
+      </div>
+    {% endif %}
+
+    {% if comparison.candidate_differences %}
+      <div class="mini-callout">
+        <span class="panel-label">Candidate-level changes</span>
+        <ul class="compact-list">
+          {% for item in comparison.candidate_differences %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if comparison.blockers %}
+      <div class="mini-callout mini-callout-warning">
+        <span class="panel-label">Comparison blockers</span>
+        <ul class="compact-list">
+          {% for item in comparison.blockers %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if comparison.cautions %}
+      <div class="mini-callout">
+        <span class="panel-label">Comparison cautions</span>
+        <ul class="compact-list">
+          {% for item in comparison.cautions %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </section>
+{% endif %}

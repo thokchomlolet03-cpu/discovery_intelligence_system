@@ -20,6 +20,7 @@ FILENAME_ARTIFACT_TYPES = {
     "processed_candidates.csv": ("processed_candidates_csv",),
     "scored_candidates.csv": ("scored_candidates_csv",),
     "rf_model_v1.joblib": ("model_bundle",),
+    "rf_regression_model_v1.joblib": ("model_bundle",),
 }
 
 

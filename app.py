@@ -60,6 +60,9 @@ from system.upload_parser import (
     validation_summary,
 )
 from system.services.ingestion import normalize_input_type, normalize_semantic_mapping
+from system.services.active_session_comparison_service import build_active_session_comparison_context
+from system.services.session_identity_service import build_session_identity
+from system.services.status_semantics_service import build_status_semantics, persisted_status_snapshot
 from system.session_history import build_session_history_context
 from system.session_artifacts import (
     load_analysis_report_payload,
@@ -274,11 +277,27 @@ def load_evaluation_summary(
 def _job_response_payload(job: dict[str, Any]) -> dict[str, Any]:
     return {
         **job,
+        "status_semantics": persisted_status_snapshot(
+            status=str(job.get("status") or ""),
+            progress_stage=str(job.get("progress_stage") or ""),
+            error=str(job.get("error") or ""),
+            viewable_artifacts=bool((job.get("artifact_refs") or {}).get("result_json")),
+        ),
         "job_url": f"/api/jobs/{job['job_id']}",
         "result_url": f"/api/jobs/{job['job_id']}/result",
         "discovery_url": f"/discovery?session_id={job['session_id']}",
         "dashboard_url": f"/dashboard?session_id={job['session_id']}",
     }
+
+
+def _latest_job_payload_for_session(session_record: dict[str, Any] | None, workspace_id: str) -> dict[str, Any] | None:
+    latest_job_id = str((session_record or {}).get("latest_job_id") or "").strip()
+    if not latest_job_id:
+        return None
+    try:
+        return _job_response_payload(job_manager.get_job(latest_job_id, workspace_id=workspace_id))
+    except JobNotFoundError:
+        return None
 
 
 def _persist_active_session(request: Request, workspace_id: str, session_id: str | None) -> None:
@@ -426,12 +445,7 @@ def _load_upload_session_context(
 
     session_record = session_view.get("session_record") if isinstance(session_view, dict) else {}
     latest_job_id = str((session_record or {}).get("latest_job_id") or "").strip()
-    latest_job = None
-    if latest_job_id:
-        try:
-            latest_job = _job_response_payload(job_manager.get_job(latest_job_id, workspace_id=auth.workspace_id))
-        except JobNotFoundError:
-            latest_job = None
+    latest_job = _latest_job_payload_for_session(session_record, auth.workspace_id) if latest_job_id else None
 
     result_payload = load_result_payload(
         session_id=session_id,
@@ -457,6 +471,10 @@ def _load_upload_session_context(
         "label_builder_suggestion": metadata.get("label_builder_suggestion") or label_builder_config,
         "label_builder_config": label_builder_config,
         "validation_summary": metadata.get("validation_summary") or {},
+        "target_definition": metadata.get("target_definition") or {},
+        "decision_intent": metadata.get("decision_intent") or "",
+        "comparison_anchors": metadata.get("comparison_anchors") or {},
+        "contract_versions": metadata.get("contract_versions") or {},
         "latest_job": latest_job,
         "result": restored_result,
     }
@@ -875,6 +893,18 @@ async def upload_page(
         requested_session_id=session_id,
         fresh=fresh,
     )
+    status_semantics = build_status_semantics(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        upload_metadata=upload_session_context or {},
+        decision_payload=(upload_session_context or {}).get("result") or {},
+        current_job=(upload_session_context or {}).get("latest_job") if isinstance(upload_session_context, dict) else None,
+    )
+    session_identity = build_session_identity(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        upload_metadata=upload_session_context or {},
+        decision_payload=(upload_session_context or {}).get("result") or {},
+        current_job=(upload_session_context or {}).get("latest_job") if isinstance(upload_session_context, dict) else None,
+    )
     return _render_template(
         request,
         "upload.html",
@@ -882,6 +912,8 @@ async def upload_page(
         active_page="upload",
         workspace_plan=workspace_plan,
         upload_session_context=upload_session_context,
+        session_identity=session_identity,
+        status_semantics=status_semantics,
         session_view=session_view,
         restored_upload_session=bool(upload_session_context),
     )
@@ -912,6 +944,8 @@ async def sessions_page(
         workspace_plan=workspace_plan,
         session_view=session_view,
         session_history=session_history,
+        session_identity=(session_history.get("focus_session") or {}).get("session_identity"),
+        status_semantics=(session_history.get("focus_session") or {}).get("status_semantics"),
     )
 
 
@@ -987,7 +1021,16 @@ async def validate_upload(request: Request, payload: dict[str, Any] = Body(...))
         validation=summary,
     )
     _persist_active_session(request, auth.workspace_id, str(session_id))
-    return JSONResponse({"session_id": session_id, "validation_summary": summary})
+    refreshed = load_session_metadata(str(session_id), workspace_id=auth.workspace_id)
+    return JSONResponse(
+        {
+            "session_id": session_id,
+            "validation_summary": summary,
+            "target_definition": refreshed.get("target_definition") or {},
+            "comparison_anchors": refreshed.get("comparison_anchors") or {},
+            "contract_versions": refreshed.get("contract_versions") or {},
+        }
+    )
 
 
 @app.post("/api/jobs/analysis")
@@ -1053,6 +1096,7 @@ async def discovery_page(
     session_view = _resolve_session_view(request, auth, session_id)
     effective_session_id = session_view["session_id"]
     workspace_plan = _workspace_plan_summary(auth)
+    workspace_sessions = session_repository.list_sessions(auth.workspace_id, limit=25)
 
     decision_output = load_decision_output(
         session_id=effective_session_id,
@@ -1084,6 +1128,30 @@ async def discovery_page(
         evaluation_summary=evaluation_summary,
         system_version=app.version,
     )
+    session_identity = build_session_identity(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        analysis_report=analysis_report,
+        decision_payload=decision_output,
+        current_job=_latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id)
+        if isinstance(session_view, dict)
+        else None,
+        state_kind=str((workbench.get("state") or {}).get("kind") or ""),
+    )
+    status_semantics = build_status_semantics(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        analysis_report=analysis_report,
+        decision_payload=decision_output,
+        current_job=_latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id)
+        if isinstance(session_view, dict)
+        else None,
+    )
+    active_session_comparison = build_active_session_comparison_context(
+        current_session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        current_analysis_report=analysis_report,
+        current_decision_payload=decision_output,
+        workspace_sessions=workspace_sessions,
+        workspace_id=auth.workspace_id,
+    )
 
     return _render_template(
         request,
@@ -1098,6 +1166,9 @@ async def discovery_page(
         review_queue=review_queue,
         evaluation_summary=evaluation_summary,
         workbench=workbench,
+        session_identity=session_identity,
+        status_semantics=status_semantics,
+        active_session_comparison=active_session_comparison,
         workspace_plan=workspace_plan,
     )
 
@@ -1206,7 +1277,51 @@ async def dashboard_page(
         return auth
     session_view = _resolve_session_view(request, auth, session_id)
     workspace_plan = _workspace_plan_summary(auth)
+    workspace_sessions = session_repository.list_sessions(auth.workspace_id, limit=25)
     dashboard_context = build_dashboard_context(session_id=session_view["session_id"], workspace_id=auth.workspace_id)
+    session_identity = build_session_identity(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        analysis_report=dashboard_context.get("analysis_report") if isinstance(dashboard_context, dict) else {},
+        decision_payload={"summary": {"candidate_count": len(dashboard_context.get("top_candidates") or [])}, **dashboard_context}
+        if isinstance(dashboard_context, dict)
+        else {},
+        current_job=_latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id)
+        if isinstance(session_view, dict)
+        else None,
+        state_kind=str((dashboard_context.get("state") or {}).get("kind") or ""),
+    )
+    status_semantics = build_status_semantics(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        analysis_report=dashboard_context.get("analysis_report") if isinstance(dashboard_context, dict) else {},
+        decision_payload={
+            "artifact_state": dashboard_context.get("artifact_state"),
+            "summary": {"candidate_count": len(dashboard_context.get("top_candidates") or [])},
+            "source_path": dashboard_context.get("source_path"),
+        }
+        if isinstance(dashboard_context, dict)
+        else {},
+        current_job=_latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id)
+        if isinstance(session_view, dict)
+        else None,
+    )
+    active_session_comparison = build_active_session_comparison_context(
+        current_session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        current_analysis_report=dashboard_context.get("analysis_report") if isinstance(dashboard_context, dict) else {},
+        current_decision_payload={
+            "artifact_state": dashboard_context.get("artifact_state"),
+            "summary": {"candidate_count": len(dashboard_context.get("top_candidates") or [])},
+            "source_path": dashboard_context.get("source_path"),
+            "target_definition": dashboard_context.get("target_definition") or {},
+            "modeling_mode": dashboard_context.get("modeling_mode") or "",
+            "decision_intent": dashboard_context.get("decision_intent") or "",
+            "run_contract": dashboard_context.get("run_contract") or {},
+            "comparison_anchors": dashboard_context.get("comparison_anchors") or {},
+        }
+        if isinstance(dashboard_context, dict)
+        else {},
+        workspace_sessions=workspace_sessions,
+        workspace_id=auth.workspace_id,
+    )
     return _render_template(
         request,
         "dashboard.html",
@@ -1214,6 +1329,9 @@ async def dashboard_page(
         active_page="dashboard",
         dashboard=dashboard_context,
         session_id=session_view["session_id"],
+        session_identity=session_identity,
+        status_semantics=status_semantics,
+        active_session_comparison=active_session_comparison,
         session_view=session_view,
         workspace_plan=workspace_plan,
     )

@@ -19,6 +19,15 @@ def align_features(df, features):
 
 
 def predict_with_model(bundle, df, config=None):
+    if str(bundle.get("model_kind") or "").strip().lower() == "regression":
+        from system.services.regression_service import predict_regression_with_model
+
+        return predict_regression_with_model(
+            bundle,
+            df,
+            optimization_direction=str((bundle.get("target_definition") or {}).get("optimization_direction") or "hit_range"),
+        )
+
     cfg = resolve_system_config(config or bundle.get("config"))
     model = bundle["model"]
     features = model_features(bundle)
@@ -42,4 +51,3 @@ def predict_with_model(bundle, df, config=None):
 
 
 __all__ = ["align_features", "predict_with_model"]
-

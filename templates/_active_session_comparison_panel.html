@@ -1,0 +1,131 @@
+{% if active_session_comparison %}
+  {% set compact = compact | default(false) %}
+  {% set container_class = "mini-callout" if compact else "panel" %}
+  <section class="{{ container_class }}">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title | default("Compared With Prior Run") }}</h2>
+        <p class="helper-copy">
+          {{ section_copy | default("This panel shows whether the current session can be read across against the nearest prior baseline in the same workspace.") }}
+        </p>
+      </div>
+      {% if active_session_comparison.available and active_session_comparison.comparison %}
+        <div class="dashboard-meta-row">
+          <span class="session-state-pill session-state-pill-{{ active_session_comparison.comparison.tone or 'muted' }}">
+            {{ active_session_comparison.comparison.label or "Comparison not recorded" }}
+          </span>
+        </div>
+      {% endif %}
+    </div>
+
+    <article class="dashboard-insight-callout">
+      <span class="panel-label">Current read-across</span>
+      <h3>{{ active_session_comparison.headline or "No prior baseline found" }}</h3>
+      <p>{{ active_session_comparison.summary or "No baseline comparison is available for this session yet." }}</p>
+    </article>
+
+    {% if active_session_comparison.available and active_session_comparison.baseline %}
+      <div class="card-grid metrics-grid">
+        <article class="stat-card">
+          <span class="panel-label">Baseline session</span>
+          <strong>{{ active_session_comparison.baseline.source_name or active_session_comparison.baseline.session_id }}</strong>
+          <p>{{ active_session_comparison.baseline.comparison_basis_label or "Comparison basis not recorded." }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Baseline updated</span>
+          <strong>{{ active_session_comparison.baseline.updated_at_label or "Not available" }}</strong>
+          <p>Created {{ active_session_comparison.baseline.created_at_label or "Not available" }}.</p>
+        </article>
+      </div>
+
+      <div class="cta-row">
+        <a class="button button-secondary" href="{{ active_session_comparison.baseline.discovery_url }}">Open baseline discovery</a>
+        <a class="button button-secondary" href="{{ active_session_comparison.baseline.dashboard_url }}">Open baseline dashboard</a>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.delta_lines %}
+      <div class="mini-callout">
+        <span class="panel-label">Observed deltas</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.delta_lines %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.matches %}
+      <div class="mini-callout">
+        <span class="panel-label">Shared basis</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.comparison.matches %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.differences %}
+      <div class="mini-callout">
+        <span class="panel-label">Meaningful differences</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.comparison.differences %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.outcome_differences %}
+      <div class="mini-callout">
+        <span class="panel-label">Outcome-level differences</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.comparison.outcome_differences %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.candidate_comparison_summary %}
+      <div class="mini-callout">
+        <span class="panel-label">Lead-set overlap</span>
+        <p>{{ active_session_comparison.comparison.candidate_comparison_summary }}</p>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.candidate_differences %}
+      <div class="mini-callout">
+        <span class="panel-label">Candidate-level changes</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.comparison.candidate_differences %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.blockers %}
+      <div class="mini-callout mini-callout-warning">
+        <span class="panel-label">Comparison blockers</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.comparison.blockers %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if active_session_comparison.comparison.cautions %}
+      <div class="mini-callout">
+        <span class="panel-label">Comparison cautions</span>
+        <ul class="compact-list">
+          {% for item in active_session_comparison.comparison.cautions %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </section>
+{% endif %}

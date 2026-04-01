@@ -63,6 +63,7 @@ from system.services.ingestion import normalize_input_type, normalize_semantic_m
 from system.services.active_session_comparison_service import build_active_session_comparison_context
 from system.services.session_identity_service import build_session_identity
 from system.services.status_semantics_service import build_status_semantics, persisted_status_snapshot
+from system.services.workspace_feedback_service import annotate_candidates_with_workspace_memory
 from system.session_history import build_session_history_context
 from system.session_artifacts import (
     load_analysis_report_payload,
@@ -1105,6 +1106,11 @@ async def discovery_page(
     )
     candidates = annotate_candidates_with_reviews(
         decision_output.get("top_experiments", []),
+        session_id=effective_session_id,
+        workspace_id=auth.workspace_id,
+    )
+    candidates = annotate_candidates_with_workspace_memory(
+        candidates,
         session_id=effective_session_id,
         workspace_id=auth.workspace_id,
     )

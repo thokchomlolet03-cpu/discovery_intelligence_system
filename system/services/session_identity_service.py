@@ -17,6 +17,7 @@ from system.services.target_definition_service import (
     normalize_modeling_mode,
 )
 from system.services.status_semantics_service import build_status_semantics
+from system.services.run_metadata_service import build_run_provenance
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -223,6 +224,138 @@ def _trust_summary(
     return "Use this session as model-guided prioritization support, not as experimental truth."
 
 
+def build_trust_context(
+    *,
+    target_definition: dict[str, Any] | None,
+    modeling_mode: str | None,
+    analysis_report: dict[str, Any] | None = None,
+    decision_payload: dict[str, Any] | None = None,
+    validation_summary: dict[str, Any] | None = None,
+    ranking_policy: dict[str, Any] | None = None,
+    run_provenance: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    target_definition = target_definition or {}
+    analysis_report = analysis_report or {}
+    decision_payload = decision_payload or {}
+    validation_summary = validation_summary or {}
+    ranking_policy = ranking_policy or {}
+    run_provenance = run_provenance or {}
+
+    target_name = _clean_text(target_definition.get("target_name"), default="the session target")
+    dataset_type = _clean_text(
+        target_definition.get("dataset_type")
+        or validation_summary.get("semantic_mode")
+    )
+    modeling_mode = normalize_modeling_mode(modeling_mode, default=ModelingMode.ranking_only.value)
+
+    measurement_summary = analysis_report.get("measurement_summary") if isinstance(analysis_report, dict) else {}
+    measurement_summary = measurement_summary if isinstance(measurement_summary, dict) else {}
+    rows_with_values = int(
+        measurement_summary.get("rows_with_values", validation_summary.get("rows_with_values", 0)) or 0
+    )
+    rows_with_labels = int(
+        measurement_summary.get("rows_with_labels", validation_summary.get("rows_with_labels", 0)) or 0
+    )
+    if rows_with_values <= 0 and isinstance(decision_payload.get("top_experiments"), list):
+        rows_with_values = sum(
+            1
+            for row in decision_payload.get("top_experiments", [])
+            if isinstance(row, dict) and row.get("observed_value") is not None
+        )
+    label_source = _clean_text(
+        measurement_summary.get("label_source", validation_summary.get("label_source")),
+        default="not recorded",
+    )
+
+    ranking_diagnostics = analysis_report.get("ranking_diagnostics") if isinstance(analysis_report, dict) else {}
+    ranking_diagnostics = ranking_diagnostics if isinstance(ranking_diagnostics, dict) else {}
+    out_of_domain_rate = ranking_diagnostics.get("out_of_domain_rate")
+    try:
+        out_of_domain_rate = float(out_of_domain_rate) if out_of_domain_rate is not None else None
+    except (TypeError, ValueError):
+        out_of_domain_rate = None
+
+    evidence_basis_label = "Structure-driven session context"
+    if rows_with_values > 0:
+        evidence_basis_label = "Observed measurement evidence"
+        evidence_basis_summary = (
+            f"{rows_with_values} uploaded row{'s' if rows_with_values != 1 else ''} carry observed values, so the "
+            "shortlist can be cross-checked against measured evidence rather than read as model truth."
+        )
+    elif rows_with_labels > 0:
+        evidence_basis_label = "Labeled class evidence"
+        evidence_basis_summary = (
+            f"{rows_with_labels} uploaded row{'s' if rows_with_labels != 1 else ''} carry class labels "
+            f"({label_source.replace('_', ' ')}), but no observed value column is available for direct value-based cross-checking."
+        )
+    elif dataset_type == "structure_only":
+        evidence_basis_summary = (
+            "This session is working from structure-only chemistry input, so the shortlist should be read as model- and "
+            "policy-guided prioritization rather than measured evidence."
+        )
+    else:
+        evidence_basis_summary = (
+            "No uploaded measurements or explicit labels were recorded, so the shortlist should be interpreted as "
+            "structure-driven ranking support rather than observed evidence."
+        )
+
+    if modeling_mode == ModelingMode.regression.value:
+        model_basis_label = "Regression model output"
+        model_basis_summary = (
+            f"The model estimated a continuous value for {target_name}; predicted values are not observed measurements, "
+            "and ranking compatibility is only a normalized desirability signal for ordering."
+        )
+    elif modeling_mode == ModelingMode.binary_classification.value:
+        model_basis_label = "Classification model output"
+        model_basis_summary = f"The model estimated positive-class support for {target_name}; confidence is not experimental truth."
+    elif modeling_mode == ModelingMode.mutation_based_candidate_generation.value:
+        model_basis_label = "Candidate generation plus ranking"
+        model_basis_summary = (
+            "This run used mutation-based candidate generation followed by filtering and ranking, not a broader generative discovery model."
+        )
+    else:
+        model_basis_label = "Ranking-heavy workflow"
+        model_basis_summary = (
+            "This run behaved mainly as a ranking workflow, so the shortlist depends more on policy ordering than on a target-trained model."
+        )
+
+    primary_signal = _clean_text(ranking_policy.get("primary_score_label"), default="Priority score")
+    scoring_mode_label = _clean_text(run_provenance.get("scoring_mode_label"), default="policy scoring")
+    policy_basis_label = "Decision policy output"
+    policy_basis_summary = (
+        f"Final shortlist order is driven by {primary_signal} under {scoring_mode_label.lower()}, which is a policy output rather than a raw model score."
+    )
+
+    bridge_state_summary = _clean_text(run_provenance.get("bridge_state_summary"))
+    if not bridge_state_summary:
+        if out_of_domain_rate is not None and out_of_domain_rate >= 0.5:
+            bridge_state_summary = (
+                "A large share of the shortlist sits outside stronger chemistry support, so treat this run as exploratory guidance."
+            )
+        elif modeling_mode == ModelingMode.ranking_only.value:
+            bridge_state_summary = (
+                "This session is operating as a ranking-heavy workflow, so policy ordering carries more of the recommendation burden."
+            )
+
+    if bridge_state_summary or (rows_with_values <= 0 and rows_with_labels <= 0):
+        evidence_support_label = "Limited evidence support"
+    elif rows_with_values > 0 and (out_of_domain_rate is None or out_of_domain_rate <= 0.25):
+        evidence_support_label = "Stronger evidence support"
+    else:
+        evidence_support_label = "Moderate evidence support"
+
+    return {
+        "evidence_basis_label": evidence_basis_label,
+        "evidence_basis_summary": evidence_basis_summary,
+        "model_basis_label": model_basis_label,
+        "model_basis_summary": model_basis_summary,
+        "policy_basis_label": policy_basis_label,
+        "policy_basis_summary": policy_basis_summary,
+        "bridge_state_summary": bridge_state_summary,
+        "evidence_support_label": evidence_support_label,
+    }
+
+
 def _latest_result_summary(
     *,
     session_status: str,
@@ -273,18 +406,26 @@ def build_metric_interpretation(
     mode = normalize_modeling_mode(modeling_mode, default=ModelingMode.ranking_only.value)
 
     if target_kind == TargetKind.regression.value:
-        confidence_text = f"Predicted value means the model's continuous estimate for {target_name}; it is not an observed measurement."
-        uncertainty_text = "Uncertainty is dispersion across regression predictions, not calibrated probability."
+        confidence_text = (
+            f"Predicted value means the model's continuous estimate for {target_name}; it is not an observed measurement. "
+            "When ranking compatibility is shown, it reflects normalized desirability for ordering rather than the value itself."
+        )
+        uncertainty_text = "Prediction dispersion is spread across regression predictions, not calibrated probability."
     else:
         confidence_text = f"Confidence means the model's positive-class confidence for {target_name}, not experimental truth."
         uncertainty_text = "Uncertainty reflects how close the classification signal is to the model boundary."
 
+    fact_text = (
+        "Observed values, labels, mapped columns, and target metadata come from the uploaded session or derived session mapping, not from the model."
+    )
     novelty_text = "Novelty measures structural difference from the reference chemistry set."
     applicability_text = "Applicability domain measures similarity support from known chemistry and should not be confused with novelty."
     experiment_value_text = "Experiment value is a policy-level estimate of how informative or useful a follow-up test could be."
     priority_text = "Priority score is the final policy-weighted shortlist score, not a direct model output."
     primary_label = _clean_text(ranking_policy.get("primary_score_label"), default="Primary ranking signal")
     primary_text = f"{primary_label} is the main ranking signal used to order the current shortlist."
+    if target_kind == TargetKind.regression.value:
+        primary_text += " For measurement sessions, this ranking signal should be read alongside predicted value, not as a substitute for it."
 
     if mode == ModelingMode.mutation_based_candidate_generation.value:
         mode_text = "This run used mutation-based candidate generation followed by filtering and ranking; it is not learned generative chemistry."
@@ -301,12 +442,12 @@ def build_metric_interpretation(
         mode_text = "This run is operating as a ranking-only workflow, so policy ordering may matter more than model discrimination."
 
     return [
+        {"label": "Observed or derived data facts", "text": fact_text},
         {"label": "Modeling mode", "text": mode_text},
         {"label": "Primary ranking signal", "text": primary_text},
         {"label": "Model judgment", "text": confidence_text},
         {"label": "Prediction uncertainty", "text": uncertainty_text},
-        {"label": "Applicability domain", "text": applicability_text},
-        {"label": "Novelty", "text": novelty_text},
+        {"label": "Applicability and novelty", "text": f"{applicability_text} {novelty_text}"},
         {"label": "Decision policy", "text": experiment_value_text},
         {"label": "Final recommendation", "text": priority_text},
     ]
@@ -390,6 +531,33 @@ def build_session_identity(
     if state_kind in {"artifact_missing", "empty"} and session_status == "results_ready":
         session_status, session_status_tone = "inspection_ready", "muted"
 
+    run_contract = (
+        analysis_report.get("run_contract") if isinstance(analysis_report.get("run_contract"), dict) else {}
+    ) or (
+        decision_payload.get("run_contract") if isinstance(decision_payload.get("run_contract"), dict) else {}
+    )
+    comparison_anchors = (
+        analysis_report.get("comparison_anchors") if isinstance(analysis_report.get("comparison_anchors"), dict) else {}
+    ) or (
+        decision_payload.get("comparison_anchors") if isinstance(decision_payload.get("comparison_anchors"), dict) else {}
+    )
+    run_provenance = build_run_provenance(
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+    )
+    trust_context = build_trust_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        analysis_report=analysis_report,
+        decision_payload=decision_payload,
+        validation_summary=_first_dict(
+            upload_metadata.get("validation_summary"),
+            upload_summary.get("validation_summary"),
+        ),
+        ranking_policy=analysis_report.get("ranking_policy") if isinstance(analysis_report.get("ranking_policy"), dict) else {},
+        run_provenance=run_provenance,
+    )
+
     payload = {
         "session_id": session_id,
         "source_name": _first_text(
@@ -410,6 +578,9 @@ def build_session_identity(
         "session_status_tone": session_status_tone,
         "current_job_status": job_status or None,
         "scientific_purpose": _scientific_purpose(target_definition, decision_intent),
+        "evidence_support_label": trust_context.get("evidence_support_label", ""),
+        "evidence_summary": trust_context.get("evidence_basis_summary", ""),
+        "bridge_state_summary": trust_context.get("bridge_state_summary", ""),
         "trust_summary": _trust_summary(
             session_status=session_status,
             analysis_report=analysis_report,
@@ -437,6 +608,7 @@ def domain_chip_label(status: str | None) -> str:
 
 
 __all__ = [
+    "build_trust_context",
     "build_metric_interpretation",
     "build_session_identity",
     "domain_chip_label",

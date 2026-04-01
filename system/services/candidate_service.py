@@ -9,6 +9,7 @@ from rdkit.Chem import AllChem, Descriptors
 
 from system.services.data_service import (
     DEFAULT_FINGERPRINT_BITS,
+    canonical_label_column,
     canonicalize_smiles,
     clean_labels,
     featurize_dataframe,
@@ -265,8 +266,9 @@ def generate_candidate_pool(
     if not source_smiles:
         raise ValueError("No valid source SMILES found for candidate generation.")
 
-    positive = source[source["biodegradable"] == 1]["smiles"].dropna().tolist()
-    negative = source[source["biodegradable"] == 0]["smiles"].dropna().tolist()
+    label_column = canonical_label_column(source)
+    positive = source[source[label_column] == 1]["smiles"].dropna().tolist()
+    negative = source[source[label_column] == 0]["smiles"].dropna().tolist()
     prefer_balanced = prefer_balanced_sources if prefer_balanced_sources is not None else cfg.generator.prefer_balanced_sources
 
     generated = []

@@ -291,14 +291,71 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["applicability_domain"]["status"], "in_domain")
         self.assertEqual(candidate["novelty_signal"]["novelty_score"], 0.58)
         self.assertEqual(candidate["decision_policy"]["bucket"], "exploit")
-        self.assertEqual(candidate["final_recommendation"]["recommended_action"], "Use this as a near-term testing candidate because the signal is relatively stable.")
-        self.assertIn("continuous value", candidate["normalized_explanation"]["model_judgment_summary"])
+        self.assertIn("measure", candidate["final_recommendation"]["recommended_action"].lower())
+        self.assertIn("ranking compatibility", candidate["normalized_explanation"]["model_judgment_summary"].lower())
+        self.assertEqual(workbench["summary"]["average_confidence_label"], "Average ranking compatibility")
+        self.assertEqual(workbench["summary"]["average_uncertainty_label"], "Average prediction dispersion")
+        self.assertAlmostEqual(workbench["summary"]["average_predicted_value"], 6.55, places=2)
         self.assertTrue(workbench["ranking_policy"]["weight_breakdown"])
         self.assertEqual(workbench["modeling_mode"], "regression")
         self.assertEqual(workbench["decision_overview"]["groups"][0]["key"], "test_now")
         self.assertEqual(workbench["decision_overview"]["primary_group"]["key"], "test_now")
         self.assertEqual(workbench["decision_overview"]["primary_candidate"]["candidate_id"], "cand_1")
         self.assertEqual(workbench["decision_overview"]["top_shortlist"][0]["candidate_id"], "cand_1")
+        self.assertEqual(workbench["trust_context"]["evidence_support_label"], "Stronger evidence support")
+        self.assertIn("observed values", workbench["trust_context"]["evidence_basis_summary"].lower())
+
+    def test_build_discovery_workbench_preserves_workspace_memory_annotations(self):
+        decision_output = canonical_decision_output()
+        decision_output["top_experiments"][0]["workspace_memory_count"] = 1
+        decision_output["top_experiments"][0]["workspace_memory"] = {
+            "event_count": 1,
+            "session_count": 1,
+            "session_ids": ["session_prior"],
+            "last_status": "approved",
+            "last_status_label": "Approved",
+            "last_action": "approve",
+            "last_action_label": "Approve",
+            "last_note": "Carry this prior approval into the next run.",
+            "last_reviewer": "qa",
+            "last_reviewed_at": "2026-03-24T12:00:00+00:00",
+            "last_reviewed_at_label": "2026-03-24 12:00 UTC",
+            "last_session_id": "session_prior",
+            "last_session_label": "session_prior",
+            "discovery_url": "/discovery?session_id=session_prior",
+        }
+        decision_output["top_experiments"][0]["workspace_memory_history"] = [
+            {
+                "session_id": "session_prior",
+                "session_label": "session_prior",
+                "action": "approve",
+                "action_label": "Approve",
+                "status": "approved",
+                "status_label": "Approved",
+                "note": "Carry this prior approval into the next run.",
+                "reviewer": "qa",
+                "reviewed_at": "2026-03-24T12:00:00+00:00",
+                "reviewed_at_label": "2026-03-24 12:00 UTC",
+                "discovery_url": "/discovery?session_id=session_prior",
+            }
+        ]
+
+        workbench = build_discovery_workbench(
+            decision_output=decision_output,
+            analysis_report={"warnings": [], "top_level_recommendation_summary": "Start with the top candidate."},
+            review_queue={},
+            session_id=None,
+            evaluation_summary={"selected_model": {"name": "rf_isotonic", "calibration_method": "isotonic"}},
+            system_version="2.0.0",
+        )
+
+        candidate = workbench["candidates"][0]
+        self.assertEqual(candidate["workspace_memory_count"], 1)
+        self.assertEqual(candidate["workspace_memory"]["last_session_id"], "session_prior")
+        self.assertEqual(candidate["workspace_memory"]["last_note"], "Carry this prior approval into the next run.")
+        self.assertEqual(candidate["workspace_memory_history"][0]["status"], "approved")
+        self.assertEqual(workbench["workspace_memory"]["matched_candidate_count"], 1)
+        self.assertIn("prior workspace feedback", workbench["workspace_memory"]["summary"].lower())
 
     def test_build_discovery_workbench_reports_contract_error_for_missing_required_fields(self):
         invalid_decision_output = {
@@ -533,6 +590,8 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("Recommended next step", response.text)
         self.assertIn("Priority score", response.text)
         self.assertIn("Recommended for immediate testing", response.text)
+        self.assertIn("Observed measurement evidence", response.text)
+        self.assertIn("Observed or derived data facts", response.text)
 
     def test_discovery_page_can_reopen_session_from_nested_result_payload(self):
         self._store_result_only_session("session_result_only")
@@ -554,6 +613,8 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("session_dashboard_latest", response.text)
         self.assertIn("Model Insight Summary", response.text)
         self.assertIn("cand_1", response.text)
+        self.assertIn("Observed measurement evidence", response.text)
+        self.assertIn("Stronger evidence support", response.text)
 
     def test_dashboard_page_can_reopen_session_from_nested_result_payload(self):
         self._store_result_only_session("session_dashboard_result_only")

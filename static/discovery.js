@@ -8,6 +8,7 @@
   const workbench = JSON.parse(dataNode.textContent || "{}");
   const config = window.discoveryWorkbenchConfig || {};
   const targetDefinition = workbench.target_definition || {};
+  const trustContext = workbench.trust_context || {};
   const targetName = String(targetDefinition.target_name || "the session target");
   const targetKind = String(targetDefinition.target_kind || "classification");
   const modelingMode = String(workbench.modeling_mode || "");
@@ -150,9 +151,13 @@
     const contextText = [facts.assay || candidate.assay, facts.target || candidate.target].filter(Boolean).join(" / ");
     return {
       title: datasetType || "Unknown dataset type",
-      summary: contextText || "No assay or target context was recorded for this candidate.",
+      summary: contextText || "No assay or target context was recorded from the uploaded or restored session.",
       bullets: [
-        observedValue == null ? "No observed value was uploaded for this candidate." : `Observed value: ${formatObservedValue(observedValue)}.`,
+        observedValue == null
+          ? (targetKind === "regression"
+            ? "No observed value was uploaded for this candidate, so the predicted value still needs direct measurement."
+            : "No observed value was uploaded for this candidate.")
+          : `Observed evidence: ${formatObservedValue(observedValue)}.`,
         measurementColumn ? `Mapped measurement column: ${measurementColumn}.` : "No measurement column is mapped for this session.",
         labelColumn ? `Mapped label column: ${labelColumn}.` : "No explicit label column is mapped for this session.",
       ],
@@ -167,6 +172,9 @@
     if (targetKind === "regression") {
       if (judgment.predicted_value != null) {
         bullets.push(`Predicted value: ${formatNumber(judgment.predicted_value)}.`);
+      }
+      if (judgment.confidence != null) {
+        bullets.push(`Ranking compatibility: ${formatNumber(judgment.confidence)}.`);
       }
       if (judgment.prediction_dispersion != null) {
         bullets.push(`Prediction dispersion: ${formatNumber(judgment.prediction_dispersion)}.`);
@@ -183,7 +191,7 @@
       bullets.push(`Uncertainty semantics: ${titleCase(judgment.uncertainty_kind)}.`);
     }
     return {
-      title: targetKind === "regression" ? "Continuous model judgment" : "Classification model judgment",
+      title: targetKind === "regression" ? "Continuous model output" : "Classification model output",
       summary: predictionText,
       bullets: [uncertaintyText].concat(bullets),
     };
@@ -227,6 +235,9 @@
     if (policy.bucket) {
       bullets.push(`Decision bucket: ${titleCase(policy.bucket)}.`);
     }
+    if (targetKind === "regression") {
+      bullets.push("Policy priority uses predicted value support, ranking compatibility, uncertainty, novelty, and experiment value together; it is not the predicted value itself.");
+    }
     return {
       title: recommendation.recommended_action || candidate.decision_label || "Recommendation policy",
       summary: recommendation.summary || policy.policy_summary || candidate.decision_summary || "Recommendation policy details were not recorded.",
@@ -248,10 +259,10 @@
 
   function compactScientificBlocksHtml(candidate) {
     const blocks = [
-      { label: "Data facts", ...candidateDataFacts(candidate) },
-      { label: "Model judgment", ...candidateModelJudgment(candidate) },
-      { label: "Domain and novelty", ...candidateDomainAndNovelty(candidate) },
-      { label: "Policy and recommendation", ...candidateDecisionPolicy(candidate) },
+      { label: "Uploaded evidence and derived facts", ...candidateDataFacts(candidate) },
+      { label: "Model output", ...candidateModelJudgment(candidate) },
+      { label: "Support signals", ...candidateDomainAndNovelty(candidate) },
+      { label: "Policy output and recommendation", ...candidateDecisionPolicy(candidate) },
     ];
     return `
       <section class="candidate-context-grid">
@@ -272,9 +283,9 @@
 
   function detailedScientificBlocksHtml(candidate) {
     const blocks = [
-      { label: "Observed facts", ...candidateDataFacts(candidate) },
-      { label: "Model judgment", ...candidateModelJudgment(candidate) },
-      { label: "Applicability and novelty", ...candidateDomainAndNovelty(candidate) },
+      { label: "Observed or derived session facts", ...candidateDataFacts(candidate) },
+      { label: "Model output", ...candidateModelJudgment(candidate) },
+      { label: "Applicability and novelty signals", ...candidateDomainAndNovelty(candidate) },
       { label: "Decision policy and recommendation", ...candidateDecisionPolicy(candidate) },
     ];
     return `
@@ -517,8 +528,12 @@
                     <p>${escapeHtml(candidate.domain_summary || "Reference similarity was not available for this candidate.")}</p>
                   </article>
                   <article class="context-card">
-                    <span class="panel-label">Observed value</span>
-                    <strong>${escapeHtml(formatObservedValue(candidate.observed_value))}</strong>
+                    <span class="panel-label">${escapeHtml(targetKind === "regression" ? "Predicted / observed value" : "Observed value")}</span>
+                    <strong>${
+                      targetKind === "regression" && candidate.predicted_value != null
+                        ? `${escapeHtml(formatNumber(candidate.predicted_value))} predicted`
+                        : escapeHtml(formatObservedValue(candidate.observed_value))
+                    }</strong>
                     <p>${escapeHtml([candidate.assay, candidate.target].filter(Boolean).join(" / ") || "No assay or target context recorded.")}</p>
                   </article>
                 </section>
@@ -529,6 +544,12 @@
                   <span class="panel-label">Trust read</span>
                   <strong>${escapeHtml(candidate.trust_label || "Mixed trust")}</strong>
                   <p>${escapeHtml(candidate.trust_summary || candidate.rationale_summary || candidate.decision_summary)}</p>
+                </section>
+
+                <section class="decision-summary-block">
+                  <span class="panel-label">Why this candidate</span>
+                  <strong>${escapeHtml(candidate.primary_score_label || "Current shortlist logic")}</strong>
+                  <p>${escapeHtml(candidate.normalized_explanation?.why_this_candidate || candidate.rationale_summary || candidate.decision_summary)}</p>
                 </section>
 
                 ${
@@ -555,13 +576,13 @@
                 </section>
 
                 <section class="decision-summary-block">
-                  <span class="panel-label">Decision guidance</span>
+                  <span class="panel-label">Recommended follow-up</span>
                   <strong>${escapeHtml(candidate.decision_label)}</strong>
-                  <p>${escapeHtml(candidate.decision_summary)}</p>
+                  <p>${escapeHtml(candidate.normalized_explanation?.recommended_followup || candidate.rationale_recommended_action || candidate.suggested_next_action || candidate.decision_summary)}</p>
                 </section>
 
                 <section class="reasoning-block">
-                  <span class="panel-label">Why this was selected now</span>
+                  <span class="panel-label">Why now</span>
                   <p>${escapeHtml(candidate.rationale_why_now || candidate.decision_summary)}</p>
                   <ul>
                     ${(Array.isArray(candidate.rationale_strengths) ? candidate.rationale_strengths : [])
@@ -571,7 +592,7 @@
                 </section>
 
                 <section class="reasoning-block">
-                  <span class="panel-label">Evidence and caveats</span>
+                  <span class="panel-label">What supports it and what weakens it</span>
                   <ul>
                     ${(Array.isArray(candidate.rationale_evidence_lines) ? candidate.rationale_evidence_lines : candidate.explanation_lines)
                       .map((line) => `<li>${escapeHtml(line)}</li>`)
@@ -909,6 +930,11 @@
             <p>${escapeHtml(candidate.trust_summary || candidate.rationale_summary || candidate.decision_summary)}</p>
           </article>
           <article class="detail-item">
+            <span class="panel-label">Why this candidate</span>
+            <strong>${escapeHtml(candidate.primary_score_label || "Current shortlist logic")}</strong>
+            <p>${escapeHtml(candidate.normalized_explanation?.why_this_candidate || candidate.rationale_summary || candidate.decision_summary)}</p>
+          </article>
+          <article class="detail-item">
             <span class="panel-label">Why now</span>
             <strong>${escapeHtml(candidate.rationale_why_now || candidate.primary_score_label)}</strong>
             <p>${escapeHtml(candidate.rationale_summary || candidate.decision_summary)}</p>
@@ -916,11 +942,17 @@
           <article class="detail-item">
             <span class="panel-label">Recommended move</span>
             <strong>${escapeHtml(candidate.decision_label)}</strong>
-            <p>${escapeHtml(candidate.rationale_recommended_action || candidate.suggested_next_action)}</p>
+            <p>${escapeHtml(candidate.normalized_explanation?.recommended_followup || candidate.rationale_recommended_action || candidate.suggested_next_action)}</p>
           </article>
           <article class="detail-item">
             <span class="panel-label">Primary driver</span>
-            <strong>${escapeHtml(titleCase(candidate.rationale_primary_driver || candidate.primary_score_name || "priority_score"))}</strong>
+            <strong>${escapeHtml(
+              candidate.rationale_primary_driver === "confidence"
+                ? signalLabel("confidence")
+                : candidate.rationale_primary_driver === "uncertainty"
+                  ? signalLabel("uncertainty")
+                  : titleCase(candidate.rationale_primary_driver || candidate.primary_score_name || "priority_score")
+            )}</strong>
             <p>${escapeHtml(candidate.decision_summary)}</p>
           </article>
         </div>
@@ -973,10 +1005,27 @@
             <p>${escapeHtml(candidate.domain_summary || "Reference-similarity diagnostics are not available.")}</p>
           </article>
           <article class="detail-item">
-            <span class="panel-label">Observed value</span>
-            <strong>${candidate.observed_value == null ? "Not available" : escapeHtml(formatNumber(candidate.observed_value))}</strong>
+            <span class="panel-label">${escapeHtml(targetKind === "regression" ? "Predicted / observed value" : "Observed value")}</span>
+            <strong>${
+              targetKind === "regression" && candidate.predicted_value != null
+                ? `${escapeHtml(formatNumber(candidate.predicted_value))} predicted`
+                : candidate.observed_value == null
+                  ? "Not available"
+                  : escapeHtml(formatNumber(candidate.observed_value))
+            }</strong>
             <p>${escapeHtml([candidate.assay, candidate.target].filter(Boolean).join(" / ") || "No assay or target metadata recorded.")}</p>
           </article>
+          ${
+            trustContext.bridge_state_summary
+              ? `
+                <article class="detail-item">
+                  <span class="panel-label">Bridge-state note</span>
+                  <strong>${escapeHtml(trustContext.evidence_support_label || "Limited evidence support")}</strong>
+                  <p>${escapeHtml(trustContext.bridge_state_summary)}</p>
+                </article>
+              `
+              : ""
+          }
         </div>
       </section>
 
@@ -986,7 +1035,7 @@
       </section>
 
       <section class="detail-section">
-        <span class="panel-label">Evidence and caveats</span>
+        <span class="panel-label">What supports it and what weakens it</span>
         <ul class="detail-list">
           ${(Array.isArray(candidate.rationale_evidence_lines) ? candidate.rationale_evidence_lines : candidate.explanation_lines)
             .map((line) => `<li>${escapeHtml(line)}</li>`)
@@ -1022,6 +1071,41 @@
           </article>
         </div>
         <div class="detail-placeholder">${escapeHtml(candidate.provenance)}</div>
+      </section>
+
+      <section class="detail-section">
+        <span class="panel-label">Prior workspace evidence</span>
+        ${
+          candidate.workspace_memory_count
+            ? `
+              <p>
+                ${escapeHtml(String(candidate.workspace_memory_count))} prior review event${
+                  candidate.workspace_memory_count === 1 ? "" : "s"
+                } across ${escapeHtml(String(candidate.workspace_memory_session_count || 0))} earlier workspace session${
+                  candidate.workspace_memory_session_count === 1 ? "" : "s"
+                }.
+              </p>
+              <div class="history-list">
+                ${(Array.isArray(candidate.workspace_memory_history) ? candidate.workspace_memory_history : [])
+                  .map(
+                    (item) => `
+                      <article class="history-item">
+                        <div class="history-meta">
+                          ${badgeHtml("status", item.status)}
+                          <span class="data-chip">${escapeHtml(item.session_label || item.session_id || "Session")}</span>
+                          <span class="data-chip">${escapeHtml(item.action_label || titleCase(item.action || "review"))}</span>
+                          <span class="data-chip">${escapeHtml(item.reviewer || "unassigned")}</span>
+                          <span class="data-chip">${escapeHtml(item.reviewed_at_label || formatTimestamp(item.reviewed_at))}</span>
+                        </div>
+                        <p>${escapeHtml(item.note || "No reviewer note recorded.")}</p>
+                      </article>
+                    `
+                  )
+                  .join("")}
+              </div>
+            `
+            : "<p>No earlier workspace feedback matched this molecule.</p>"
+        }
       </section>
 
       <section class="detail-section">

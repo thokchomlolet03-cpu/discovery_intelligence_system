@@ -29,6 +29,20 @@ def _clean_text(value: Any) -> str:
     return str(value or "").strip()
 
 
+def _target_kind_from_row(row) -> str:
+    target_definition = row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {}
+    return _clean_text(target_definition.get("target_kind") or "classification").lower() or "classification"
+
+
+def _score_label(key: str, *, row=None, target_kind: str | None = None) -> str:
+    kind = (target_kind or (_target_kind_from_row(row) if row is not None else "classification")).lower()
+    if key == "confidence" and kind == "regression":
+        return "Ranking compatibility"
+    if key == "uncertainty" and kind == "regression":
+        return "Prediction dispersion"
+    return SCORE_LABELS.get(key, key.replace("_", " ").strip().title())
+
+
 def _with_session_context(df: pd.DataFrame) -> pd.DataFrame:
     contextual = df.copy()
     session_size = int(len(contextual))
@@ -99,7 +113,8 @@ def _session_context_lines(
     else:
         lines.append(_score_position_line("Uncertainty", row.get("uncertainty_percentile"), direction="lower"))
 
-    confidence_line = _score_position_line("Confidence", row.get("confidence_percentile"))
+    target_kind = _target_kind_from_row(row)
+    confidence_line = _score_position_line(_score_label("confidence", target_kind=target_kind), row.get("confidence_percentile"))
     novelty_line = _score_position_line("Novelty", row.get("novelty_percentile"))
     experiment_line = _score_position_line("Experiment value", row.get("experiment_value_percentile"))
 
@@ -122,7 +137,7 @@ def _score_breakdown(row) -> list[dict[str, Any]]:
         items.append(
             {
                 "key": key,
-                "label": SCORE_LABELS[key],
+                "label": _score_label(key, row=row),
                 "raw_value": raw_value,
                 "weight": weight,
                 "weight_percent": round(weight * 100.0, 1),
@@ -161,7 +176,42 @@ def _domain_context(max_similarity: Any) -> dict[str, Any]:
     }
 
 
-def _recommended_action(bucket: str, confidence: float, uncertainty: float, novelty: float, domain_status: str) -> str:
+def _recommended_action(
+    bucket: str,
+    confidence: float,
+    uncertainty: float,
+    novelty: float,
+    domain_status: str,
+    *,
+    target_kind: str,
+    target_name: str,
+    predicted_value: Any,
+    optimization_direction: str,
+) -> str:
+    if target_kind == "regression":
+        if bucket == "learn" or uncertainty >= 0.65:
+            return (
+                f"Measure {target_name} for this candidate to reduce uncertainty in the predicted value range before "
+                "overcommitting to the ranking."
+            )
+        if bucket == "explore" or novelty >= 0.65:
+            return (
+                f"Test this candidate cautiously as a high-novelty measurement point to expand coverage around {target_name}."
+            )
+        if bucket == "exploit" and confidence >= 0.75 and domain_status != "out_of_domain":
+            direction_phrase = "improves" if optimization_direction == "maximize" else "reduces" if optimization_direction == "minimize" else "supports"
+            try:
+                value_text = f" around a predicted value of {float(predicted_value):.3f}"
+            except (TypeError, ValueError):
+                value_text = ""
+            return (
+                f"Use this as a near-term measurement candidate because the ranking suggests it {direction_phrase} "
+                f"{target_name}{value_text} and the signal is relatively stable."
+            )
+        if domain_status == "out_of_domain":
+            return f"Review this out-of-domain measurement candidate carefully before treating the predicted {target_name} value as actionable."
+        return f"Keep this candidate in scientific review and validate {target_name} experimentally before promoting it."
+
     if bucket == "learn" or uncertainty >= 0.65:
         return "Use this as a learning candidate to reduce uncertainty before overcommitting bench time."
     if bucket == "explore" or novelty >= 0.65:
@@ -221,6 +271,7 @@ def candidate_rationale(row) -> dict[str, Any]:
     target_definition = row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {}
     target_name = _clean_text(target_definition.get("target_name") or row.get("target"))
     target_kind = _clean_text(target_definition.get("target_kind") or "classification")
+    optimization_direction = _clean_text(target_definition.get("optimization_direction"))
     measurement_value = row.get("value")
     try:
         measurement_value = float(measurement_value)
@@ -239,7 +290,18 @@ def candidate_rationale(row) -> dict[str, Any]:
         uncertainty=uncertainty,
         novelty=novelty,
     )
-    recommended_action = _recommended_action(bucket, confidence, uncertainty, novelty, str(domain["status"]))
+    predicted_value = row.get("predicted_value")
+    recommended_action = _recommended_action(
+        bucket,
+        confidence,
+        uncertainty,
+        novelty,
+        str(domain["status"]),
+        target_kind=target_kind,
+        target_name=target_name or "the session target",
+        predicted_value=predicted_value,
+        optimization_direction=optimization_direction,
+    )
     trust_label, trust_summary = _trust_label(
         confidence=confidence,
         uncertainty=uncertainty,
@@ -258,10 +320,14 @@ def candidate_rationale(row) -> dict[str, Any]:
     elif target_kind == "regression" and row.get("predicted_value") is not None:
         summary = (
             f"This candidate is being prioritized for {target_name or 'the session target'} because the model predicts "
-            f"{float(row.get('predicted_value')):.3f} and it ranks #{priority_rank} out of {session_size} by priority score in this run."
+            f"{float(row.get('predicted_value')):.3f}, while ranking compatibility and policy weighting keep it at "
+            f"#{priority_rank} out of {session_size} by priority score in this run."
         )
     elif dominant.get("key") == "confidence":
-        summary = f"This candidate is being prioritized mainly because confidence is carrying the current shortlist position, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
+        summary = (
+            f"This candidate is being prioritized mainly because {driver_label.lower()} is carrying the current shortlist "
+            f"position, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
+        )
     else:
         summary = f"This candidate is being prioritized mainly because experiment value is carrying the current shortlist position, and it ranks #{priority_rank} out of {session_size} by priority score in this run."
 
@@ -278,15 +344,26 @@ def candidate_rationale(row) -> dict[str, Any]:
         strengths.append(
             f"Predicted {target_name or 'target'} value is {float(row.get('predicted_value')):.3f}."
         )
+        strengths.append(
+            f"Ranking compatibility is {confidence:.3f}; this is a normalized desirability signal used for ordering, not the predicted value itself."
+        )
     elif confidence >= 0.8:
         strengths.append(f"Confidence is relatively strong at {confidence:.3f}.")
     elif confidence <= 0.35:
         cautions.append(f"Confidence is low at {confidence:.3f}, so treat the recommendation as exploratory.")
 
     if uncertainty >= 0.65:
-        cautions.append(f"Uncertainty remains high at {uncertainty:.3f}, so this is more useful for learning than confirmation.")
+        if target_kind == "regression":
+            cautions.append(
+                f"Prediction dispersion remains high at {uncertainty:.3f}, so this candidate is more useful for reducing value uncertainty than for claiming a stable outcome."
+            )
+        else:
+            cautions.append(f"Uncertainty remains high at {uncertainty:.3f}, so this is more useful for learning than confirmation.")
     elif uncertainty <= 0.25:
-        strengths.append(f"Uncertainty is relatively controlled at {uncertainty:.3f}.")
+        if target_kind == "regression":
+            strengths.append(f"Prediction dispersion is relatively controlled at {uncertainty:.3f}.")
+        else:
+            strengths.append(f"Uncertainty is relatively controlled at {uncertainty:.3f}.")
 
     if novelty >= 0.65:
         strengths.append(f"Novelty is high at {novelty:.3f}, which expands chemistry coverage.")
@@ -302,7 +379,10 @@ def candidate_rationale(row) -> dict[str, Any]:
         else:
             strengths.append(f"Uploaded observed value {measurement_value:.3f} is available for direct cross-checking.")
     else:
-        cautions.append("No uploaded observed value is available for direct cross-checking in this session.")
+        if target_kind == "regression":
+            cautions.append("No uploaded observed value is available for direct cross-checking in this session, so the predicted value still needs experimental validation.")
+        else:
+            cautions.append("No uploaded observed value is available for direct cross-checking in this session.")
 
     if assay or target:
         context_bits = [part for part in (assay, target) if part]

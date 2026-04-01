@@ -12,7 +12,9 @@ from system.services.session_comparison_service import (
 )
 from system.services.session_identity_service import build_session_identity
 from system.services.status_semantics_service import build_status_semantics
+from system.services.workspace_feedback_service import build_session_workspace_memory, build_workspace_feedback_summary
 from system.session_artifacts import load_analysis_report_payload, load_decision_artifact_payload
+from system.db.repositories import ReviewRepository
 
 
 def _safe_int(value: Any, default: int = 0) -> int:
@@ -162,6 +164,7 @@ def build_session_history_context(
     latest_session_id: str | None = None,
     job_fetcher: Callable[[str, str], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    workspace_reviews = ReviewRepository().list_reviews(workspace_id=workspace_id)
     items: list[dict[str, Any]] = []
 
     for session in sessions:
@@ -239,6 +242,7 @@ def build_session_history_context(
         )
         outcome_profile = _outcome_profile(decision_payload, analysis_report)
         candidate_preview = build_candidate_preview(decision_payload)
+        workspace_memory_candidates = build_candidate_preview(decision_payload, limit=25)
 
         items.append(
             {
@@ -276,6 +280,7 @@ def build_session_history_context(
                 "comparison_basis_label": comparison_anchor_summary(comparison_anchors),
                 "outcome_profile": outcome_profile,
                 "candidate_preview": candidate_preview,
+                "workspace_memory_candidates": workspace_memory_candidates,
                 "is_active": bool(active_session_id and session_id == active_session_id),
                 "is_latest": bool(latest_session_id and session_id == latest_session_id),
                 "upload_url": f"/upload?session_id={session_id}",
@@ -292,6 +297,20 @@ def build_session_history_context(
         focus_session = next((item for item in items if item["results_ready"]), None)
     if focus_session is None and items:
         focus_session = items[0]
+
+    source_name_by_session_id = {
+        str(item.get("session_id") or ""): str(item.get("source_name") or "")
+        for item in items
+        if item.get("session_id")
+    }
+    for item in items:
+        item["workspace_memory"] = build_session_workspace_memory(
+            item.get("workspace_memory_candidates"),
+            session_id=item.get("session_id"),
+            workspace_id=workspace_id,
+            review_events=workspace_reviews,
+            session_labels=source_name_by_session_id,
+        )
 
     continuation_items = [
         item
@@ -311,12 +330,24 @@ def build_session_history_context(
                 candidate_session=item,
             )
 
+    focus_candidates = []
+    if isinstance(focus_session, dict):
+        focus_candidates = focus_session.get("workspace_memory_candidates") or []
+    workspace_feedback = build_workspace_feedback_summary(
+        workspace_id=workspace_id,
+        focus_session_id=(focus_session or {}).get("session_id") if isinstance(focus_session, dict) else "",
+        focus_candidates=focus_candidates,
+        review_events=workspace_reviews,
+        session_labels=source_name_by_session_id,
+    )
+
     return {
         "items": items,
         "focus_session": focus_session,
         "continuation_items": continuation_items,
         "archive_items": archive_items,
         "comparison_overview": comparison_overview,
+        "workspace_feedback": workspace_feedback,
         "comparison_matrix": build_session_comparison_matrix(
             focus_session=focus_session,
             items=items,

@@ -58,7 +58,13 @@ def decorate_candidates(
     decorated = assign_candidate_identifiers(bucketize_candidates(frame))
     decorated["risk_level"] = decorated.apply(lambda row: risk_level(row), axis=1)
     decorated["risk"] = decorated["risk_level"]
-    decorated = apply_priority_scores(decorated, intent=intent, scoring_mode=scoring_mode)
+    decorated = apply_priority_scores(
+        decorated,
+        intent=intent,
+        scoring_mode=scoring_mode,
+        target_definition=target_definition,
+        modeling_mode=mode,
+    )
     decorated = add_candidate_explanations(decorated, target_definition=target_definition)
     decorated = add_candidate_provenance(decorated, mode=mode, source_name=source_name, bundle=bundle)
     decorated["target_definition"] = [target_definition or {} for _ in range(len(decorated))]
@@ -84,6 +90,7 @@ def decorate_candidates(
             target_definition=target_definition,
             model_judgment=row.get("model_judgment"),
             decision_policy=row.get("decision_policy"),
+            novelty_signal=row.get("novelty_signal"),
         ),
         axis=1,
     )

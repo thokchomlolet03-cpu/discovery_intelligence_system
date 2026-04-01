@@ -122,15 +122,27 @@ def load_dataset(path=DEFAULT_DATA_PATH, featurize=True):
     return df
 
 
+def canonical_label_column(df: pd.DataFrame) -> str:
+    if "target_label" in df.columns:
+        return "target_label"
+    if "biodegradable" in df.columns:
+        return "biodegradable"
+    return "target_label"
+
+
 def clean_labels(df):
     cleaned = df.copy()
-    label_column = "target_label" if "target_label" in cleaned.columns else "biodegradable"
+    label_column = canonical_label_column(cleaned)
+    if label_column not in cleaned.columns:
+        return cleaned.iloc[0:0].copy()
     cleaned = cleaned[cleaned[label_column].isin([-1, 0, 1])].reset_index(drop=True)
     return cleaned
 
 
 def labeled_subset(df):
-    label_column = "target_label" if "target_label" in df.columns else "biodegradable"
+    label_column = canonical_label_column(df)
+    if label_column not in df.columns:
+        return df.iloc[0:0].copy()
     return df[df[label_column].isin([0, 1])].copy()
 
 
@@ -160,8 +172,9 @@ def prepare_analysis_dataframe(
     prepared = mapped.copy()
     prepared["smiles"] = prepared["smiles"].apply(canonicalize_smiles)
     prepared = prepared[prepared["smiles"].notna()].reset_index(drop=True)
-    prepared["biodegradable"] = pd.to_numeric(prepared["biodegradable"], errors="coerce").fillna(-1).astype(int)
-    prepared["target_label"] = pd.to_numeric(prepared.get("target_label", prepared["biodegradable"]), errors="coerce").fillna(-1).astype(int)
+    prepared["target_label"] = pd.to_numeric(prepared.get("target_label", prepared.get("biodegradable", -1)), errors="coerce").fillna(-1).astype(int)
+    prepared["biodegradable"] = pd.to_numeric(prepared.get("biodegradable", prepared["target_label"]), errors="coerce").fillna(-1).astype(int)
+    prepared["biodegradable"] = prepared["target_label"]
     if "entity_id" not in prepared.columns:
         prepared["entity_id"] = ""
     prepared["entity_id"] = prepared["entity_id"].fillna("").astype(str)
@@ -216,6 +229,7 @@ def reference_smiles_from_dataset(path: Path | None = None) -> list[str]:
 
 
 __all__ = [
+    "canonical_label_column",
     "DEFAULT_DATA_PATH",
     "DEFAULT_FINGERPRINT_BITS",
     "DEFAULT_FINGERPRINT_COLUMNS",

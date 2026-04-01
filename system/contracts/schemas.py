@@ -445,6 +445,9 @@ class SessionIdentity(ContractBaseModel):
     session_status_tone: str = ""
     current_job_status: JobStatus | None = None
     scientific_purpose: str = ""
+    evidence_support_label: str = ""
+    evidence_summary: str = ""
+    bridge_state_summary: str = ""
     trust_summary: str = ""
     latest_result_summary: str = ""
 
@@ -458,6 +461,9 @@ class SessionIdentity(ContractBaseModel):
         "session_status",
         "session_status_tone",
         "scientific_purpose",
+        "evidence_support_label",
+        "evidence_summary",
+        "bridge_state_summary",
         "trust_summary",
         "latest_result_summary",
         pre=True,

@@ -82,6 +82,50 @@
       {% include "_active_session_comparison_panel.html" %}
     {% endwith %}
 
+    {% set workspace_memory = workbench.workspace_memory or {} %}
+    {% set trust_context = workbench.trust_context or {} %}
+    {% if workspace_memory.matched_candidate_count %}
+      <section class="panel discovery-interpretation-panel">
+        <div class="section-header">
+          <div>
+            <h2>Prior Workspace Evidence</h2>
+            <p class="helper-copy">These shortlist molecules already have prior workspace feedback from earlier sessions, so you can reuse that evidence instead of reading every run from scratch.</p>
+          </div>
+        </div>
+        <div class="interpretation-grid">
+          <article class="interpretation-card">
+            <strong>Carryover candidates</strong>
+            <p>{{ workspace_memory.matched_candidate_count }}</p>
+          </article>
+          <article class="interpretation-card">
+            <strong>Earlier sessions linked</strong>
+            <p>{{ workspace_memory.session_count }}</p>
+          </article>
+          <article class="interpretation-card">
+            <strong>Prior review events</strong>
+            <p>{{ workspace_memory.event_count }}</p>
+          </article>
+        </div>
+        <div class="mini-callout">
+          <span class="panel-label">Workspace memory summary</span>
+          <p>{{ workspace_memory.summary }}</p>
+        </div>
+        {% if workspace_memory.highlights %}
+          <div class="mini-callout">
+            <span class="panel-label">Most relevant carryover</span>
+            <ul class="compact-list">
+              {% for item in workspace_memory.highlights %}
+                <li>
+                  {{ item.candidate_id }} last reached {{ item.status_label }} in {{ item.session_label }}
+                  on {{ item.reviewed_at_label }}{% if item.note %}: {{ item.note }}{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
     {% set measurement_summary = workbench.measurement_summary or {} %}
     {% set ranking_diagnostics = workbench.ranking_diagnostics or {} %}
     {% if measurement_summary or ranking_diagnostics %}
@@ -95,24 +139,48 @@
         <div class="interpretation-grid">
           {% if measurement_summary %}
             <article class="interpretation-card">
-              <strong>Dataset interpretation mode</strong>
+              <strong>Dataset evidence mode</strong>
               <p>{{ measurement_summary.semantic_mode or "Not detected" }}</p>
             </article>
             <article class="interpretation-card">
-              <strong>Mapped measurement column</strong>
+              <strong>Observed value column</strong>
               <p>{{ measurement_summary.value_column or "Not mapped" }}</p>
             </article>
             <article class="interpretation-card">
-              <strong>Rows with values</strong>
+              <strong>Rows with observed values</strong>
               <p>{{ measurement_summary.rows_with_values or 0 }}</p>
             </article>
             <article class="interpretation-card">
-              <strong>Rows with labels</strong>
+              <strong>Rows with derived labels</strong>
               <p>{{ measurement_summary.rows_with_labels or 0 }}</p>
             </article>
             <article class="interpretation-card">
-              <strong>Label source</strong>
+              <strong>Derived label source</strong>
               <p>{{ measurement_summary.label_source or "Missing" }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.evidence_basis_summary %}
+            <article class="interpretation-card">
+              <strong>{{ trust_context.evidence_basis_label or "Evidence basis" }}</strong>
+              <p>{{ trust_context.evidence_basis_summary }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.model_basis_summary %}
+            <article class="interpretation-card">
+              <strong>{{ trust_context.model_basis_label or "Model basis" }}</strong>
+              <p>{{ trust_context.model_basis_summary }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.policy_basis_summary %}
+            <article class="interpretation-card">
+              <strong>{{ trust_context.policy_basis_label or "Policy basis" }}</strong>
+              <p>{{ trust_context.policy_basis_summary }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.bridge_state_summary %}
+            <article class="interpretation-card">
+              <strong>Bridge-state note</strong>
+              <p>{{ trust_context.bridge_state_summary }}</p>
             </article>
           {% endif %}
           {% if workbench.ranking_policy.primary_score_label %}
@@ -166,6 +234,9 @@
           <div class="discovery-results-meta">
             <span class="data-chip">Primary ranking signal: {{ workbench.ranking_policy.primary_score_label }}</span>
             <span class="data-chip">Headline: {{ workbench.decision_overview.headline }}</span>
+            {% if trust_context.evidence_support_label %}
+              <span class="data-chip">{{ trust_context.evidence_support_label }}</span>
+            {% endif %}
           </div>
         </div>
 
@@ -326,13 +397,19 @@
           <strong>{{ "%.3f"|format(workbench.summary.top_experiment_value or 0) }}</strong>
         </article>
         <article class="panel discovery-summary-card">
-          <span class="panel-label">Average model confidence signal</span>
+          <span class="panel-label">{{ workbench.summary.average_confidence_label or "Average model confidence signal" }}</span>
           <strong>{{ "%.3f"|format(workbench.summary.average_confidence or 0) }}</strong>
         </article>
         <article class="panel discovery-summary-card">
-          <span class="panel-label">Average prediction uncertainty</span>
+          <span class="panel-label">{{ workbench.summary.average_uncertainty_label or "Average prediction uncertainty" }}</span>
           <strong>{{ "%.3f"|format(workbench.summary.average_uncertainty or 0) }}</strong>
         </article>
+        {% if workbench.target_definition.target_kind == "regression" and workbench.summary.average_predicted_value is not none %}
+          <article class="panel discovery-summary-card">
+            <span class="panel-label">Average predicted value</span>
+            <strong>{{ "%.3f"|format(workbench.summary.average_predicted_value or 0) }}</strong>
+          </article>
+        {% endif %}
         <article class="panel discovery-summary-card">
           <span class="panel-label">Model Version</span>
           <strong>{{ workbench.summary.model_version }}</strong>
@@ -393,8 +470,8 @@
             <select id="sort-by">
               <option value="priority_score">Policy priority score</option>
               <option value="experiment_value">Policy experiment value</option>
-              <option value="confidence">Model confidence signal</option>
-              <option value="uncertainty">Prediction uncertainty</option>
+              <option value="confidence">{% if workbench.target_definition.target_kind == "regression" %}Ranking compatibility{% else %}Model confidence signal{% endif %}</option>
+              <option value="uncertainty">{% if workbench.target_definition.target_kind == "regression" %}Prediction dispersion{% else %}Prediction uncertainty{% endif %}</option>
               <option value="novelty">Structural novelty</option>
               <option value="risk">Risk</option>
               <option value="latest">Latest first</option>
@@ -402,14 +479,14 @@
           </label>
           <div class="range-cluster">
             <label class="control-field">
-              <span>Confidence range</span>
+              <span>{% if workbench.target_definition.target_kind == "regression" %}Ranking compatibility range{% else %}Confidence range{% endif %}</span>
               <div class="range-pair">
                 <input id="filter-confidence-min" type="number" min="0" max="1" step="0.05" value="0" />
                 <input id="filter-confidence-max" type="number" min="0" max="1" step="0.05" value="1" />
               </div>
             </label>
             <label class="control-field">
-              <span>Uncertainty range</span>
+              <span>{% if workbench.target_definition.target_kind == "regression" %}Prediction dispersion range{% else %}Uncertainty range{% endif %}</span>
               <div class="range-pair">
                 <input id="filter-uncertainty-min" type="number" min="0" max="1" step="0.05" value="0" />
                 <input id="filter-uncertainty-max" type="number" min="0" max="1" step="0.05" value="1" />

@@ -11,7 +11,8 @@ from system.contracts import ContractValidationError, normalize_loaded_decision_
 from system.db import resolve_artifact_path
 from system.review_manager import build_review_queue
 from system.services.run_metadata_service import build_run_provenance
-from system.services.session_identity_service import build_metric_interpretation, domain_chip_label
+from system.services.data_service import canonical_label_column
+from system.services.session_identity_service import build_metric_interpretation, build_trust_context, domain_chip_label
 from system.session_artifacts import (
     load_analysis_report_payload,
     load_decision_artifact_payload,
@@ -143,6 +144,8 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         observed_value = _safe_float(row.get("observed_value", row.get("value")))
         rationale = row.get("rationale") if isinstance(row.get("rationale"), dict) else {}
         score_breakdown = row.get("score_breakdown") if isinstance(row.get("score_breakdown"), list) else []
+        target_definition = row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {}
+        target_kind = str(target_definition.get("target_kind") or "classification").strip().lower()
         primary_driver = ""
         if score_breakdown:
             top_component = max(
@@ -151,6 +154,13 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 default={},
             )
             primary_driver = str(top_component.get("label") or "").strip()
+        rationale_summary = str(rationale.get("summary") or "").strip()
+        trust_summary = str(rationale.get("trust_summary") or "").strip()
+        if target_kind == "regression":
+            rationale_summary = rationale_summary.replace("confidence", "ranking compatibility").replace("Confidence", "Ranking compatibility")
+            trust_summary = trust_summary.replace("confidence", "ranking compatibility").replace("Confidence", "Ranking compatibility")
+            if str(rationale.get("primary_driver") or primary_driver).strip().lower() == "confidence":
+                primary_driver = "Ranking compatibility"
         preview.append(
             {
                 "rank": int(row.get("rank") or index),
@@ -161,13 +171,15 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "confidence": float(_safe_float(row.get("confidence"), 0.0) or 0.0),
                 "uncertainty": float(_safe_float(row.get("uncertainty"), 0.0) or 0.0),
                 "novelty": float(_safe_float(row.get("novelty"), 0.0) or 0.0),
+                "predicted_value": _safe_float(row.get("predicted_value")),
+                "prediction_dispersion": _safe_float(row.get("prediction_dispersion")),
                 "priority_score": float(_safe_float(row.get("priority_score"), 0.0) or 0.0),
                 "experiment_value": float(_safe_float(row.get("experiment_value"), 0.0) or 0.0),
                 "observed_value": observed_value,
                 "context": " / ".join(part for part in (assay, target) if part),
                 "trust_label": str(rationale.get("trust_label") or row.get("trust_label") or "").strip(),
-                "rationale_summary": str(rationale.get("summary") or "").strip(),
-                "trust_summary": str(rationale.get("trust_summary") or "").strip(),
+                "rationale_summary": rationale_summary,
+                "trust_summary": trust_summary,
                 "session_context": [
                     str(item).strip()
                     for item in (rationale.get("session_context") or [])
@@ -178,26 +190,58 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     if isinstance(rationale.get("cautions"), list)
                     else ""
                 ),
-                "primary_driver": str(rationale.get("primary_driver") or primary_driver).strip(),
+                "primary_driver": str(rationale.get("primary_driver") or primary_driver).strip() if target_kind != "regression" else primary_driver,
                 "domain_label": str(row.get("domain_label") or domain_chip_label(row.get("domain_status"))).strip(),
                 "model_judgment": row.get("model_judgment") if isinstance(row.get("model_judgment"), dict) else {},
                 "decision_policy": row.get("decision_policy") if isinstance(row.get("decision_policy"), dict) else {},
-                "target_definition": row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {},
+                "target_definition": target_definition,
+                "target_kind": target_kind,
+                "confidence_label": "Ranking compatibility" if target_kind == "regression" else "Confidence",
+                "uncertainty_label": "Prediction dispersion" if target_kind == "regression" else "Uncertainty",
             }
         )
     return preview
 
 
+def _label_chart_metadata(target_definition: dict[str, Any] | None) -> tuple[str, str]:
+    target_definition = target_definition if isinstance(target_definition, dict) else {}
+    target_name = str(target_definition.get("target_name") or "").strip()
+    if target_name:
+        return (
+            "Label Distribution",
+            f"Use this to see whether the current dataset is balanced or dominated by one class for {target_name}.",
+        )
+    return (
+        "Label Distribution",
+        "Use this to see whether the current dataset is balanced or dominated by one class.",
+    )
+
+
 def _dashboard_insight_summary(
     *,
     analysis_report: dict[str, Any],
+    decision_payload: dict[str, Any],
     review_payload: dict[str, Any],
     top_candidates: list[dict[str, Any]],
+    target_definition: dict[str, Any],
+    modeling_mode: str,
+    run_provenance: dict[str, Any],
 ) -> dict[str, Any]:
     measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
     ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
     recommendation_summary = str(analysis_report.get("top_level_recommendation_summary") or "").strip()
     review_summary = review_payload.get("summary", {}) if isinstance(review_payload, dict) else {}
+    ranking_policy = analysis_report.get("ranking_policy", {}) if isinstance(analysis_report, dict) else {}
+    trust_context = build_trust_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        analysis_report=analysis_report,
+        decision_payload=decision_payload,
+        ranking_policy=ranking_policy if isinstance(ranking_policy, dict) else {},
+        run_provenance=run_provenance,
+    )
+    target_kind = str(target_definition.get("target_kind") or "classification").strip().lower()
+    target_name = str(target_definition.get("target_name") or "the session target").strip() or "the session target"
 
     strengths: list[str] = []
     cautions: list[str] = []
@@ -205,18 +249,45 @@ def _dashboard_insight_summary(
 
     rows_with_values = int(measurement_summary.get("rows_with_values", 0) or 0)
     if rows_with_values > 0:
-        strengths.append(f"{rows_with_values} uploaded rows include observed values, so this run can be cross-checked against measured evidence.")
+        if target_kind == "regression":
+            strengths.append(
+                f"{rows_with_values} uploaded rows include observed values, so predicted {target_name} values can be cross-checked against measured evidence."
+            )
+        else:
+            strengths.append(f"{rows_with_values} uploaded rows include observed values, so this run can be cross-checked against measured evidence.")
     else:
         cautions.append("No uploaded values are available for direct cross-checking, so treat the shortlist as model-guided ranking rather than evaluated truth.")
 
     rank_corr = _safe_float(ranking_diagnostics.get("spearman_rank_correlation"))
     if rank_corr is not None:
         if rank_corr >= 0.45:
-            strengths.append(f"Ranking agreement with uploaded values is reasonably positive (Spearman {rank_corr:.3f}).")
+            if target_kind == "regression":
+                strengths.append(
+                    f"Priority ordering remains reasonably aligned with uploaded measurement values (Spearman {rank_corr:.3f})."
+                )
+            else:
+                strengths.append(f"Ranking agreement with uploaded values is reasonably positive (Spearman {rank_corr:.3f}).")
         elif rank_corr <= 0.15:
-            cautions.append(f"Ranking agreement with uploaded values is weak (Spearman {rank_corr:.3f}), so review the shortlist with extra caution.")
+            if target_kind == "regression":
+                cautions.append(
+                    f"Priority ordering is weakly aligned with uploaded measurement values (Spearman {rank_corr:.3f}), so use the run as guidance rather than strict value truth."
+                )
+            else:
+                cautions.append(f"Ranking agreement with uploaded values is weak (Spearman {rank_corr:.3f}), so review the shortlist with extra caution.")
         else:
-            cautions.append(f"Ranking agreement with uploaded values is mixed (Spearman {rank_corr:.3f}), so use this run for guidance rather than strict ordering.")
+            if target_kind == "regression":
+                cautions.append(
+                    f"Priority ordering has mixed agreement with uploaded measurement values (Spearman {rank_corr:.3f}), so use this run for guidance rather than strict value ordering."
+                )
+            else:
+                cautions.append(f"Ranking agreement with uploaded values is mixed (Spearman {rank_corr:.3f}), so use this run for guidance rather than strict ordering.")
+
+    predicted_corr = _safe_float(ranking_diagnostics.get("predicted_value_rank_correlation"))
+    if target_kind == "regression" and predicted_corr is not None:
+        if predicted_corr >= 0.45:
+            strengths.append(f"Predicted value ordering is reasonably aligned with uploaded measurements (Spearman {predicted_corr:.3f}).")
+        elif predicted_corr <= 0.15:
+            cautions.append(f"Predicted value ordering is weakly aligned with uploaded measurements (Spearman {predicted_corr:.3f}).")
 
     out_of_domain_rate = _safe_float(ranking_diagnostics.get("out_of_domain_rate"))
     if out_of_domain_rate is not None:
@@ -245,7 +316,12 @@ def _dashboard_insight_summary(
         next_steps.append(f"{pending_review} candidates are still pending review, so align chemist attention before expanding the shortlist.")
     elif top_candidates:
         lead_id = str(top_candidates[0].get("candidate_id") or top_candidates[0].get("molecule_id") or top_candidates[0].get("polymer") or "the leading candidate")
-        next_steps.append(f"Start by reviewing {lead_id}, then widen into the rest of the shortlist only if the current lead survives expert scrutiny.")
+        if target_kind == "regression":
+            next_steps.append(
+                f"Start by reviewing {lead_id}, then validate its predicted {target_name} value experimentally before widening into the rest of the shortlist."
+            )
+        else:
+            next_steps.append(f"Start by reviewing {lead_id}, then widen into the rest of the shortlist only if the current lead survives expert scrutiny.")
 
     if recommendation_summary:
         next_steps.insert(0, recommendation_summary)
@@ -266,9 +342,20 @@ def _dashboard_insight_summary(
     else:
         trust_label = "Exploratory trust"
 
+    if trust_context.get("bridge_state_summary") and trust_context["bridge_state_summary"] not in cautions:
+        cautions.insert(0, trust_context["bridge_state_summary"])
+
     return {
         "headline": headline,
         "trust_label": trust_label,
+        "evidence_support_label": trust_context.get("evidence_support_label", ""),
+        "evidence_basis_label": trust_context.get("evidence_basis_label", ""),
+        "evidence_basis_summary": trust_context.get("evidence_basis_summary", ""),
+        "model_basis_label": trust_context.get("model_basis_label", ""),
+        "model_basis_summary": trust_context.get("model_basis_summary", ""),
+        "policy_basis_label": trust_context.get("policy_basis_label", ""),
+        "policy_basis_summary": trust_context.get("policy_basis_summary", ""),
+        "bridge_state_summary": trust_context.get("bridge_state_summary", ""),
         "strengths": strengths[:3],
         "cautions": cautions[:3],
         "next_steps": next_steps[:3],
@@ -404,9 +491,11 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     charts = []
     include_js = True
 
-    if not dataset.empty and "biodegradable" in dataset.columns:
+    label_column = canonical_label_column(dataset) if not dataset.empty else ""
+    if not dataset.empty and label_column in dataset.columns:
+        label_title, label_description = _label_chart_metadata(target_definition)
         class_counts = (
-            pd.to_numeric(dataset["biodegradable"], errors="coerce")
+            pd.to_numeric(dataset[label_column], errors="coerce")
             .fillna(-1)
             .astype(int)
             .map({1: "Positive", 0: "Negative", -1: "Unlabeled"})
@@ -416,8 +505,8 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         )
         charts.append(
             _chart_section(
-                "Class Distribution",
-                "Use this to see whether the current dataset is balanced or dominated by one class.",
+                label_title,
+                label_description,
                 px.bar(class_counts, x="class", y="count", color="class"),
                 include_js,
             )
@@ -533,8 +622,12 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         "shortlist_preview": _shortlist_preview(top_candidates),
         "insight_summary": _dashboard_insight_summary(
             analysis_report=analysis_report if isinstance(analysis_report, dict) else {},
+            decision_payload=decision_payload if isinstance(decision_payload, dict) else {},
             review_payload=review_payload if isinstance(review_payload, dict) else {},
             top_candidates=top_candidates,
+            target_definition=target_definition,
+            modeling_mode=modeling_mode,
+            run_provenance=run_provenance,
         ),
         "review_summary": review_payload.get("summary", {}),
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},

@@ -156,6 +156,8 @@ class RunMetadataServiceTest(unittest.TestCase):
         self.assertIn("pIC50", provenance["comparison_basis_label"])
         self.assertIn("baseline model bundle", provenance["model_summary"])
         self.assertEqual(provenance["policy_version"], "scoring_policy.v1")
+        self.assertTrue(provenance["bridge_state_active"])
+        self.assertIn("legacy baseline bundle", provenance["bridge_state_summary"].lower())
 
 
 if __name__ == "__main__":

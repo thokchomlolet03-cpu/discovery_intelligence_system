@@ -863,6 +863,160 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn(f"/discovery?session_id={session_id}", response.text)
         self.assertIn("Scoring candidates now.", response.text)
 
+    def test_discovery_page_surfaces_prior_workspace_feedback_memory(self):
+        current_session_id = "session_current"
+        prior_session_id = "session_prior"
+
+        for session_id, source_name in (
+            (current_session_id, "current_measurements.csv"),
+            (prior_session_id, "baseline_measurements.csv"),
+        ):
+            SessionRepository().upsert_session(
+                session_id=session_id,
+                workspace_id=self.workspace["workspace_id"],
+                created_by_user_id=self.user["user_id"],
+                source_name=source_name,
+                input_type="measurement_dataset",
+                latest_job_id=f"job_{session_id}",
+                upload_metadata={
+                    "session_id": session_id,
+                    "created_at": "2026-03-31T00:00:00+00:00",
+                    "filename": source_name,
+                    "input_type": "measurement_dataset",
+                    "columns": ["compound_id", "smiles", "pic50"],
+                    "inferred_mapping": {
+                        "entity_id": "compound_id",
+                        "smiles": "smiles",
+                        "value": "pic50",
+                        "label": None,
+                        "target": None,
+                        "assay": None,
+                        "source": None,
+                        "notes": None,
+                    },
+                    "selected_mapping": {
+                        "entity_id": "compound_id",
+                        "smiles": "smiles",
+                        "value": "pic50",
+                        "label": None,
+                        "target": None,
+                        "assay": None,
+                        "source": None,
+                        "notes": None,
+                    },
+                    "validation_summary": {
+                        "total_rows": 4,
+                        "valid_smiles_count": 4,
+                        "invalid_smiles_count": 0,
+                        "duplicate_count": 0,
+                        "rows_with_values": 2,
+                        "rows_with_labels": 0,
+                        "rows_without_labels": 4,
+                        "semantic_mode": "measurement_dataset",
+                        "can_run_analysis": True,
+                    },
+                },
+                summary_metadata={"last_job_status": "succeeded"},
+            )
+            self._store_ready_session_artifacts(session_id, source_name=source_name)
+
+        record_review_action(
+            session_id=prior_session_id,
+            workspace_id=self.workspace["workspace_id"],
+            candidate_id="cand_1",
+            smiles="CCO",
+            action="approve",
+            status="approved",
+            note="Carry this prior approval into the next run.",
+            reviewer="qa",
+            actor_user_id=self.user["user_id"],
+        )
+
+        response = self.client.get(f"/discovery?session_id={current_session_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Prior Workspace Evidence", response.text)
+        self.assertIn("prior workspace feedback", response.text.lower())
+        self.assertIn(prior_session_id, response.text)
+        self.assertIn("Carry this prior approval into the next run.", response.text)
+
+    def test_sessions_page_surfaces_workspace_feedback_memory(self):
+        current_session_id = "session_current"
+        prior_session_id = "session_prior"
+
+        for session_id, source_name in (
+            (current_session_id, "current_measurements.csv"),
+            (prior_session_id, "baseline_measurements.csv"),
+        ):
+            SessionRepository().upsert_session(
+                session_id=session_id,
+                workspace_id=self.workspace["workspace_id"],
+                created_by_user_id=self.user["user_id"],
+                source_name=source_name,
+                input_type="measurement_dataset",
+                latest_job_id=f"job_{session_id}",
+                upload_metadata={
+                    "session_id": session_id,
+                    "created_at": "2026-03-31T00:00:00+00:00",
+                    "filename": source_name,
+                    "input_type": "measurement_dataset",
+                    "columns": ["compound_id", "smiles", "pic50"],
+                    "inferred_mapping": {
+                        "entity_id": "compound_id",
+                        "smiles": "smiles",
+                        "value": "pic50",
+                        "label": None,
+                        "target": None,
+                        "assay": None,
+                        "source": None,
+                        "notes": None,
+                    },
+                    "selected_mapping": {
+                        "entity_id": "compound_id",
+                        "smiles": "smiles",
+                        "value": "pic50",
+                        "label": None,
+                        "target": None,
+                        "assay": None,
+                        "source": None,
+                        "notes": None,
+                    },
+                    "validation_summary": {
+                        "total_rows": 4,
+                        "valid_smiles_count": 4,
+                        "invalid_smiles_count": 0,
+                        "duplicate_count": 0,
+                        "rows_with_values": 2,
+                        "rows_with_labels": 0,
+                        "rows_without_labels": 4,
+                        "semantic_mode": "measurement_dataset",
+                        "can_run_analysis": True,
+                    },
+                },
+                summary_metadata={"last_job_status": "succeeded"},
+            )
+            self._store_ready_session_artifacts(session_id, source_name=source_name)
+
+        record_review_action(
+            session_id=prior_session_id,
+            workspace_id=self.workspace["workspace_id"],
+            candidate_id="cand_1",
+            smiles="CCO",
+            action="tested",
+            status="tested",
+            note="Bench testing already completed in the baseline session.",
+            reviewer="qa",
+            actor_user_id=self.user["user_id"],
+        )
+
+        response = self.client.get("/sessions", params={"session_id": current_session_id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Workspace Feedback Memory", response.text)
+        self.assertIn("Carryover into focus", response.text)
+        self.assertIn("Bench testing already completed in the baseline session.", response.text)
+        self.assertIn("baseline_measurements.csv", response.text)
+
     def test_discovery_and_dashboard_surface_run_provenance(self):
         SessionRepository().upsert_session(
             session_id="baseline_session",

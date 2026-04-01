@@ -42,6 +42,42 @@ class TargetDefinitionServiceTest(unittest.TestCase):
         self.assertEqual(target["optimization_direction"], "maximize")
         self.assertEqual(target["measurement_unit"], "log10 molar potency scale")
 
+    def test_structure_only_target_no_longer_defaults_to_biodegradability(self):
+        target = infer_target_definition(
+            mapping={"smiles": "smiles"},
+            validation_summary={
+                "rows_with_labels": 0,
+                "rows_without_labels": 10,
+                "rows_with_values": 0,
+                "rows_without_values": 10,
+                "semantic_mode": "structure_only_screening",
+            },
+            label_builder={"enabled": False},
+        )
+
+        self.assertEqual(target["target_name"], "")
+        self.assertEqual(target["target_kind"], "classification")
+        self.assertEqual(target["dataset_type"], "structure_only")
+        self.assertEqual(target["mapping_confidence"], "low")
+
+    def test_generic_label_column_does_not_become_silent_target_name(self):
+        target = infer_target_definition(
+            mapping={"smiles": "smiles", "label": "label"},
+            validation_summary={
+                "rows_with_labels": 6,
+                "rows_without_labels": 0,
+                "rows_with_values": 0,
+                "rows_without_values": 6,
+                "semantic_mode": "labeled_tabular_dataset",
+                "label_source": "column",
+            },
+            label_builder={"enabled": False},
+        )
+
+        self.assertEqual(target["target_name"], "")
+        self.assertEqual(target["target_kind"], "classification")
+        self.assertIn("positive class defined for this session", target["scientific_meaning"])
+
     def test_infers_derived_label_rule_when_thresholding_measurements(self):
         target = infer_target_definition(
             mapping={"smiles": "smiles", "value": "pic50"},

@@ -372,7 +372,7 @@ def build_run_provenance(
             f"model ({selected_model_name})."
         )
     elif training_scope == "baseline_bundle":
-        model_summary = f"This run used the saved baseline model bundle ({selected_model_name}) instead of training on the current session."
+        model_summary = f"This run used the saved legacy baseline model bundle ({selected_model_name}) instead of training on the current session."
     elif training_scope == "ranking_without_target_model":
         model_summary = "This run did not use a target-trained model, so shortlist ordering depends more on policy-level ranking than on model discrimination."
     else:
@@ -399,7 +399,7 @@ def build_run_provenance(
 
     training_scope_summary = {
         "session_trained": "The model was fit from the current session data before ranking.",
-        "baseline_bundle": "The model came from a pre-existing saved bundle, so the session reused older model state.",
+        "baseline_bundle": "The model came from a pre-existing legacy saved bundle, so the session reused older model state instead of fitting a session-specific target model.",
         "ranking_without_target_model": "No target-trained model was available, so the run behaved mostly as a ranking/policy workflow.",
     }.get(training_scope, "Training scope was not fully recorded for this run.")
 
@@ -416,9 +416,30 @@ def build_run_provenance(
     if fallback_reason:
         cautions.append(f"Fallback recorded: {fallback_reason.replace('_', ' ')}.")
     if training_scope == "baseline_bundle":
-        cautions.append("Comparisons against session-trained runs should account for the reused baseline model.")
+        cautions.append("Comparisons against session-trained runs should account for the reused legacy baseline model.")
     if training_scope == "ranking_without_target_model":
         cautions.append("Treat recommendation ordering as policy-heavy because target-model provenance is weak.")
+
+    bridge_state_active = bool(
+        fallback_reason or training_scope in {"baseline_bundle", "ranking_without_target_model"}
+    )
+    if training_scope == "baseline_bundle":
+        bridge_state_summary = (
+            "Bridge-state fallback is active because this run reused the saved legacy baseline bundle instead of "
+            "training a session-specific target model."
+        )
+    elif training_scope == "ranking_without_target_model":
+        bridge_state_summary = (
+            "Bridge-state fallback is active because no target-trained model was available, so ordering depends more "
+            "on policy-level ranking than on model discrimination."
+        )
+    elif fallback_reason:
+        bridge_state_summary = (
+            "Bridge-state fallback metadata was recorded for this session, so comparison and interpretation should be "
+            f"read with the recorded fallback in mind ({fallback_reason.replace('_', ' ')})."
+        )
+    else:
+        bridge_state_summary = ""
 
     return {
         "comparison_ready": comparison_ready,
@@ -438,6 +459,8 @@ def build_run_provenance(
         "reference_summary": reference_summary,
         "fallback_reason": fallback_reason,
         "cautions": cautions,
+        "bridge_state_active": bridge_state_active,
+        "bridge_state_summary": bridge_state_summary,
     }
 
 

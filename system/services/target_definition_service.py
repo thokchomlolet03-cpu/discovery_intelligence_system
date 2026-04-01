@@ -35,6 +35,8 @@ DEFAULT_CONTRACT_VERSIONS = {
 }
 
 BIODEGRADABILITY_HINTS = {"biodegradable", "biodegradability", "degradable", "degradation"}
+GENERIC_LABEL_HINTS = {"label", "labels", "class", "classification", "target_label", "response", "outcome"}
+GENERIC_MEASUREMENT_HINTS = {"value", "values", "measurement", "measurements", "score", "response", "readout"}
 MAXIMIZE_HINTS = {"pic50", "pec50", "pchembl", "solubility", "conductivity", "yield", "potency"}
 MINIMIZE_HINTS = {"ic50", "ec50", "toxicity", "toxic", "clearance", "risk", "error"}
 
@@ -89,6 +91,11 @@ def _measurement_unit_for_column(column_name: str) -> str:
     return ""
 
 
+def _is_generic_target_name(value: str) -> bool:
+    cleaned = _non_empty_text(value).lower().strip()
+    return cleaned in GENERIC_LABEL_HINTS or cleaned in GENERIC_MEASUREMENT_HINTS
+
+
 def _optimization_direction(target_name: str, *, target_kind: str) -> str:
     if target_kind == TargetKind.classification.value:
         return OptimizationDirection.classify.value
@@ -103,22 +110,38 @@ def _optimization_direction(target_name: str, *, target_kind: str) -> str:
 
 def _scientific_meaning(target_name: str, target_kind: str, optimization_direction: str) -> str:
     if target_kind == TargetKind.classification.value:
-        return f"The model estimates whether a molecule belongs to the positive class for {target_name}."
+        if target_name:
+            return f"The model estimates whether a molecule belongs to the positive class for {target_name}."
+        return "The model estimates whether a molecule belongs to the positive class defined for this session."
     if optimization_direction == OptimizationDirection.maximize.value:
-        return f"Higher predicted values are treated as more favorable for {target_name}."
+        if target_name:
+            return f"Higher predicted values are treated as more favorable for {target_name}."
+        return "Higher predicted values are treated as more favorable for the current session target."
     if optimization_direction == OptimizationDirection.minimize.value:
-        return f"Lower predicted values are treated as more favorable for {target_name}."
-    return f"Predicted values for {target_name} are interpreted as a continuous property and should be reviewed in context."
+        if target_name:
+            return f"Lower predicted values are treated as more favorable for {target_name}."
+        return "Lower predicted values are treated as more favorable for the current session target."
+    if target_name:
+        return f"Predicted values for {target_name} are interpreted as a continuous property and should be reviewed in context."
+    return "Predicted values are interpreted as a continuous property for the current session target and should be reviewed in context."
 
 
 def _success_definition(target_name: str, target_kind: str, optimization_direction: str) -> str:
     if target_kind == TargetKind.classification.value:
-        return f"Success means prioritizing molecules likely to belong to the positive class for {target_name}."
+        if target_name:
+            return f"Success means prioritizing molecules likely to belong to the positive class for {target_name}."
+        return "Success means prioritizing molecules likely to belong to the positive class defined for this session."
     if optimization_direction == OptimizationDirection.maximize.value:
-        return f"Success means prioritizing molecules expected to achieve higher {target_name} values."
+        if target_name:
+            return f"Success means prioritizing molecules expected to achieve higher {target_name} values."
+        return "Success means prioritizing molecules expected to achieve higher values for the current session target."
     if optimization_direction == OptimizationDirection.minimize.value:
-        return f"Success means prioritizing molecules expected to achieve lower {target_name} values."
-    return f"Success means prioritizing molecules whose predicted {target_name} values look experimentally useful to test."
+        if target_name:
+            return f"Success means prioritizing molecules expected to achieve lower {target_name} values."
+        return "Success means prioritizing molecules expected to achieve lower values for the current session target."
+    if target_name:
+        return f"Success means prioritizing molecules whose predicted {target_name} values look experimentally useful to test."
+    return "Success means prioritizing molecules whose predicted values look experimentally useful to test for the current session target."
 
 
 def _mapping_confidence(label_column: str, measurement_column: str, summary: dict[str, Any]) -> str:
@@ -142,11 +165,11 @@ def _dataset_type(label_column: str, measurement_column: str, label_builder_payl
 def _default_target_name(label_column: str, measurement_column: str) -> str:
     if any(token in label_column for token in BIODEGRADABILITY_HINTS):
         return "biodegradability"
-    if measurement_column:
+    if measurement_column and not _is_generic_target_name(measurement_column):
         return measurement_column
-    if label_column:
+    if label_column and not _is_generic_target_name(label_column):
         return label_column
-    return "biodegradability"
+    return ""
 
 
 def _derived_label_rule(label_builder: dict[str, Any] | None) -> dict[str, Any] | None:

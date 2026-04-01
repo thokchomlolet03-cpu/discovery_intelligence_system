@@ -7,7 +7,7 @@ from typing import Any
 from system.contracts import ContractValidationError, validate_decision_artifact, validate_review_event_record
 from system.review_manager import STATUS_ORDER, normalize_status
 from system.services.run_metadata_service import build_run_provenance
-from system.services.session_identity_service import build_metric_interpretation
+from system.services.session_identity_service import build_metric_interpretation, build_trust_context
 from system.session_report import ranking_policy as build_ranking_policy
 
 
@@ -155,6 +155,36 @@ def normalize_review_history(history: Any) -> list[dict[str, Any]]:
     return sorted(normalized, key=lambda item: item["reviewed_at"])
 
 
+def normalize_workspace_memory_history(history: Any) -> list[dict[str, Any]]:
+    if not isinstance(history, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+        reviewed_at = _to_iso(item.get("reviewed_at"))
+        session_id = str(item.get("session_id") or "").strip()
+        normalized.append(
+            {
+                "session_id": session_id,
+                "session_label": str(item.get("session_label") or session_id or "Session").strip(),
+                "action": str(item.get("action") or "later").strip(),
+                "action_label": str(item.get("action_label") or "").strip() or str(item.get("action") or "Not recorded").replace("_", " ").strip().title(),
+                "status": normalize_status(item.get("status"), action=item.get("action")),
+                "status_label": str(item.get("status_label") or "").strip() or str(item.get("status") or "Not recorded").replace("_", " ").strip().title(),
+                "note": str(item.get("note") or "").strip(),
+                "reviewer": str(item.get("reviewer") or "unassigned").strip() or "unassigned",
+                "reviewed_at": reviewed_at,
+                "reviewed_at_label": str(item.get("reviewed_at_label") or "").strip() or humanize_timestamp(reviewed_at),
+                "upload_url": str(item.get("upload_url") or "").strip(),
+                "discovery_url": str(item.get("discovery_url") or "").strip(),
+                "dashboard_url": str(item.get("dashboard_url") or "").strip(),
+            }
+        )
+    return sorted(normalized, key=lambda item: item["reviewed_at"])
+
+
 def infer_source_type(candidate: dict[str, Any], provenance_text: str) -> str:
     source_smiles = str(candidate.get("source_smiles") or "").strip()
     source = str(candidate.get("source") or "").strip()
@@ -211,8 +241,26 @@ def _canonical_score_name(value: Any) -> str:
     return cleaned if cleaned in SCORE_LABELS else "priority_score"
 
 
-def _score_label(value: Any) -> str:
-    return SCORE_LABELS.get(_canonical_score_name(value), "Priority score")
+def _target_kind_from_candidate(candidate: dict[str, Any] | None) -> str:
+    candidate = candidate if isinstance(candidate, dict) else {}
+    target_definition = candidate.get("target_definition") if isinstance(candidate.get("target_definition"), dict) else {}
+    return str(target_definition.get("target_kind") or "classification").strip().lower() or "classification"
+
+
+def _target_name_from_candidate(candidate: dict[str, Any] | None) -> str:
+    candidate = candidate if isinstance(candidate, dict) else {}
+    target_definition = candidate.get("target_definition") if isinstance(candidate.get("target_definition"), dict) else {}
+    return str(target_definition.get("target_name") or candidate.get("target") or "the session target").strip() or "the session target"
+
+
+def _score_label(value: Any, *, target_kind: str | None = None) -> str:
+    canonical = _canonical_score_name(value)
+    kind = str(target_kind or "").strip().lower()
+    if canonical == "confidence" and kind == "regression":
+        return "Ranking compatibility"
+    if canonical == "uncertainty" and kind == "regression":
+        return "Prediction dispersion"
+    return SCORE_LABELS.get(canonical, "Priority score")
 
 
 def _normalized_weights(value: Any) -> dict[str, float]:
@@ -228,9 +276,17 @@ def _normalized_weights(value: Any) -> dict[str, float]:
     return {key: value / total for key, value in weights.items()}
 
 
-def normalize_ranking_policy(analysis_payload: dict[str, Any]) -> dict[str, Any]:
+def normalize_ranking_policy(
+    analysis_payload: dict[str, Any],
+    *,
+    target_definition: dict[str, Any] | None = None,
+    modeling_mode: str | None = None,
+) -> dict[str, Any]:
     raw_policy = analysis_payload.get("ranking_policy") if isinstance(analysis_payload, dict) else {}
     ranking_diagnostics = analysis_payload.get("ranking_diagnostics", {}) if isinstance(analysis_payload, dict) else {}
+    target_kind = str((target_definition or {}).get("target_kind") or "").strip().lower()
+    if not target_kind and str(modeling_mode or "").strip().lower() == "regression":
+        target_kind = "regression"
 
     if isinstance(raw_policy, dict) and raw_policy:
         primary_score = _canonical_score_name(raw_policy.get("primary_score"))
@@ -248,7 +304,12 @@ def normalize_ranking_policy(analysis_payload: dict[str, Any]) -> dict[str, Any]
     else:
         intent = str(analysis_payload.get("intent_selected") or "").strip() if isinstance(analysis_payload, dict) else ""
         scoring_mode = str(analysis_payload.get("mode_used") or "").strip() if isinstance(analysis_payload, dict) else ""
-        cleaned = build_ranking_policy(intent or "rank_uploaded_molecules", scoring_mode or "balanced")
+        cleaned = build_ranking_policy(
+            intent or "rank_uploaded_molecules",
+            scoring_mode or "balanced",
+            target_definition=target_definition,
+            modeling_mode=modeling_mode,
+        )
         cleaned["primary_score"] = _canonical_score_name(
             ranking_diagnostics.get("score_basis") or cleaned.get("primary_score")
         )
@@ -269,18 +330,25 @@ def normalize_ranking_policy(analysis_payload: dict[str, Any]) -> dict[str, Any]
     formula_label = str(cleaned.get("formula_label") or "priority_score").strip() or "priority_score"
     formula_summary = str(cleaned.get("formula_summary") or "").strip()
     if not formula_summary:
-        formula_summary = f"Candidate order prioritizes {_score_label(primary_score).lower()} first, then supporting scores."
+        formula_summary = f"Candidate order prioritizes {_score_label(primary_score, target_kind=target_kind).lower()} first, then supporting scores."
     formula_text = str(cleaned.get("formula_text") or "").strip()
     if not formula_text:
-        formula_text = (
-            "priority_score combines confidence, uncertainty, novelty, and experiment value using the current scoring "
-            "mode and intent."
-        )
+        if target_kind == "regression":
+            formula_text = (
+                "priority_score combines ranking compatibility, prediction dispersion, novelty, and experiment value "
+                "using the current scoring mode and intent. Ranking compatibility is normalized desirability for "
+                "ordering, not the predicted continuous value itself."
+            )
+        else:
+            formula_text = (
+                "priority_score combines confidence, uncertainty, novelty, and experiment value using the current scoring "
+                "mode and intent."
+            )
 
     weight_breakdown = [
         {
             "key": key,
-            "label": _score_label(key),
+            "label": _score_label(key, target_kind=target_kind),
             "weight": float(weight),
             "weight_percent": round(float(weight) * 100.0, 1),
         }
@@ -289,7 +357,7 @@ def normalize_ranking_policy(analysis_payload: dict[str, Any]) -> dict[str, Any]
 
     return {
         "primary_score": primary_score,
-        "primary_score_label": _score_label(primary_score),
+        "primary_score_label": _score_label(primary_score, target_kind=target_kind),
         "sort_order": sort_order,
         "weights": weights,
         "weight_breakdown": weight_breakdown,
@@ -301,6 +369,7 @@ def normalize_ranking_policy(analysis_payload: dict[str, Any]) -> dict[str, Any]
 
 def score_breakdown(candidate: dict[str, Any], policy: dict[str, Any]) -> list[dict[str, Any]]:
     weights = policy.get("weights", {}) if isinstance(policy, dict) else {}
+    target_kind = _target_kind_from_candidate(candidate)
     items: list[dict[str, Any]] = []
     for key in ("confidence", "uncertainty", "novelty", "experiment_value"):
         raw_value = _clamp_score(candidate.get(key))
@@ -308,7 +377,7 @@ def score_breakdown(candidate: dict[str, Any], policy: dict[str, Any]) -> list[d
         items.append(
             {
                 "key": key,
-                "label": _score_label(key),
+                "label": _score_label(key, target_kind=target_kind),
                 "raw_value": raw_value,
                 "weight": weight,
                 "weight_percent": round(weight * 100.0, 1),
@@ -383,7 +452,63 @@ def classify_decision(
     priority_score: float,
     experiment_value: float,
     domain_status: str,
+    target_kind: str = "classification",
+    target_name: str = "the session target",
+    predicted_value: Any = None,
 ) -> dict[str, str]:
+    if target_kind == "regression":
+        if (
+            priority_score >= 0.68
+            and confidence >= 0.72
+            and uncertainty <= 0.35
+            and risk != "high"
+            and domain_status != "out_of_domain"
+        ):
+            key = "test_now"
+            try:
+                value_text = f" Predicted value: {float(predicted_value):.3f}."
+            except (TypeError, ValueError):
+                value_text = ""
+            summary = (
+                f"Strong near-term measurement candidate because the composite priority is high, ranking compatibility "
+                f"is solid, and dispersion is controlled for {target_name}.{value_text}"
+            )
+        elif bucket == "learn" or uncertainty >= 0.62:
+            key = "learning_value"
+            summary = (
+                f"Good learning candidate because prediction dispersion remains high enough that measuring {target_name} "
+                "could tighten the model around this value range."
+            )
+        elif (
+            (priority_score <= 0.35 and experiment_value <= 0.35 and confidence <= 0.45)
+            or (risk == "high" and confidence <= 0.35 and novelty <= 0.45)
+        ):
+            key = "deprioritize"
+            summary = "Lower near-term priority because the value-based signal is weaker than the current shortlist."
+        else:
+            key = "review_before_testing"
+            if domain_status == "out_of_domain":
+                summary = (
+                    f"Worth scientific review before testing because the predicted {target_name} value is interesting, "
+                    "but chemistry support is weak."
+                )
+            elif novelty >= 0.65:
+                summary = (
+                    f"Worth scientific review before testing because the candidate could expand coverage around {target_name}, "
+                    "but the tradeoff is less straightforward."
+                )
+            else:
+                summary = (
+                    f"Worth scientific review before testing because the predicted {target_name} value is promising, "
+                    "but still needs measurement validation."
+                )
+        return {
+            "category": key,
+            "label": DECISION_COPY[key]["label"],
+            "description": DECISION_COPY[key]["description"],
+            "summary": summary,
+        }
+
     if (
         priority_score >= 0.68
         and confidence >= 0.72
@@ -468,18 +593,22 @@ def normalize_candidate_rationale(
     confidence: float,
     uncertainty: float,
     novelty: float,
+    target_kind: str = "classification",
 ) -> dict[str, Any]:
     cleaned = raw_rationale if isinstance(raw_rationale, dict) else {}
     dominant = max(breakdown, key=lambda item: float(item.get("contribution", 0.0))) if breakdown else {}
     dominant_key = _canonical_score_name(cleaned.get("primary_driver") or dominant.get("key"))
-    dominant_label = _score_label(dominant_key)
+    dominant_label = _score_label(dominant_key, target_kind=target_kind)
 
     if uncertainty >= 0.7 or str(domain.get("status") or "") == "out_of_domain" or risk == "high":
         default_trust_label = "High caution"
         default_trust_summary = "The recommendation is useful, but uncertainty or weak domain coverage means it should be challenged carefully."
     elif confidence >= 0.8 and uncertainty <= 0.25 and str(domain.get("status") or "") == "in_domain":
         default_trust_label = "Stronger trust"
-        default_trust_summary = "Confidence is relatively stable and the chemistry remains within stronger domain coverage."
+        if target_kind == "regression":
+            default_trust_summary = "Ranking compatibility is relatively strong, dispersion is controlled, and the chemistry remains within stronger domain coverage."
+        else:
+            default_trust_summary = "Confidence is relatively stable and the chemistry remains within stronger domain coverage."
     elif bucket == "learn" or novelty >= 0.65:
         default_trust_label = "Exploratory trust"
         default_trust_summary = "The shortlist is useful for exploration or learning, but it should not be treated as near-certain."
@@ -492,6 +621,13 @@ def normalize_candidate_rationale(
     trust_label = str(cleaned.get("trust_label") or default_trust_label).strip()
     trust_summary = str(cleaned.get("trust_summary") or default_trust_summary).strip()
     recommended_action = str(cleaned.get("recommended_action") or suggested_action).strip()
+
+    if target_kind == "regression":
+        summary = summary.replace("confidence", "ranking compatibility").replace("Confidence", "Ranking compatibility")
+        why_now = why_now.replace("confidence", "ranking compatibility").replace("Confidence", "Ranking compatibility")
+        trust_summary = trust_summary.replace("confidence", "ranking compatibility").replace("Confidence", "Ranking compatibility")
+        if "testing candidate" in recommended_action.lower() or "signal is relatively stable" in recommended_action.lower():
+            recommended_action = suggested_action
 
     strengths = cleaned.get("strengths") if isinstance(cleaned.get("strengths"), list) else []
     strengths = [str(item).strip() for item in strengths if str(item).strip()]
@@ -594,7 +730,32 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def suggested_next_action(bucket: str, risk: str, confidence: float, uncertainty: float) -> str:
+def suggested_next_action(
+    bucket: str,
+    risk: str,
+    confidence: float,
+    uncertainty: float,
+    *,
+    target_kind: str = "classification",
+    target_name: str = "the session target",
+    predicted_value: Any = None,
+    domain_status: str = "",
+) -> str:
+    if target_kind == "regression":
+        if bucket == "learn" or uncertainty >= 0.7:
+            return f"Best used as a measurement candidate to reduce uncertainty around the predicted {target_name} range."
+        if bucket == "exploit" or (confidence >= 0.8 and uncertainty <= 0.2):
+            try:
+                value_text = f" near a predicted value of {float(predicted_value):.3f}"
+            except (TypeError, ValueError):
+                value_text = ""
+            return (
+                f"Good near-term validation candidate because ranking compatibility is high and dispersion is controlled{value_text}."
+            )
+        if domain_status == "out_of_domain" or risk == "high":
+            return f"Requires careful measurement review before acting because chemistry support for {target_name} is weaker."
+        return f"Useful measurement review candidate for the next testing round after scientific inspection."
+
     if bucket == "learn" or uncertainty >= 0.7:
         return "Best used as a learning candidate because the model remains uncertain."
     if bucket == "exploit" or (confidence >= 0.8 and uncertainty <= 0.2):
@@ -639,6 +800,66 @@ def resolve_dataset_version(session_id: str | None, decision_output: dict[str, A
     return "public_snapshot"
 
 
+def _candidate_annotation_fields(candidate: dict[str, Any]) -> dict[str, Any]:
+    annotations: dict[str, Any] = {}
+    for field in ("workspace_memory", "workspace_memory_history", "workspace_memory_count"):
+        if field in candidate:
+            annotations[field] = candidate.get(field)
+    return annotations
+
+
+def _candidate_annotation_keys(candidate: dict[str, Any], index: int) -> list[str]:
+    candidate_id = str(candidate.get("candidate_id") or "").strip().lower()
+    canonical_smiles = str(candidate.get("canonical_smiles") or candidate.get("smiles") or "").strip().lower()
+    rank = str(candidate.get("rank") or "").strip()
+    keys = [f"index:{index}"]
+    if candidate_id:
+        keys.append(f"id:{candidate_id}")
+    if canonical_smiles:
+        keys.append(f"smiles:{canonical_smiles}")
+    if candidate_id and canonical_smiles:
+        keys.append(f"id_smiles:{candidate_id}:{canonical_smiles}")
+    if rank:
+        keys.append(f"rank:{rank}")
+        if candidate_id:
+            keys.append(f"rank_id:{rank}:{candidate_id}")
+    return keys
+
+
+def _build_candidate_annotation_lookup(candidates: list[dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
+    rows = candidates if isinstance(candidates, list) else []
+    lookup: dict[str, dict[str, Any]] = {}
+    for index, candidate in enumerate(rows):
+        if not isinstance(candidate, dict):
+            continue
+        annotations = _candidate_annotation_fields(candidate)
+        if not annotations:
+            continue
+        for key in _candidate_annotation_keys(candidate, index):
+            lookup.setdefault(key, annotations)
+    return lookup
+
+
+def _restore_candidate_annotations(
+    candidate: dict[str, Any],
+    *,
+    index: int,
+    annotation_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    if not annotation_lookup:
+        return candidate
+
+    merged = dict(candidate)
+    for key in _candidate_annotation_keys(candidate, index):
+        annotations = annotation_lookup.get(key)
+        if not isinstance(annotations, dict):
+            continue
+        for field, value in annotations.items():
+            merged[field] = value
+        break
+    return merged
+
+
 def normalize_candidate(
     candidate: dict[str, Any],
     *,
@@ -667,6 +888,8 @@ def normalize_candidate(
     candidate_id = str(candidate["candidate_id"])
     review_summary = candidate.get("review_summary") if isinstance(candidate.get("review_summary"), dict) else {}
     review_history = normalize_review_history(candidate.get("review_history"))
+    workspace_memory = candidate.get("workspace_memory") if isinstance(candidate.get("workspace_memory"), dict) else {}
+    workspace_memory_history = normalize_workspace_memory_history(candidate.get("workspace_memory_history"))
     reviewed_at = _to_iso(candidate.get("reviewed_at") or review_summary.get("reviewed_at"))
     reviewer = str(candidate.get("reviewer") or review_summary.get("reviewer") or "unassigned")
     review_note = str(candidate.get("review_note") or review_summary.get("note") or "").strip()
@@ -680,8 +903,12 @@ def normalize_candidate(
     assay = str(candidate.get("assay") or "").strip()
     target = str(candidate.get("target") or "").strip()
     target_definition = candidate.get("target_definition") if isinstance(candidate.get("target_definition"), dict) else {}
+    target_kind = _target_kind_from_candidate(candidate)
+    target_name = _target_name_from_candidate(candidate)
     data_facts = candidate.get("data_facts") if isinstance(candidate.get("data_facts"), dict) else {}
     model_judgment = candidate.get("model_judgment") if isinstance(candidate.get("model_judgment"), dict) else {}
+    predicted_value = candidate.get("predicted_value", model_judgment.get("predicted_value"))
+    prediction_dispersion = candidate.get("prediction_dispersion", model_judgment.get("prediction_dispersion"))
     applicability_domain = candidate.get("applicability_domain") if isinstance(candidate.get("applicability_domain"), dict) else {}
     novelty_signal = candidate.get("novelty_signal") if isinstance(candidate.get("novelty_signal"), dict) else {}
     decision_policy = candidate.get("decision_policy") if isinstance(candidate.get("decision_policy"), dict) else {}
@@ -704,6 +931,9 @@ def normalize_candidate(
         priority_score=priority_score,
         experiment_value=experiment_value,
         domain_status=str(domain.get("status") or "unknown"),
+        target_kind=target_kind,
+        target_name=target_name,
+        predicted_value=predicted_value,
     )
     primary_score = _canonical_score_name(ranking_policy.get("primary_score"))
     primary_score_raw = candidate.get(primary_score)
@@ -721,9 +951,30 @@ def normalize_candidate(
         },
         ranking_policy,
     )
-    suggested_action = suggested_next_action(bucket, risk, confidence, uncertainty)
+    breakdown = [
+        {
+            **item,
+            "label": _score_label(item.get("key"), target_kind=target_kind),
+        }
+        for item in breakdown
+    ]
+    suggested_action = suggested_next_action(
+        bucket,
+        risk,
+        confidence,
+        uncertainty,
+        target_kind=target_kind,
+        target_name=target_name,
+        predicted_value=predicted_value,
+        domain_status=str(domain.get("status") or ""),
+    )
     if decision["category"] == "test_now":
-        suggested_action = "Test this candidate in the next round and use it as a near-term lead."
+        if target_kind == "regression":
+            suggested_action = (
+                f"Measure {target_name} for this candidate in the next round and use the result to validate the near-term lead."
+            )
+        else:
+            suggested_action = "Test this candidate in the next round and use it as a near-term lead."
     elif decision["category"] == "deprioritize":
         suggested_action = "Keep this candidate off the immediate testing list unless new evidence changes the tradeoff."
     rationale = normalize_candidate_rationale(
@@ -738,6 +989,7 @@ def normalize_candidate(
         confidence=confidence,
         uncertainty=uncertainty,
         novelty=novelty,
+        target_kind=target_kind,
     )
     explanations = enrich_explanations(
         rationale["evidence_lines"] or explanations,
@@ -748,6 +1000,34 @@ def normalize_candidate(
         target=target,
     )
     rationale["evidence_lines"] = explanations
+    if target_kind == "regression":
+        try:
+            predicted_value_text = f"{float(predicted_value):.3f}"
+        except (TypeError, ValueError):
+            predicted_value_text = ""
+        normalized_explanation = dict(normalized_explanation)
+        if predicted_value_text:
+            normalized_explanation["model_judgment_summary"] = (
+                f"The model predicts a continuous value of {predicted_value_text} for {target_name}. "
+                f"Ranking compatibility is {confidence:.3f}; it supports ordering but is not the predicted value itself."
+            )
+        if candidate.get("uncertainty") is not None:
+            normalized_explanation["uncertainty_summary"] = (
+                f"Prediction dispersion is {uncertainty:.3f}; higher values mean the regression estimate is less stable."
+            )
+        normalized_explanation["why_now"] = rationale["why_now"]
+        normalized_explanation["recommended_followup"] = rationale["recommended_action"]
+
+        final_recommendation = dict(final_recommendation)
+        final_recommendation["recommended_action"] = rationale["recommended_action"]
+        if predicted_value_text:
+            final_recommendation["follow_up_experiment"] = (
+                f"Measure {target_name} experimentally to validate the predicted value of {predicted_value_text}."
+            )
+        else:
+            final_recommendation["follow_up_experiment"] = (
+                f"Measure {target_name} experimentally to validate the shortlist ordering."
+            )
 
     return {
         "rank": int(candidate.get("rank") or position),
@@ -757,11 +1037,13 @@ def normalize_candidate(
         "confidence": confidence,
         "uncertainty": uncertainty,
         "novelty": novelty,
+        "predicted_value": predicted_value,
+        "prediction_dispersion": prediction_dispersion,
         "acquisition_score": _clamp_score(candidate.get("acquisition_score")),
         "experiment_value": experiment_value,
         "priority_score": priority_score,
         "primary_score_name": primary_score,
-        "primary_score_label": _score_label(primary_score),
+        "primary_score_label": _score_label(primary_score, target_kind=target_kind),
         "primary_score_value": primary_score_value,
         "score_breakdown": breakdown,
         "trust_label": rationale["trust_label"],
@@ -797,6 +1079,27 @@ def normalize_candidate(
         "reviewed_at_label": humanize_timestamp(reviewed_at),
         "review_history": review_history,
         "review_history_count": len(review_history),
+        "workspace_memory": {
+            "event_count": int(workspace_memory.get("event_count") or 0),
+            "session_count": int(workspace_memory.get("session_count") or 0),
+            "session_ids": list(workspace_memory.get("session_ids") or []),
+            "last_status": str(workspace_memory.get("last_status") or "").strip(),
+            "last_status_label": str(workspace_memory.get("last_status_label") or "").strip() or str(workspace_memory.get("last_status") or "Not recorded").replace("_", " ").strip().title(),
+            "last_action": str(workspace_memory.get("last_action") or "").strip(),
+            "last_action_label": str(workspace_memory.get("last_action_label") or "").strip() or str(workspace_memory.get("last_action") or "Not recorded").replace("_", " ").strip().title(),
+            "last_note": str(workspace_memory.get("last_note") or "").strip(),
+            "last_reviewer": str(workspace_memory.get("last_reviewer") or "unassigned").strip() or "unassigned",
+            "last_reviewed_at": _to_iso(workspace_memory.get("last_reviewed_at")),
+            "last_reviewed_at_label": str(workspace_memory.get("last_reviewed_at_label") or "").strip() or humanize_timestamp(workspace_memory.get("last_reviewed_at")),
+            "last_session_id": str(workspace_memory.get("last_session_id") or "").strip(),
+            "last_session_label": str(workspace_memory.get("last_session_label") or workspace_memory.get("last_session_id") or "Session").strip(),
+            "upload_url": str(workspace_memory.get("upload_url") or "").strip(),
+            "discovery_url": str(workspace_memory.get("discovery_url") or "").strip(),
+            "dashboard_url": str(workspace_memory.get("dashboard_url") or "").strip(),
+        },
+        "workspace_memory_history": workspace_memory_history,
+        "workspace_memory_count": int(candidate.get("workspace_memory_count") or 0),
+        "workspace_memory_session_count": int((workspace_memory or {}).get("session_count") or 0),
         "suggested_next_action": suggested_action,
         "observed_value": observed_value,
         "assay": assay,
@@ -833,16 +1136,32 @@ def normalize_candidate(
     }
 
 
-def summary_from_candidates(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+def summary_from_candidates(
+    candidates: list[dict[str, Any]],
+    *,
+    target_definition: dict[str, Any] | None = None,
+    modeling_mode: str | None = None,
+) -> dict[str, Any]:
     confidences = [candidate["confidence"] for candidate in candidates]
     uncertainties = [candidate["uncertainty"] for candidate in candidates]
     experiment_values = [candidate["experiment_value"] for candidate in candidates]
+    target_kind = str((target_definition or {}).get("target_kind") or "").strip().lower()
+    if not target_kind and str(modeling_mode or "").strip().lower() == "regression":
+        target_kind = "regression"
+    predicted_values = [
+        _safe_float(candidate.get("predicted_value"))
+        for candidate in candidates
+        if _safe_float(candidate.get("predicted_value")) is not None
+    ]
 
     return {
         "candidates_displayed": len(candidates),
         "top_experiment_value": max(experiment_values, default=0.0),
         "average_confidence": fmean(confidences) if confidences else 0.0,
         "average_uncertainty": fmean(uncertainties) if uncertainties else 0.0,
+        "average_confidence_label": "Average ranking compatibility" if target_kind == "regression" else "Average model confidence signal",
+        "average_uncertainty_label": "Average prediction dispersion" if target_kind == "regression" else "Average prediction uncertainty",
+        "average_predicted_value": fmean(predicted_values) if predicted_values else None,
     }
 
 
@@ -852,6 +1171,61 @@ def review_summary_from_candidates(candidates: list[dict[str, Any]]) -> dict[str
         status = normalize_status(candidate.get("status"))
         counts[status] += 1
     return counts
+
+
+def workspace_memory_summary_from_candidates(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    carryover = [candidate for candidate in candidates if int(candidate.get("workspace_memory_count") or 0) > 0]
+    unique_session_ids = {
+        session_id
+        for candidate in carryover
+        for session_id in list(((candidate.get("workspace_memory") or {}).get("session_ids")) or [])
+        if session_id
+    }
+    total_events = sum(int(candidate.get("workspace_memory_count") or 0) for candidate in carryover)
+
+    prioritized = sorted(
+        carryover,
+        key=lambda candidate: (
+            _to_iso(((candidate.get("workspace_memory") or {}).get("last_reviewed_at"))),
+            int(candidate.get("workspace_memory_count") or 0),
+            str(candidate.get("candidate_id") or ""),
+        ),
+        reverse=True,
+    )
+    highlights = [
+        {
+            "candidate_id": str(candidate.get("candidate_id") or "").strip(),
+            "smiles": str(candidate.get("canonical_smiles") or candidate.get("smiles") or "").strip(),
+            "status": str(((candidate.get("workspace_memory") or {}).get("last_status")) or "").strip(),
+            "status_label": str(((candidate.get("workspace_memory") or {}).get("last_status_label")) or "").strip(),
+            "reviewed_at_label": str(((candidate.get("workspace_memory") or {}).get("last_reviewed_at_label")) or "").strip(),
+            "reviewer": str(((candidate.get("workspace_memory") or {}).get("last_reviewer")) or "unassigned").strip(),
+            "session_label": str(((candidate.get("workspace_memory") or {}).get("last_session_label")) or "Session").strip(),
+            "session_id": str(((candidate.get("workspace_memory") or {}).get("last_session_id")) or "").strip(),
+            "event_count": int(candidate.get("workspace_memory_count") or 0),
+            "session_count": int(candidate.get("workspace_memory_session_count") or 0),
+            "note": str(((candidate.get("workspace_memory") or {}).get("last_note")) or "").strip(),
+            "discovery_url": str(((candidate.get("workspace_memory") or {}).get("discovery_url")) or "").strip(),
+        }
+        for candidate in prioritized[:5]
+    ]
+
+    if carryover:
+        summary = (
+            f"{len(carryover)} shortlist candidate"
+            f"{'' if len(carryover) == 1 else 's'} already have prior workspace feedback from "
+            f"{len(unique_session_ids)} earlier session{'' if len(unique_session_ids) == 1 else 's'}."
+        )
+    else:
+        summary = "This shortlist does not yet carry forward any prior workspace review evidence."
+
+    return {
+        "matched_candidate_count": len(carryover),
+        "session_count": len(unique_session_ids),
+        "event_count": total_events,
+        "summary": summary,
+        "highlights": highlights,
+    }
 
 
 def build_discovery_workbench(
@@ -864,8 +1238,13 @@ def build_discovery_workbench(
     system_version: str,
 ) -> dict[str, Any]:
     artifact_state = str(decision_output.get("artifact_state") or "ok")
+    raw_candidate_rows = (
+        decision_output.get("top_experiments")
+        if isinstance(decision_output.get("top_experiments"), list)
+        else []
+    )
+    annotation_lookup = _build_candidate_annotation_lookup(raw_candidate_rows)
     analysis_payload = analysis_report if isinstance(analysis_report, dict) else {}
-    ranking_policy = normalize_ranking_policy(analysis_payload)
     target_definition = (
         decision_output.get("target_definition") if isinstance(decision_output.get("target_definition"), dict) else {}
     ) or (
@@ -876,6 +1255,11 @@ def build_discovery_workbench(
         or analysis_payload.get("modeling_mode")
         or ""
     ).strip()
+    ranking_policy = normalize_ranking_policy(
+        analysis_payload,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
     interpretation = build_metric_interpretation(
         target_definition=target_definition,
         modeling_mode=modeling_mode,
@@ -894,6 +1278,14 @@ def build_discovery_workbench(
     run_provenance = build_run_provenance(
         run_contract=run_contract,
         comparison_anchors=comparison_anchors,
+    )
+    trust_context = build_trust_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        analysis_report=analysis_payload,
+        decision_payload=decision_output,
+        ranking_policy=ranking_policy,
+        run_provenance=run_provenance,
     )
     if artifact_state == "error":
         state = {
@@ -920,6 +1312,7 @@ def build_discovery_workbench(
             "last_updated": _to_iso(decision_output.get("source_updated_at")),
             "system_version": system_version,
             "candidates": [],
+            "workspace_memory": workspace_memory_summary_from_candidates([]),
             "target_definition": target_definition,
             "measurement_summary": analysis_payload.get("measurement_summary", {}),
             "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
@@ -927,6 +1320,7 @@ def build_discovery_workbench(
             "decision_overview": decision_overview([]),
             "interpretation": interpretation,
             "run_provenance": run_provenance,
+            "trust_context": trust_context,
         }
 
     if artifact_state == "missing":
@@ -956,6 +1350,7 @@ def build_discovery_workbench(
                 "last_updated": _to_iso(decision_output.get("source_updated_at")),
                 "system_version": system_version,
                 "candidates": [],
+                "workspace_memory": workspace_memory_summary_from_candidates([]),
                 "target_definition": target_definition,
                 "measurement_summary": analysis_payload.get("measurement_summary", {}),
                 "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
@@ -963,6 +1358,7 @@ def build_discovery_workbench(
                 "decision_overview": decision_overview([]),
                 "interpretation": interpretation,
                 "run_provenance": run_provenance,
+                "trust_context": trust_context,
             }
         raw_candidates = validated_output.get("top_experiments", [])
         candidates_input = raw_candidates if isinstance(raw_candidates, list) else []
@@ -973,7 +1369,11 @@ def build_discovery_workbench(
 
     candidates = [
         normalize_candidate(
-            dict(candidate),
+            _restore_candidate_annotations(
+                dict(candidate),
+                index=index,
+                annotation_lookup=annotation_lookup,
+            ),
             position=index + 1,
             iteration=iteration,
             model_version=model_version,
@@ -984,7 +1384,11 @@ def build_discovery_workbench(
         if isinstance(candidate, dict)
     ]
 
-    summary = summary_from_candidates(candidates)
+    summary = summary_from_candidates(
+        candidates,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
     queue_summary = (review_queue or {}).get("summary", {}) if isinstance(review_queue, dict) else {}
     counts = queue_summary.get("counts") if isinstance(queue_summary, dict) else None
     if not isinstance(counts, dict):
@@ -1049,9 +1453,11 @@ def build_discovery_workbench(
         "last_updated": _to_iso(last_updated),
         "system_version": system_version,
         "candidates": candidates,
+        "workspace_memory": workspace_memory_summary_from_candidates(candidates),
         "measurement_summary": analysis_payload.get("measurement_summary", {}),
         "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
         "ranking_policy": ranking_policy,
         "decision_overview": decision_overview(candidates),
         "interpretation": interpretation,
+        "trust_context": trust_context,
     }

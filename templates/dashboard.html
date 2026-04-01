@@ -84,6 +84,9 @@
         </div>
         <div class="dashboard-meta-row">
           <span class="data-chip">Trust reading: {{ dashboard.insight_summary.trust_label }}</span>
+          {% if dashboard.insight_summary.evidence_support_label %}
+            <span class="data-chip">{{ dashboard.insight_summary.evidence_support_label }}</span>
+          {% endif %}
           {% if dashboard.analysis_report.measurement_summary and dashboard.analysis_report.measurement_summary.semantic_mode %}
             <span class="data-chip">Evidence mode: {{ dashboard.analysis_report.measurement_summary.semantic_mode }}</span>
           {% endif %}
@@ -93,6 +96,9 @@
         <article class="dashboard-insight-callout">
           <span class="panel-label">Current read</span>
           <h3>{{ dashboard.insight_summary.headline }}</h3>
+          {% if dashboard.insight_summary.evidence_basis_summary %}
+            <p>{{ dashboard.insight_summary.evidence_basis_summary }}</p>
+          {% endif %}
           {% if dashboard.insight_summary.next_steps %}
             <ul class="compact-list">
               {% for item in dashboard.insight_summary.next_steps %}
@@ -126,6 +132,28 @@
           {% endif %}
         </article>
       </div>
+      {% if dashboard.insight_summary.model_basis_summary or dashboard.insight_summary.policy_basis_summary %}
+        <div class="dashboard-insight-grid">
+          {% if dashboard.insight_summary.model_basis_summary %}
+            <article class="dashboard-insight-card">
+              <span class="panel-label">{{ dashboard.insight_summary.model_basis_label or "Model basis" }}</span>
+              <p>{{ dashboard.insight_summary.model_basis_summary }}</p>
+            </article>
+          {% endif %}
+          {% if dashboard.insight_summary.policy_basis_summary %}
+            <article class="dashboard-insight-card">
+              <span class="panel-label">{{ dashboard.insight_summary.policy_basis_label or "Policy basis" }}</span>
+              <p>{{ dashboard.insight_summary.policy_basis_summary }}</p>
+            </article>
+          {% endif %}
+          {% if dashboard.insight_summary.bridge_state_summary %}
+            <article class="dashboard-insight-card">
+              <span class="panel-label">Bridge-state note</span>
+              <p>{{ dashboard.insight_summary.bridge_state_summary }}</p>
+            </article>
+          {% endif %}
+        </div>
+      {% endif %}
     </section>
   {% endif %}
 
@@ -171,44 +199,66 @@
       <div class="card-grid metrics-grid">
         {% if measurement_summary %}
           <article class="stat-card">
-            <span class="panel-label">Dataset interpretation mode</span>
+            <span class="panel-label">Dataset evidence mode</span>
             <strong>{{ measurement_summary.semantic_mode or "Not detected" }}</strong>
+            <p>Shows whether the run had measured values, labels, or only structure-level evidence.</p>
           </article>
           <article class="stat-card">
-            <span class="panel-label">Value column</span>
+            <span class="panel-label">Observed value column</span>
             <strong>{{ measurement_summary.value_column or "Not mapped" }}</strong>
+            <p>The uploaded column used as observed numeric evidence when values were available.</p>
           </article>
           <article class="stat-card">
-            <span class="panel-label">Rows with values</span>
+            <span class="panel-label">Rows with observed values</span>
             <strong>{{ measurement_summary.rows_with_values or 0 }}</strong>
+            <p>Rows that carry measured numeric evidence rather than only model inference.</p>
           </article>
           <article class="stat-card">
-            <span class="panel-label">Label source</span>
+            <span class="panel-label">Derived label source</span>
             <strong>{{ measurement_summary.label_source or "Missing" }}</strong>
+            <p>How any class labels were supplied or derived for this session.</p>
+          </article>
+        {% endif %}
+        {% if dashboard.insight_summary.evidence_basis_summary %}
+          <article class="stat-card">
+            <span class="panel-label">{{ dashboard.insight_summary.evidence_basis_label or "Evidence basis" }}</span>
+            <strong>{{ dashboard.insight_summary.evidence_support_label or "Not classified" }}</strong>
+            <p>{{ dashboard.insight_summary.evidence_basis_summary }}</p>
+          </article>
+        {% endif %}
+        {% if dashboard.insight_summary.model_basis_summary %}
+          <article class="stat-card">
+            <span class="panel-label">{{ dashboard.insight_summary.model_basis_label or "Model basis" }}</span>
+            <strong>{{ session_identity.modeling_mode_label or "Not recorded" }}</strong>
+            <p>{{ dashboard.insight_summary.model_basis_summary }}</p>
           </article>
         {% endif %}
         {% if ranking_policy.get("primary_score_label") %}
           <article class="stat-card">
             <span class="panel-label">Primary ranking signal</span>
             <strong>{{ ranking_policy.get("primary_score_label") }}</strong>
+            <p>Main policy signal used to order the shortlist after model and evidence signals were assembled.</p>
           </article>
         {% endif %}
         {% if ranking_policy.get("formula_label") %}
           <article class="stat-card">
             <span class="panel-label">Decision policy</span>
             <strong>{{ ranking_policy.get("formula_label") }}</strong>
+            <p>Policy layer that converts scientific signals into shortlist order.</p>
           </article>
         {% endif %}
         {% if ranking_diagnostics.get("spearman_rank_correlation") is not none %}
           <article class="stat-card">
             <span class="panel-label">Rank correlation</span>
             <strong>{{ "%.3f"|format(ranking_diagnostics.get("spearman_rank_correlation") or 0) }}</strong>
+            <p>Agreement between ranking order and uploaded measured values when those values exist.</p>
           </article>
         {% endif %}
         {% if ranking_diagnostics.get("out_of_domain_rate") is not none %}
           <article class="stat-card">
             <span class="panel-label">Weak-support rate</span>
             <strong>{{ "%.1f"|format((ranking_diagnostics.get("out_of_domain_rate") or 0) * 100) }}%</strong>
+            <p>Share of shortlist candidates that sit outside stronger chemistry support.</p>
           </article>
         {% endif %}
       </div>
@@ -301,9 +351,17 @@
               </ul>
             {% endif %}
             <p class="helper-copy">
-              Confidence {{ "%.3f"|format(candidate.confidence or 0) }},
-              uncertainty {{ "%.3f"|format(candidate.uncertainty or 0) }},
+              Model output:
+              {% if candidate.target_kind == "regression" and candidate.predicted_value is not none %}
+                predicted value {{ "%.3f"|format(candidate.predicted_value or 0) }},
+              {% endif %}
+              {{ candidate.confidence_label or "Confidence" }} {{ "%.3f"|format(candidate.confidence or 0) }},
+              {{ candidate.uncertainty_label or "Uncertainty" | lower }} {{ "%.3f"|format(candidate.uncertainty or 0) }},
               novelty {{ "%.3f"|format(candidate.novelty or 0) }}.
+            </p>
+            <p class="helper-copy">
+              Policy output: priority {{ "%.3f"|format(candidate.priority_score or 0) }},
+              experiment value {{ "%.3f"|format(candidate.experiment_value or 0) }}.
             </p>
             {% if candidate.primary_driver or candidate.domain_label %}
               <p class="helper-copy">
@@ -313,7 +371,7 @@
             {% endif %}
             {% if candidate.observed_value is not none or candidate.context %}
               <p class="helper-copy">
-                {% if candidate.observed_value is not none %}Observed value {{ "%.3f"|format(candidate.observed_value or 0) }}.{% endif %}
+                {% if candidate.observed_value is not none %}Observed evidence {{ "%.3f"|format(candidate.observed_value or 0) }}.{% endif %}
                 {% if candidate.context %} {{ candidate.context }}.{% endif %}
               </p>
             {% endif %}
@@ -341,8 +399,14 @@
             <tr>
               <th>Candidate</th>
               <th>SMILES</th>
-              <th>Confidence</th>
-              <th>Uncertainty</th>
+              {% if session_identity.target_definition.target_kind == "regression" %}
+                <th>Predicted Value</th>
+                <th>Ranking Compatibility</th>
+                <th>Prediction Dispersion</th>
+              {% else %}
+                <th>Confidence</th>
+                <th>Uncertainty</th>
+              {% endif %}
               <th>Novelty</th>
               <th>Priority Score</th>
               <th>Experiment Value</th>
@@ -355,8 +419,14 @@
             <tr>
               <td>{{ candidate.candidate_id or candidate.molecule_id or candidate.polymer or "-" }}</td>
               <td class="smiles-cell">{{ candidate.smiles }}</td>
-              <td>{{ "%.3f"|format(candidate.confidence) }}</td>
-              <td>{{ "%.3f"|format(candidate.uncertainty) }}</td>
+              {% if session_identity.target_definition.target_kind == "regression" %}
+                <td>{% if candidate.get('predicted_value') is not none %}{{ "%.3f"|format(candidate.get('predicted_value')) }}{% else %}-{% endif %}</td>
+                <td>{{ "%.3f"|format(candidate.confidence) }}</td>
+                <td>{{ "%.3f"|format(candidate.uncertainty) }}</td>
+              {% else %}
+                <td>{{ "%.3f"|format(candidate.confidence) }}</td>
+                <td>{{ "%.3f"|format(candidate.uncertainty) }}</td>
+              {% endif %}
               <td>{{ "%.3f"|format(candidate.novelty) }}</td>
               <td>{{ "%.3f"|format(candidate.priority_score or 0) }}</td>
               <td>{{ "%.3f"|format(candidate.experiment_value) }}</td>
@@ -365,7 +435,7 @@
             </tr>
           {% else %}
             <tr>
-              <td colspan="9" class="empty-cell">{{ dashboard.state.message }}</td>
+              <td colspan="{% if session_identity.target_definition.target_kind == 'regression' %}10{% else %}9{% endif %}" class="empty-cell">{{ dashboard.state.message }}</td>
             </tr>
           {% endfor %}
         </tbody>

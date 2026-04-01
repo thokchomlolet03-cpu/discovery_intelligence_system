@@ -172,6 +172,75 @@
     {% include "_session_comparison_matrix.html" %}
   {% endwith %}
 
+  {% set workspace_feedback = session_history.workspace_feedback or {} %}
+  {% if workspace_feedback.event_count or (workspace_feedback.focus_memory and workspace_feedback.focus_memory.matched_candidate_count) %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Workspace Feedback Memory</h2>
+          <p class="helper-copy">Use this panel to see whether past review decisions are carrying forward into the current workspace shortlist.</p>
+        </div>
+      </div>
+      <div class="session-history-grid">
+        <article class="session-mini-card">
+          <span class="panel-label">Feedback events</span>
+          <strong>{{ workspace_feedback.event_count }}</strong>
+          <p>Saved review actions recorded across this workspace.</p>
+        </article>
+        <article class="session-mini-card">
+          <span class="panel-label">Sessions with feedback</span>
+          <strong>{{ workspace_feedback.session_count }}</strong>
+          <p>Earlier sessions that already contain recorded reviewer evidence.</p>
+        </article>
+        <article class="session-mini-card">
+          <span class="panel-label">Reviewed molecules</span>
+          <strong>{{ workspace_feedback.candidate_count }}</strong>
+          <p>Unique molecules with at least one saved review event.</p>
+        </article>
+        <article class="session-mini-card">
+          <span class="panel-label">Carryover into focus</span>
+          <strong>{{ (workspace_feedback.focus_memory or {}).matched_candidate_count or 0 }}</strong>
+          <p>Focus-session shortlist candidates that were already seen in earlier workspace work.</p>
+        </article>
+      </div>
+
+      {% if workspace_feedback.focus_memory %}
+        <div class="mini-callout">
+          <span class="panel-label">Focus session memory</span>
+          <p>{{ workspace_feedback.focus_memory.summary }}</p>
+        </div>
+      {% endif %}
+
+      {% if workspace_feedback.focus_memory and workspace_feedback.focus_memory.matches %}
+        <div class="mini-callout">
+          <span class="panel-label">Carryover candidates</span>
+          <ul class="compact-list">
+            {% for item in workspace_feedback.focus_memory.matches %}
+              <li>
+                {{ item.label }} last reached {{ item.last_status_label }} in {{ item.last_session_label }}
+                on {{ item.last_reviewed_at_label }}{% if item.last_note %}: {{ item.last_note }}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if workspace_feedback.latest_events %}
+        <div class="mini-callout">
+          <span class="panel-label">Recent workspace feedback</span>
+          <ul class="compact-list">
+            {% for item in workspace_feedback.latest_events %}
+              <li>
+                {{ item.session_label }}: {{ item.status_label }} via {{ item.action_label }} for
+                {{ item.candidate_id or item.smiles }} on {{ item.reviewed_at_label }}{% if item.note %}: {{ item.note }}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+
   {% if session_history.continuation_items %}
     <section class="panel">
       <div class="section-header">
@@ -248,6 +317,20 @@
               <div class="mini-callout">
                 <span class="panel-label">Comparison basis</span>
                 <p>{{ item.comparison_basis_label }}</p>
+              </div>
+            {% endif %}
+            {% if item.workspace_memory and item.workspace_memory.matched_candidate_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Workspace memory</span>
+                <p>{{ item.workspace_memory.summary }}</p>
+                <ul class="compact-list">
+                  {% for match in item.workspace_memory.matches[:3] %}
+                    <li>
+                      {{ match.label }} previously reached {{ match.last_status_label }} in
+                      {{ match.last_session_label }} on {{ match.last_reviewed_at_label }}
+                    </li>
+                  {% endfor %}
+                </ul>
               </div>
             {% endif %}
             {% if item.comparison_to_focus %}
@@ -356,6 +439,20 @@
               <div class="mini-callout">
                 <span class="panel-label">Comparison basis</span>
                 <p>{{ item.comparison_basis_label }}</p>
+              </div>
+            {% endif %}
+            {% if item.workspace_memory and item.workspace_memory.matched_candidate_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Workspace memory</span>
+                <p>{{ item.workspace_memory.summary }}</p>
+                <ul class="compact-list">
+                  {% for match in item.workspace_memory.matches[:3] %}
+                    <li>
+                      {{ match.label }} previously reached {{ match.last_status_label }} in
+                      {{ match.last_session_label }} on {{ match.last_reviewed_at_label }}
+                    </li>
+                  {% endfor %}
+                </ul>
               </div>
             {% endif %}
             {% if item.comparison_to_focus %}

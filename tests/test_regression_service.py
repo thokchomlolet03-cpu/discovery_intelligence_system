@@ -48,6 +48,7 @@ class RegressionServiceTest(unittest.TestCase):
         self.assertIn("uncertainty", scored.columns)
         self.assertTrue(scored["confidence"].between(0.0, 1.0).all())
         self.assertTrue((scored["prediction_dispersion"] >= 0.0).all())
+        self.assertTrue((scored["predicted_value"].notna()).all())
 
 
 if __name__ == "__main__":

@@ -83,8 +83,32 @@ class V21Test(unittest.TestCase):
         self.assertEqual(decision["iteration"], 3)
         self.assertEqual(decision["top_experiments"][0]["smiles"], "CCO")
         self.assertEqual(decision["top_experiments"][0]["risk"], "high")
-        self.assertIn("low logP -> likely biodegradable", decision["top_experiments"][0]["explanation"])
+        self.assertIn("low logP is one of the chemistry features influencing this model judgment", decision["top_experiments"][0]["explanation"])
         self.assertEqual(risk_level(frame.iloc[1]), "low")
+
+    def test_decision_engine_keeps_target_specific_biodegradability_rules_when_target_matches(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "polymer": "cand_a",
+                    "smiles": "CCO",
+                    "confidence": 0.4,
+                    "uncertainty": 0.8,
+                    "novelty": 0.7,
+                    "experiment_value": 0.9,
+                    "selection_bucket": "learn",
+                    "accepted_for_feedback": True,
+                    "rdkit_logp": -0.2,
+                    "mw": 120.0,
+                    "h_acceptors": 5,
+                }
+            ]
+        )
+        frame.attrs["target_definition"] = {"target_name": "biodegradability"}
+
+        decision = build_decision_package(frame, iteration=1)
+
+        self.assertIn("low logP -> likely biodegradable", decision["top_experiments"][0]["explanation"])
 
 
 if __name__ == "__main__":

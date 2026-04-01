@@ -14,6 +14,9 @@
           <span class="session-state-pill session-state-pill-{{ session_identity.session_status_tone or 'muted' }}">
             {{ session_identity.session_status.replace("_", " ") | title }}
           </span>
+          {% if session_identity.evidence_support_label %}
+            <span class="data-chip">{{ session_identity.evidence_support_label }}</span>
+          {% endif %}
           {% if session_identity.current_job_status %}
             <span class="data-chip">Job {{ session_identity.current_job_status.replace("_", " ") }}</span>
           {% endif %}
@@ -50,7 +53,11 @@
         <p>{{ session_identity.scientific_purpose or "Scientific purpose was not recorded for this session." }}</p>
       </article>
       <article class="dashboard-insight-card">
-        <span class="panel-label">Trust summary</span>
+        <span class="panel-label">Observed evidence basis</span>
+        <p>{{ session_identity.evidence_summary or "Evidence basis was not recorded for this session." }}</p>
+      </article>
+      <article class="dashboard-insight-card">
+        <span class="panel-label">Trust framing</span>
         <p>{{ session_identity.trust_summary or "No trust summary is available for this session yet." }}</p>
       </article>
       <article class="dashboard-insight-card">
@@ -61,5 +68,12 @@
         {% endif %}
       </article>
     </div>
+
+    {% if session_identity.bridge_state_summary %}
+      <article class="dashboard-insight-callout">
+        <span class="panel-label">Bridge-state note</span>
+        <p>{{ session_identity.bridge_state_summary }}</p>
+      </article>
+    {% endif %}
   </section>
 {% endif %}

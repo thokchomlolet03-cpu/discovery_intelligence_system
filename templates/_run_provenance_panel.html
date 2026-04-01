@@ -13,6 +13,9 @@
         {% if run_provenance.comparison_ready %}
           <span class="data-chip">Comparison ready</span>
         {% endif %}
+        {% if run_provenance.bridge_state_active %}
+          <span class="data-chip">Bridge-state fallback</span>
+        {% endif %}
         {% if run_provenance.policy_version %}
           <span class="data-chip">{{ run_provenance.policy_version }}</span>
         {% endif %}
@@ -42,9 +45,12 @@
       </article>
     </div>
 
-    {% if run_provenance.fallback_reason or run_provenance.cautions %}
+    {% if run_provenance.bridge_state_summary or run_provenance.fallback_reason or run_provenance.cautions %}
       <article class="dashboard-insight-card">
-        <span class="panel-label">Comparison cautions</span>
+        <span class="panel-label">Bridge-state cautions</span>
+        {% if run_provenance.bridge_state_summary %}
+          <p>{{ run_provenance.bridge_state_summary }}</p>
+        {% endif %}
         {% if run_provenance.fallback_reason %}
           <p class="helper-copy">Fallback: {{ run_provenance.fallback_reason.replace("_", " ") }}</p>
         {% endif %}

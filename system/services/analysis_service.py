@@ -16,7 +16,7 @@ from models.train_model import train_model as train_modular_model
 from selection.scorer import score_candidates
 from selection.selector import select_candidates
 from system.services.candidate_service import candidate_similarity_table
-from system.services.data_service import labeled_subset, reference_smiles_from_dataset, regression_subset
+from system.services.data_service import canonical_label_column, labeled_subset, reference_smiles_from_dataset, regression_subset
 from system.services.decision_service import decorate_candidates
 from system.services.prediction_service import predict_with_model
 from system.services.regression_service import train_regression_model
@@ -66,7 +66,7 @@ def build_discovery_result(
     )
     model, feature_contract, bundle = train_modular_model(
         X_train,
-        clean_labeled["biodegradable"].astype(int),
+        clean_labeled[canonical_label_column(clean_labeled)].astype(int),
         config=config,
         random_state=seed,
     )
@@ -238,7 +238,7 @@ def build_prediction_result(
         )
         model, feature_contract, bundle = train_modular_model(
             X_train,
-            clean_labeled["biodegradable"].astype(int),
+            clean_labeled[canonical_label_column(clean_labeled)].astype(int),
             config=config,
             random_state=seed,
         )
@@ -259,29 +259,30 @@ def build_prediction_result(
         model_path = Path("rf_model_v1.joblib")
         if not model_path.exists():
             raise ValueError(
-                "Upload contains no usable labels for session training, and no trained model bundle was found at rf_model_v1.joblib."
+                "Upload contains no usable labels for session training, and no legacy baseline classification bundle was found at rf_model_v1.joblib."
             )
         _emit_progress(
             progress_callback,
             stage="scoring_candidates",
-            message="Loading the baseline model bundle.",
+            message="Loading the legacy baseline classification bundle.",
             percent=48,
         )
         bundle = load_model_bundle(model_path)
         bundle["target_definition"] = target_definition
         bundle["training_scope"] = "baseline_bundle"
         bundle["model_source"] = str(model_path)
+        bundle["model_source_role"] = "legacy_baseline_classification_bundle"
         _emit_progress(
             progress_callback,
             stage="scoring_candidates",
-            message="Preparing features for baseline model inference.",
+            message="Preparing features for legacy baseline model inference.",
             percent=58,
         )
         _, clean_features = build_features(feasible, feature_contract=bundle.get("features"))
         _emit_progress(
             progress_callback,
             stage="scoring_candidates",
-            message="Running baseline model inference on uploaded molecules.",
+            message="Running legacy baseline model inference on uploaded molecules.",
             percent=66,
         )
         scored = predict_with_model(bundle, clean_features, config=bundle.get("config"))

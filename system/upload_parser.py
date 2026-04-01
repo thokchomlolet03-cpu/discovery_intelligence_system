@@ -340,11 +340,11 @@ def build_analysis_frame(
 
     label_column = roles.get("label")
     if label_column and label_column in mapped.columns:
-        mapped["biodegradable"] = mapped[label_column].apply(coerce_label)
+        mapped["target_label"] = mapped[label_column].apply(coerce_label)
     elif label_builder_payload.get("enabled") and value_column and value_column in mapped.columns:
-        mapped["biodegradable"] = derive_labels_from_values(mapped[value_column], label_builder_payload)
+        mapped["target_label"] = derive_labels_from_values(mapped[value_column], label_builder_payload)
     else:
-        mapped["biodegradable"] = pd.Series([-1] * len(mapped), index=mapped.index, dtype=int)
+        mapped["target_label"] = pd.Series([-1] * len(mapped), index=mapped.index, dtype=int)
 
     optional_mappings = {
         "entity_id": roles.get("entity_id"),
@@ -362,7 +362,7 @@ def build_analysis_frame(
             mapped[field] = ""
 
     mapped["molecule_id"] = mapped["entity_id"]
-    mapped["biodegradable"] = pd.to_numeric(mapped["biodegradable"], errors="coerce").fillna(-1).astype(int)
-    mapped["target_label"] = mapped["biodegradable"]
+    mapped["target_label"] = pd.to_numeric(mapped["target_label"], errors="coerce").fillna(-1).astype(int)
+    mapped["biodegradable"] = mapped["target_label"]
     mapped["target_value"] = pd.to_numeric(mapped["value"], errors="coerce")
     return mapped

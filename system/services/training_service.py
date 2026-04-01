@@ -26,6 +26,7 @@ from system.services.data_service import (
     DEFAULT_FINGERPRINT_BITS,
     DESCRIPTOR_COLUMNS,
     MODEL_FEATURES,
+    canonical_label_column,
     feature_columns_from_df,
     labeled_subset,
 )
@@ -197,7 +198,7 @@ def train_model(df, random_state=42, config=None):
     labeled = labeled_subset(df)
     features = feature_columns_from_df(labeled if not labeled.empty else df)
     X = labeled.reindex(columns=features).fillna(0).astype(float)
-    y = labeled["biodegradable"].astype(int)
+    y = labeled[canonical_label_column(labeled)].astype(int)
 
     ensure_training_labels(y)
 

@@ -261,6 +261,11 @@ def run_pipeline(
     elif intent == "generate_candidates" and not target_model_available:
         warnings.append("The upload did not contain enough labeled examples per class for session-trained candidate generation, so the run fell back to ranking uploaded molecules.")
         scientific_contract["fallback_reason"] = "insufficient_training_data_for_candidate_generation"
+    elif isinstance(bundle, dict) and str(bundle.get("training_scope") or "").strip().lower() == "baseline_bundle":
+        warnings.append(
+            "This run reused the legacy baseline classification bundle instead of training on the current session, so treat the ranking as bridge-state guidance rather than target-neutral evidence."
+        )
+        scientific_contract["fallback_reason"] = "legacy_baseline_bundle_reused"
 
     if bundle is not None:
         bundle["contract_versions"] = contract_versions

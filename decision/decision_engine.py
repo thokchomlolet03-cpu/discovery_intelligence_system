@@ -30,26 +30,27 @@ def risk_level(row, config=None):
 
 def decision_explanations(row, target_definition=None):
     target_definition = target_definition or {}
-    target_name = str(target_definition.get("target_name") or "").strip().lower()
-    biodegradability_mode = (not target_definition) or ("biodegrad" in target_name)
+    target_name = str(target_definition.get("target_name") or row.get("target") or "").strip()
+    normalized_target_name = target_name.lower()
+    biodegradability_mode = "biodegrad" in normalized_target_name
     explanations = []
     if float(row.get("rdkit_logp", row.get("logp", 0.0))) < HYDROPHILIC_LOGP_THRESHOLD:
         explanations.append(
             "low logP -> likely biodegradable"
             if biodegradability_mode
-            else "low logP is one of the chemistry features influencing this model judgment"
+            else f"low logP is one of the chemistry features influencing this model judgment{f' for {target_name}' if target_name else ''}"
         )
     if float(row.get("mw", 0.0)) < LOW_MW_THRESHOLD:
         explanations.append(
             "low molecular weight -> degradability favorable"
             if biodegradability_mode
-            else "low molecular weight is one of the chemistry features influencing this model judgment"
+            else f"low molecular weight is one of the chemistry features influencing this model judgment{f' for {target_name}' if target_name else ''}"
         )
     if float(row.get("h_acceptors", 0.0)) >= HIGH_H_ACCEPTORS_THRESHOLD:
         explanations.append(
             "high H-bond acceptors -> biodegradable tendency"
             if biodegradability_mode
-            else "high H-bond acceptors are one of the chemistry features influencing this model judgment"
+            else f"high H-bond acceptors are one of the chemistry features influencing this model judgment{f' for {target_name}' if target_name else ''}"
         )
     if not explanations:
         explanations.append(

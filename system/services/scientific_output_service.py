@@ -49,8 +49,18 @@ def build_model_judgment(row, *, target_definition: dict[str, Any] | None) -> di
         except (TypeError, ValueError):
             predicted_label = None
 
+    target_name = str(target_definition.get("target_name") or "the session target")
+
     if target_kind == "regression":
-        model_summary = "The model produced a continuous target prediction and a dispersion-based uncertainty estimate."
+        try:
+            compatibility = float(row.get("confidence"))
+            compatibility_text = f" Normalized ranking compatibility is {compatibility:.3f}; this is desirability for ordering, not the predicted value itself."
+        except (TypeError, ValueError):
+            compatibility_text = ""
+        model_summary = (
+            f"The model produced a continuous prediction for {target_name} plus a dispersion-based uncertainty estimate."
+            f"{compatibility_text}"
+        )
     else:
         model_summary = "The model produced a positive-class probability estimate and a probability-based uncertainty score."
 
@@ -58,7 +68,7 @@ def build_model_judgment(row, *, target_definition: dict[str, Any] | None) -> di
         {
             "target_kind": target_kind,
             "predicted_label": predicted_label,
-            "positive_class_name": str(target_definition.get("target_name") or "positive class"),
+            "positive_class_name": target_name,
             "confidence": row.get("confidence"),
             "uncertainty": row.get("uncertainty"),
             "uncertainty_kind": row.get("uncertainty_kind")
@@ -98,11 +108,24 @@ def build_decision_policy(row) -> dict[str, Any]:
 def build_scientific_recommendation(row, *, rationale: dict[str, Any] | None = None) -> dict[str, Any]:
     rationale = rationale or {}
     cautions = list(rationale.get("cautions") or [])
+    target_definition = row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {}
+    target_kind = str(target_definition.get("target_kind") or "classification")
+    target_name = str(target_definition.get("target_name") or "the session target")
+    predicted_value = row.get("predicted_value")
+    if target_kind == "regression":
+        if predicted_value is not None:
+            follow_up = (
+                f"Measure {target_name} experimentally to validate the predicted value of {float(predicted_value):.3f}."
+            )
+        else:
+            follow_up = f"Run a direct measurement assay for {target_name} to validate the ranking."
+    else:
+        follow_up = "Review and confirm experimentally."
     return validate_scientific_recommendation(
         {
             "recommended_action": rationale.get("recommended_action") or row.get("selection_reason") or "Review before testing.",
             "summary": rationale.get("summary") or "Recommendation details unavailable.",
-            "follow_up_experiment": rationale.get("recommended_action") or "Review and confirm experimentally.",
+            "follow_up_experiment": rationale.get("recommended_action") or follow_up,
             "trust_cautions": cautions,
         }
     )
@@ -115,8 +138,10 @@ def build_normalized_explanation(
     target_definition: dict[str, Any] | None,
     model_judgment: dict[str, Any],
     decision_policy: dict[str, Any],
+    novelty_signal: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     rationale = rationale or {}
+    novelty_signal = novelty_signal or {}
     target_name = str((target_definition or {}).get("target_name") or "the session target")
     target_kind = str((target_definition or {}).get("target_kind") or "classification")
 
@@ -126,6 +151,10 @@ def build_normalized_explanation(
             if row.get("predicted_value") is not None
             else f"The model did not produce a usable continuous prediction for {target_name}."
         )
+        if row.get("confidence") is not None:
+            prediction_text += (
+                f" Normalized ranking compatibility is {float(row.get('confidence')):.3f}; this supports ordering but is not the same as the predicted value."
+            )
     else:
         if row.get("confidence") is None:
             prediction_text = f"The model did not produce a usable classification confidence for {target_name}."
@@ -134,12 +163,23 @@ def build_normalized_explanation(
                 f"The model estimates a positive-class probability of {float(row.get('confidence')):.3f} for {target_name}."
             )
 
-    uncertainty_text = (
-        f"Uncertainty is {float(row.get('uncertainty')):.3f}."
-        if row.get("uncertainty") is not None
-        else "Uncertainty was not available for this candidate."
-    )
-    novelty_text = str((model_judgment.get("novelty_signal") or {}).get("summary") or "Novelty support was not available.")
+    if row.get("uncertainty") is not None:
+        if target_kind == "regression":
+            uncertainty_text = (
+                f"Prediction dispersion is {float(row.get('uncertainty')):.3f}; higher values mean the regression estimate is less stable across the ensemble."
+            )
+        else:
+            uncertainty_text = f"Uncertainty is {float(row.get('uncertainty')):.3f}."
+    else:
+        uncertainty_text = "Uncertainty was not available for this candidate."
+    novelty_text = str(novelty_signal.get("summary") or "Novelty support was not available.")
+    if target_kind == "regression":
+        recommended_followup = (
+            rationale.get("recommended_action")
+            or f"Validate the predicted {target_name} value experimentally before treating the ranking as outcome truth."
+        )
+    else:
+        recommended_followup = rationale.get("recommended_action") or "Review and confirm experimentally."
 
     return validate_normalized_explanation(
         {
@@ -150,7 +190,7 @@ def build_normalized_explanation(
             "uncertainty_summary": uncertainty_text,
             "novelty_summary": novelty_text,
             "decision_policy_reason": str(decision_policy.get("policy_summary") or ""),
-            "recommended_followup": rationale.get("recommended_action") or "Review and confirm experimentally.",
+            "recommended_followup": recommended_followup,
             "trust_cautions": rationale.get("cautions") or [],
         }
     )

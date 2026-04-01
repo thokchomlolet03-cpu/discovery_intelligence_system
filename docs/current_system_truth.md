@@ -1,0 +1,11 @@
+# Current System Truth
+
+Discovery Intelligence today is a session-aware molecular decision-support workbench. It lets users upload data, run prioritization workflows, review candidates, reopen sessions, compare runs, and carry forward workspace feedback. It is a real product surface with operational scaffolding, not just a modeling script.
+
+What it is good at today is workflow continuity, reviewability, session persistence, decision traceability, and increasingly honest session rendering. The strongest current scientific truth is that it can produce recommendation lists from chemistry-based representations with explicit session context, target-aware caution signals, and clearer regression-vs-classification semantics. The strongest current product truth is that Upload, Discovery, Dashboard, and Sessions now behave like one connected workbench.
+
+What it is not yet is a true scientific discovery engine or a mature evidence-learning system. The main scientific weakness is that the core still relies heavily on random-forest scoring, similarity-based novelty/applicability heuristics, and a remaining legacy baseline fallback path. The main architectural weakness is split truth across database control-plane state and filesystem artifact reconstruction, even though Discovery and Dashboard now surface the run contract and bridge-state caveats more directly.
+
+What must not be overstated: recommendations are not experimental truth, workspace memory is not yet the same as model learning, and broader product language should not imply the scientific core is already fully target-neutral or discovery-complete. Silent generic biodegradability defaults have been reduced, but backward-compatibility adapters and the legacy baseline bundle still remain.
+
+The next strategic direction is to keep making the bridge-state scientific core more honest without breaking the workbench. The product surface now separates evidence, model output, policy output, bridge-state fallback, and measurement-first ranking semantics more clearly, so the next step is to tighten the remaining scientific contract itself: reduce fallback dependence, define a real evidence-to-learning loop, and move toward a cleaner canonical scientific session object before adding more surface complexity.

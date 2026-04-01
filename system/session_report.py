@@ -57,22 +57,67 @@ def _normalized_priority_weights(intent: str, scoring_mode: str) -> dict[str, fl
     return {key: max(value, 0.0) / total for key, value in weights.items()}
 
 
-def ranking_policy(intent: str, scoring_mode: str) -> dict[str, Any]:
+def _is_regression_context(
+    *,
+    target_definition: dict[str, Any] | None,
+    modeling_mode: str | None,
+) -> bool:
+    target_definition = target_definition or {}
+    target_kind = str(target_definition.get("target_kind") or "").strip().lower()
+    mode = str(modeling_mode or "").strip().lower()
+    return target_kind == "regression" or mode == "regression"
+
+
+def ranking_policy(
+    intent: str,
+    scoring_mode: str,
+    *,
+    target_definition: dict[str, Any] | None = None,
+    modeling_mode: str | None = None,
+) -> dict[str, Any]:
     cleaned_intent = (intent or "rank_uploaded_molecules").strip().lower()
     weights = _normalized_priority_weights(cleaned_intent, scoring_mode)
+    regression_context = _is_regression_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
 
-    if cleaned_intent == "predict_labels":
+    if cleaned_intent == "predict_labels" and not regression_context:
         primary_score = "confidence"
         sort_order = ["confidence", "priority_score", "novelty"]
         summary = "Candidate order prioritizes model confidence first, then the weighted priority score and novelty."
     elif cleaned_intent == "explore_uncertain":
         primary_score = "uncertainty"
         sort_order = ["uncertainty", "novelty", "priority_score"]
-        summary = "Candidate order prioritizes uncertainty first so the shortlist focuses on reducing model blind spots."
+        if regression_context:
+            summary = (
+                "Candidate order prioritizes prediction dispersion first so the shortlist focuses on reducing "
+                "uncertain value estimates."
+            )
+        else:
+            summary = "Candidate order prioritizes uncertainty first so the shortlist focuses on reducing model blind spots."
     else:
         primary_score = "priority_score"
         sort_order = ["priority_score", "experiment_value", "novelty"]
-        summary = "Candidate order prioritizes the weighted priority score first, then experiment value and novelty."
+        if regression_context:
+            summary = (
+                "Candidate order prioritizes the weighted priority score first, then experiment value and novelty. "
+                "For regression runs, predicted value and normalized ranking compatibility remain separate signals."
+            )
+        else:
+            summary = "Candidate order prioritizes the weighted priority score first, then experiment value and novelty."
+
+    if regression_context:
+        formula_text = (
+            "priority_score combines normalized ranking compatibility, prediction dispersion, novelty, and "
+            "experiment value using the current scoring mode and intent. Ranking compatibility is a normalized "
+            "desirability signal for ordering candidates, not the predicted continuous value itself."
+        )
+    else:
+        formula_text = (
+            "priority_score combines confidence, uncertainty, novelty, and experiment value using the current "
+            "scoring mode and intent."
+        )
 
     return {
         "primary_score": primary_score,
@@ -80,18 +125,30 @@ def ranking_policy(intent: str, scoring_mode: str) -> dict[str, Any]:
         "weights": weights,
         "formula_label": "priority_score",
         "formula_summary": summary,
-        "formula_text": "priority_score combines confidence, uncertainty, novelty, and experiment value using the current scoring mode and intent.",
+        "formula_text": formula_text,
     }
 
 
-def apply_priority_scores(df: pd.DataFrame, intent: str, scoring_mode: str) -> pd.DataFrame:
+def apply_priority_scores(
+    df: pd.DataFrame,
+    intent: str,
+    scoring_mode: str,
+    *,
+    target_definition: dict[str, Any] | None = None,
+    modeling_mode: str | None = None,
+) -> pd.DataFrame:
     prioritized = df.copy()
     for column in ("confidence", "uncertainty", "novelty", "experiment_value"):
         if column not in prioritized.columns:
             prioritized[column] = 0.0
         prioritized[column] = pd.to_numeric(prioritized[column], errors="coerce").fillna(0.0)
 
-    policy = ranking_policy(intent, scoring_mode)
+    policy = ranking_policy(
+        intent,
+        scoring_mode,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
     weights = policy["weights"]
 
     prioritized["priority_weight_confidence"] = weights["confidence"]
@@ -142,13 +199,51 @@ def build_warnings(
     return warnings
 
 
-def recommendation_summary(candidates: list[dict[str, Any]], intent: str) -> str:
+def recommendation_summary(
+    candidates: list[dict[str, Any]],
+    intent: str,
+    *,
+    target_definition: dict[str, Any] | None = None,
+    modeling_mode: str | None = None,
+) -> str:
     if not candidates:
         return "No prioritized candidates were produced from this run."
 
     top = candidates[0]
     bucket = top.get("bucket") or top.get("selection_bucket") or "priority"
     risk = top.get("risk") or top.get("risk_level") or "unknown"
+    regression_context = _is_regression_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
+    target_definition = target_definition or {}
+    target_name = str(target_definition.get("target_name") or "the session target").strip()
+    optimization_direction = str(target_definition.get("optimization_direction") or "").strip().lower()
+    predicted_value = top.get("predicted_value")
+
+    if regression_context:
+        if intent == "explore_uncertain":
+            return (
+                f"Use the highest-dispersion molecules to reduce uncertainty around {target_name}. "
+                f"Current lead bucket: {bucket}; risk: {risk}."
+            )
+        predicted_text = ""
+        try:
+            predicted_text = f" Predicted value: {float(predicted_value):.3f}."
+        except (TypeError, ValueError):
+            predicted_text = ""
+        if optimization_direction == "minimize":
+            direction_text = "Lower predicted values are being treated as more favorable in this session."
+        elif optimization_direction == "maximize":
+            direction_text = "Higher predicted values are being treated as more favorable in this session."
+        else:
+            direction_text = "The shortlist uses the session's target direction and policy weighting to order predicted values."
+        return (
+            f"Start review with the highest-priority measurement candidates and validate the predicted continuous values "
+            f"experimentally rather than reading the shortlist as class membership. Current lead bucket: {bucket}; risk: {risk}."
+            f"{predicted_text} {direction_text}"
+        )
+
     if intent == "predict_labels":
         return f"Use the highest-confidence molecules as screening leads, but confirm them experimentally. Current lead bucket: {bucket}; risk: {risk}."
     if intent == "explore_uncertain":
@@ -186,15 +281,34 @@ def _bucket_counts(frame: pd.DataFrame | None) -> dict[str, int]:
     return {str(key): int(value) for key, value in counts.items()}
 
 
-def _ranking_diagnostics(frame: pd.DataFrame | None, *, intent: str, scoring_mode: str) -> dict[str, Any]:
+def _ranking_diagnostics(
+    frame: pd.DataFrame | None,
+    *,
+    intent: str,
+    scoring_mode: str,
+    target_definition: dict[str, Any] | None = None,
+    modeling_mode: str | None = None,
+) -> dict[str, Any]:
     if frame is None or frame.empty:
         return {}
 
-    policy = ranking_policy(intent, scoring_mode)
+    policy = ranking_policy(
+        intent,
+        scoring_mode,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
+    regression_context = _is_regression_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
     diagnostics: dict[str, Any] = {
         "scored_candidates": int(len(frame)),
         "bucket_counts": _bucket_counts(frame),
         "score_basis": str(policy["primary_score"]),
+        "score_basis_label": (
+            "Ranking compatibility" if regression_context and str(policy["primary_score"]) == "confidence" else str(policy["primary_score"])
+        ),
     }
 
     if "max_similarity" in frame.columns:
@@ -208,6 +322,19 @@ def _ranking_diagnostics(frame: pd.DataFrame | None, *, intent: str, scoring_mod
         if novelty.notna().any():
             diagnostics["mean_novelty"] = float(novelty.dropna().mean())
 
+    if regression_context:
+        compatibility = pd.to_numeric(frame["confidence"], errors="coerce") if "confidence" in frame.columns else pd.Series(dtype=float)
+        if compatibility.notna().any():
+            diagnostics["mean_ranking_compatibility"] = float(compatibility.dropna().mean())
+        if "predicted_value" in frame.columns:
+            predicted_value = pd.to_numeric(frame["predicted_value"], errors="coerce")
+            if predicted_value.notna().any():
+                diagnostics["mean_predicted_value"] = float(predicted_value.dropna().mean())
+        if "prediction_dispersion" in frame.columns:
+            dispersion = pd.to_numeric(frame["prediction_dispersion"], errors="coerce")
+            if dispersion.notna().any():
+                diagnostics["mean_prediction_dispersion"] = float(dispersion.dropna().mean())
+
     if "value" not in frame.columns:
         return diagnostics
 
@@ -220,7 +347,12 @@ def _ranking_diagnostics(frame: pd.DataFrame | None, *, intent: str, scoring_mod
     diagnostics["mean_observed_value"] = float(observed_value[valid].mean())
 
     score_column = ""
-    for candidate in [str(policy["primary_score"])] + [item for item in ("priority_score", "experiment_value", "confidence") if item != policy["primary_score"]]:
+    score_candidates = [str(policy["primary_score"])]
+    if regression_context:
+        score_candidates.extend(["predicted_value", "priority_score", "experiment_value", "confidence"])
+    else:
+        score_candidates.extend(["priority_score", "experiment_value", "confidence"])
+    for candidate in score_candidates:
         if candidate in frame.columns:
             score_column = candidate
             break
@@ -234,6 +366,14 @@ def _ranking_diagnostics(frame: pd.DataFrame | None, *, intent: str, scoring_mod
 
     if len(aligned) >= 2:
         diagnostics["spearman_rank_correlation"] = float(aligned["observed"].rank().corr(aligned["modeled"].rank()))
+
+    if regression_context and "predicted_value" in frame.columns:
+        predicted = pd.to_numeric(frame["predicted_value"], errors="coerce")
+        predicted_aligned = pd.DataFrame({"observed": observed_value, "predicted": predicted}).dropna()
+        if len(predicted_aligned) >= 2:
+            diagnostics["predicted_value_rank_correlation"] = float(
+                predicted_aligned["observed"].rank().corr(predicted_aligned["predicted"].rank())
+            )
 
     top_k = min(10, len(aligned))
     ranked = aligned.sort_values("modeled", ascending=False)
@@ -313,10 +453,26 @@ def build_analysis_report(
         "consent_learning": consent_learning,
         "top_candidates_returned": int(len(top_candidates)),
         "measurement_summary": _measurement_summary(validation),
-        "ranking_diagnostics": _ranking_diagnostics(scored_frame, intent=intent, scoring_mode=scoring_mode),
-        "ranking_policy": ranking_policy(intent, scoring_mode),
+        "ranking_diagnostics": _ranking_diagnostics(
+            scored_frame,
+            intent=intent,
+            scoring_mode=scoring_mode,
+            target_definition=target_definition,
+            modeling_mode=modeling_mode,
+        ),
+        "ranking_policy": ranking_policy(
+            intent,
+            scoring_mode,
+            target_definition=target_definition,
+            modeling_mode=modeling_mode,
+        ),
         "warnings": warnings,
-        "top_level_recommendation_summary": recommendation_summary(top_candidates, intent),
+        "top_level_recommendation_summary": recommendation_summary(
+            top_candidates,
+            intent,
+            target_definition=target_definition,
+            modeling_mode=modeling_mode,
+        ),
         "target_definition": target_definition or {},
         "run_contract": run_contract or {},
         "comparison_anchors": comparison_anchors or {},

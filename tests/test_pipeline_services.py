@@ -115,6 +115,7 @@ class PipelineServicesTest(unittest.TestCase):
         )
 
         self.assertEqual(prepared["biodegradable"].tolist(), [1, 0, -1])
+        self.assertEqual(prepared["target_label"].tolist(), [1, 0, -1])
         self.assertEqual(prepared["molecule_id"].tolist(), ["mol_1", "mol_2", "mol_3"])
         self.assertEqual(prepared["assay"].tolist(), ["screen_a", "screen_a", "screen_a"])
         self.assertEqual(int(summary["rows_with_values"]), 2)
@@ -296,6 +297,66 @@ class PipelineServicesTest(unittest.TestCase):
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")
     @patch("system.run_pipeline.build_prediction_result")
+    def test_run_pipeline_marks_legacy_baseline_bundle_as_bridge_state(
+        self,
+        build_prediction_result_mock,
+        persist_review_queue_mock,
+        build_discovery_result_mock,
+    ):
+        session_id = "session_baseline_bridge"
+        scored = pd.DataFrame([{"smiles": "CCO", "confidence": 0.91, "uncertainty": 0.10, "novelty": 0.58}])
+        build_prediction_result_mock.return_value = (
+            {
+                "mode": "prediction",
+                "message": "Ranked uploaded molecules for review using the current scoring workflow.",
+                "summary": {"scored_candidates": 1},
+                "top_candidates": [],
+                "decision_output": canonical_decision_output(session_id),
+            },
+            scored,
+            {
+                "training_scope": "baseline_bundle",
+                "selected_model": {"name": "rf_isotonic", "calibration_method": "isotonic"},
+            },
+        )
+        persist_review_queue_mock.return_value = {
+            "session_id": session_id,
+            "generated_at": "2026-03-25T12:05:00+00:00",
+            "summary": {"pending_review": 1, "approved": 0, "rejected": 0, "tested": 0, "ingested": 0, "counts": {}},
+            "groups": {},
+        }
+
+        result = run_pipeline(
+            pd.DataFrame([{"smiles": "CCO", "target_label": -1, "molecule_id": "mol_1", "source": "upload", "notes": ""}]),
+            persist_artifacts=False,
+            update_discovery_snapshot=False,
+            seed=42,
+            source_name="upload.csv",
+            analysis_options={
+                "session_id": session_id,
+                "input_type": "structure_only_screening",
+                "intent": "rank_uploaded_molecules",
+                "scoring_mode": "balanced",
+                "consent_learning": False,
+                "column_mapping": {
+                    "smiles": "smiles",
+                    "molecule_id": "molecule_id",
+                    "source": "source",
+                    "notes": "notes",
+                },
+            },
+        )
+
+        build_discovery_result_mock.assert_not_called()
+        build_prediction_result_mock.assert_called_once()
+        self.assertEqual(result["run_contract"]["fallback_reason"], "legacy_baseline_bundle_reused")
+        self.assertTrue(
+            any("legacy baseline classification bundle" in item for item in result["analysis_report"]["warnings"])
+        )
+
+    @patch("system.run_pipeline.build_discovery_result")
+    @patch("system.run_pipeline.persist_review_queue")
+    @patch("system.run_pipeline.build_prediction_result")
     def test_run_pipeline_preserves_measurement_context_in_reports(
         self,
         build_prediction_result_mock,
@@ -384,6 +445,8 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(int(result["analysis_report"]["ranking_diagnostics"]["measurement_rows_evaluated"]), 2)
         self.assertEqual(result["analysis_report"]["ranking_policy"]["primary_score"], "priority_score")
         self.assertIn("weights", result["analysis_report"]["ranking_policy"])
+        self.assertIn("ranking compatibility", result["analysis_report"]["ranking_policy"]["formula_text"].lower())
+        self.assertEqual(result["analysis_report"]["top_level_recommendation_summary"], "No prioritized candidates were produced from this run.")
         self.assertEqual(result["target_definition"]["target_kind"], "regression")
         self.assertEqual(result["analysis_report"]["modeling_mode"], "ranking_only")
         self.assertEqual(result["run_contract"]["target_definition"]["target_kind"], "regression")

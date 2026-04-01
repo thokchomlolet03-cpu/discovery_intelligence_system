@@ -17,6 +17,10 @@ def _humanize_token(value: Any, default: str = "Not recorded") -> str:
     return cleaned.replace("_", " ").strip().title()
 
 
+def _normalized_target_key(value: Any) -> str:
+    return _clean_text(value).lower()
+
+
 def _as_bool(value: Any) -> bool:
     return bool(value)
 
@@ -253,7 +257,7 @@ def compare_session_basis(
     focus_dataset_type = _clean_text(focus_anchors.get("dataset_type"))
     candidate_dataset_type = _clean_text(candidate_anchors.get("dataset_type"))
 
-    if focus_target_name and candidate_target_name and focus_target_name == candidate_target_name:
+    if focus_target_name and candidate_target_name and _normalized_target_key(focus_target_name) == _normalized_target_key(candidate_target_name):
         matches.append(f"Same target property: {focus_target_name}.")
     else:
         blockers.append(
@@ -374,7 +378,7 @@ def compare_session_basis(
         except (TypeError, ValueError):
             focus_domain_rate = candidate_domain_rate = None
         if focus_domain_rate is not None and candidate_domain_rate is not None:
-            delta = candidate_domain_rate - focus_domain_rate
+            delta = focus_domain_rate - candidate_domain_rate
             if abs(delta) >= 0.10:
                 direction = "higher" if delta > 0 else "lower"
                 outcome_differences.append(
@@ -390,7 +394,7 @@ def compare_session_basis(
         except (TypeError, ValueError):
             focus_rank_corr = candidate_rank_corr = None
         if focus_rank_corr is not None and candidate_rank_corr is not None:
-            delta = candidate_rank_corr - focus_rank_corr
+            delta = focus_rank_corr - candidate_rank_corr
             if abs(delta) >= 0.10:
                 direction = "higher" if delta > 0 else "lower"
                 outcome_differences.append(

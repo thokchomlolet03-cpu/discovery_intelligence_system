@@ -242,6 +242,15 @@ def infer_comparison_anchors(
     existing = summary_metadata.get("comparison_anchors") if isinstance(summary_metadata.get("comparison_anchors"), dict) else {}
     if existing:
         return validate_comparison_anchors(existing)
+    payload_existing = (
+        decision_payload.get("comparison_anchors")
+        if isinstance(decision_payload.get("comparison_anchors"), dict)
+        else analysis_report.get("comparison_anchors")
+        if isinstance(analysis_report.get("comparison_anchors"), dict)
+        else {}
+    )
+    if payload_existing:
+        return validate_comparison_anchors(payload_existing)
 
     run_contract = (
         summary_metadata.get("run_contract")

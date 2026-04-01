@@ -83,9 +83,36 @@ def _normalize_target_definition(
     summary_metadata = summary_metadata if isinstance(summary_metadata, dict) else {}
     upload_summary = summary_metadata.get("upload_session_summary") if isinstance(summary_metadata.get("upload_session_summary"), dict) else {}
 
+    analysis_anchors = analysis_report.get("comparison_anchors") if isinstance(analysis_report.get("comparison_anchors"), dict) else {}
+    decision_anchors = decision_payload.get("comparison_anchors") if isinstance(decision_payload.get("comparison_anchors"), dict) else {}
+    anchor_target = {
+        "target_name": _first_text(decision_anchors.get("target_name"), analysis_anchors.get("target_name")),
+        "target_kind": _first_text(decision_anchors.get("target_kind"), analysis_anchors.get("target_kind")),
+        "optimization_direction": _first_text(
+            decision_anchors.get("optimization_direction"),
+            analysis_anchors.get("optimization_direction"),
+        ),
+        "measurement_column": _first_text(
+            decision_anchors.get("measurement_column"),
+            analysis_anchors.get("measurement_column"),
+        ),
+        "label_column": _first_text(decision_anchors.get("label_column"), analysis_anchors.get("label_column")),
+        "measurement_unit": _first_text(
+            decision_anchors.get("measurement_unit"),
+            analysis_anchors.get("measurement_unit"),
+        ),
+        "dataset_type": _first_text(decision_anchors.get("dataset_type"), analysis_anchors.get("dataset_type")),
+        "mapping_confidence": _first_text(
+            decision_anchors.get("mapping_confidence"),
+            analysis_anchors.get("mapping_confidence"),
+        ),
+    }
+    anchor_target = {key: value for key, value in anchor_target.items() if value}
+
     existing = _first_dict(
         analysis_report.get("target_definition"),
         decision_payload.get("target_definition"),
+        anchor_target,
         upload_metadata.get("target_definition"),
         upload_summary.get("target_definition"),
     )

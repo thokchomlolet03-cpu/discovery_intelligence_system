@@ -178,7 +178,8 @@ def predict_regression_with_model(bundle: dict[str, Any], df: pd.DataFrame, *, o
     scored["uncertainty"] = uncertainty
     scored["uncertainty_kind"] = "ensemble_prediction_std"
     if "novelty" not in scored.columns:
-        scored["novelty"] = pd.to_numeric(scored.get("novel_to_dataset", 0), errors="coerce").fillna(0)
+        novelty_source = scored["novel_to_dataset"] if "novel_to_dataset" in scored.columns else pd.Series(0.0, index=scored.index)
+        scored["novelty"] = pd.to_numeric(novelty_source, errors="coerce").fillna(0)
     else:
         scored["novelty"] = pd.to_numeric(scored["novelty"], errors="coerce").fillna(0)
     return scored

@@ -82,7 +82,9 @@
       {% include "_active_session_comparison_panel.html" %}
     {% endwith %}
 
-    {% if workbench.measurement_summary or workbench.ranking_diagnostics %}
+    {% set measurement_summary = workbench.measurement_summary or {} %}
+    {% set ranking_diagnostics = workbench.ranking_diagnostics or {} %}
+    {% if measurement_summary or ranking_diagnostics %}
       <section class="panel discovery-interpretation-panel">
         <div class="section-header">
           <div>
@@ -91,26 +93,26 @@
           </div>
         </div>
         <div class="interpretation-grid">
-          {% if workbench.measurement_summary %}
+          {% if measurement_summary %}
             <article class="interpretation-card">
               <strong>Dataset interpretation mode</strong>
-              <p>{{ workbench.measurement_summary.semantic_mode or "Not detected" }}</p>
+              <p>{{ measurement_summary.semantic_mode or "Not detected" }}</p>
             </article>
             <article class="interpretation-card">
               <strong>Mapped measurement column</strong>
-              <p>{{ workbench.measurement_summary.value_column or "Not mapped" }}</p>
+              <p>{{ measurement_summary.value_column or "Not mapped" }}</p>
             </article>
             <article class="interpretation-card">
               <strong>Rows with values</strong>
-              <p>{{ workbench.measurement_summary.rows_with_values or 0 }}</p>
+              <p>{{ measurement_summary.rows_with_values or 0 }}</p>
             </article>
             <article class="interpretation-card">
               <strong>Rows with labels</strong>
-              <p>{{ workbench.measurement_summary.rows_with_labels or 0 }}</p>
+              <p>{{ measurement_summary.rows_with_labels or 0 }}</p>
             </article>
             <article class="interpretation-card">
               <strong>Label source</strong>
-              <p>{{ workbench.measurement_summary.label_source or "Missing" }}</p>
+              <p>{{ measurement_summary.label_source or "Missing" }}</p>
             </article>
           {% endif %}
           {% if workbench.ranking_policy.primary_score_label %}
@@ -125,16 +127,16 @@
               <p>{{ workbench.ranking_policy.formula_label }}</p>
             </article>
           {% endif %}
-          {% if workbench.ranking_diagnostics.spearman_rank_correlation is not none %}
+          {% if ranking_diagnostics.get("spearman_rank_correlation") is not none %}
             <article class="interpretation-card">
               <strong>Rank correlation</strong>
-              <p>{{ "%.3f"|format(workbench.ranking_diagnostics.spearman_rank_correlation or 0) }}</p>
+              <p>{{ "%.3f"|format(ranking_diagnostics.get("spearman_rank_correlation") or 0) }}</p>
             </article>
           {% endif %}
-          {% if workbench.ranking_diagnostics.out_of_domain_rate is not none %}
+          {% if ranking_diagnostics.get("out_of_domain_rate") is not none %}
             <article class="interpretation-card">
               <strong>Weak-support rate</strong>
-              <p>{{ "%.1f"|format((workbench.ranking_diagnostics.out_of_domain_rate or 0) * 100) }}%</p>
+              <p>{{ "%.1f"|format((ranking_diagnostics.get("out_of_domain_rate") or 0) * 100) }}%</p>
             </article>
           {% endif %}
         </div>

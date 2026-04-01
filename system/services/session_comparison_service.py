@@ -401,6 +401,9 @@ def compare_session_basis(
         focus_candidate_preview,
         candidate_candidate_preview,
     )
+    outcome_preview_gap = bool(outcome_differences) and not (focus_candidate_preview and candidate_candidate_preview)
+    if outcome_preview_gap:
+        cautions.append("Outcome differences are summarized without shared shortlist preview support.")
 
     if blockers:
         status = "not_comparable"

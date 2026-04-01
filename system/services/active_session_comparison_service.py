@@ -198,7 +198,7 @@ def _delta_lines(
             direction = "higher" if delta > 0 else "lower"
             lines.append(f"Weak-support rate is {direction} by {abs(delta) * 100:.1f}% against the baseline.")
 
-    return lines[:4]
+    return lines[:6]
 
 
 def build_active_session_comparison_context(

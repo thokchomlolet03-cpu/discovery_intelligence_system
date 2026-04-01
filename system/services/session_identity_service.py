@@ -84,9 +84,9 @@ def _normalize_target_definition(
     upload_summary = summary_metadata.get("upload_session_summary") if isinstance(summary_metadata.get("upload_session_summary"), dict) else {}
 
     existing = _first_dict(
-        upload_metadata.get("target_definition"),
         analysis_report.get("target_definition"),
         decision_payload.get("target_definition"),
+        upload_metadata.get("target_definition"),
         upload_summary.get("target_definition"),
     )
     if existing:

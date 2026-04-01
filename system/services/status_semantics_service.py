@@ -97,10 +97,6 @@ def _available_artifacts(
     artifact_index = _artifact_index(session_record)
     labels: list[str] = []
 
-    if upload_metadata:
-        labels.append("upload inspection")
-    if "raw_upload_csv" in artifact_index or "upload_csv" in artifact_index:
-        labels.append("raw upload")
     if _artifact_ok(analysis_report) or "analysis_report_json" in artifact_index:
         labels.append("analysis report")
     if _artifact_ok(decision_payload) or "decision_output_json" in artifact_index:
@@ -172,7 +168,7 @@ def build_status_semantics(
         status_code = "analysis_failed_viewable" if viewable_artifacts else "analysis_failed"
         status_tone = "danger"
         rerun_possible = has_upload
-        trustworthy_recommendations = decision_viewable
+        trustworthy_recommendations = False
         can_open_discovery = decision_viewable
         can_open_dashboard = decision_viewable or analysis_viewable
         if viewable_artifacts:

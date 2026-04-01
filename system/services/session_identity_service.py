@@ -134,17 +134,19 @@ def _scientific_purpose(target_definition: dict[str, Any], decision_intent: str)
     target = _clean_text(target_definition.get("target_name"), default="the current target")
     target_kind = _clean_text(target_definition.get("target_kind"), default=TargetKind.classification.value)
     success = _clean_text(target_definition.get("success_definition"))
-    if success:
-        return success
-
     if decision_intent == DecisionIntent.generate_candidates.value:
         return f"Use the current chemistry set to propose follow-up candidates for {target}, while keeping the recommendation policy explicit."
     if decision_intent == DecisionIntent.reduce_uncertainty.value:
         return f"Prioritize molecules that reduce uncertainty around {target} rather than treating the shortlist as confirmed truth."
+    if target_kind == TargetKind.regression.value:
+        base = f"Estimate continuous values for {target} and prioritize molecules that look experimentally useful to test."
+        if success:
+            return f"{base} {success}"
+        return base
+    if success:
+        return success
     if decision_intent == DecisionIntent.estimate_labels.value and target_kind == TargetKind.classification.value:
         return f"Estimate whether molecules belong to the positive class for {target}."
-    if target_kind == TargetKind.regression.value:
-        return f"Estimate continuous values for {target} and prioritize molecules that look experimentally useful to test."
     return f"Prioritize molecules likely to support the current target objective for {target}."
 
 

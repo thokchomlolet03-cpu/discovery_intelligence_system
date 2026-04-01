@@ -94,10 +94,10 @@ def _optimization_direction(target_name: str, *, target_kind: str) -> str:
         return OptimizationDirection.classify.value
 
     cleaned = target_name.lower().replace(" ", "_")
-    if any(token in cleaned for token in MINIMIZE_HINTS):
-        return OptimizationDirection.minimize.value
     if any(token in cleaned for token in MAXIMIZE_HINTS):
         return OptimizationDirection.maximize.value
+    if any(token in cleaned for token in MINIMIZE_HINTS):
+        return OptimizationDirection.minimize.value
     return OptimizationDirection.hit_range.value
 
 

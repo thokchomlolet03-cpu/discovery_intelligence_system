@@ -31,7 +31,7 @@ def risk_level(row, config=None):
 def decision_explanations(row, target_definition=None):
     target_definition = target_definition or {}
     target_name = str(target_definition.get("target_name") or "").strip().lower()
-    biodegradability_mode = "biodegrad" in target_name
+    biodegradability_mode = (not target_definition) or ("biodegrad" in target_name)
     explanations = []
     if float(row.get("rdkit_logp", row.get("logp", 0.0))) < HYDROPHILIC_LOGP_THRESHOLD:
         explanations.append(

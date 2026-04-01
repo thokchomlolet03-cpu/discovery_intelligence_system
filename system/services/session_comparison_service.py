@@ -344,9 +344,9 @@ def compare_session_basis(
     if candidate_fallback:
         cautions.append(f"Comparison fallback recorded: {candidate_fallback.replace('_', ' ')}.")
 
-    if not _as_bool(candidate_status.get("trustworthy_recommendations")):
+    if "trustworthy_recommendations" in candidate_status and not _as_bool(candidate_status.get("trustworthy_recommendations")):
         cautions.append("The comparison session does not currently have fully trustworthy recommendation artifacts.")
-    if not _as_bool(candidate_status.get("viewable_artifacts")):
+    if "viewable_artifacts" in candidate_status and not _as_bool(candidate_status.get("viewable_artifacts")):
         cautions.append("Saved artifacts are not fully viewable for the comparison session.")
 
     focus_bucket = _clean_text(focus_outcome.get("leading_bucket"))
@@ -407,7 +407,7 @@ def compare_session_basis(
         tone = "danger"
         label = "Not directly comparable"
         summary = "These sessions are not cleanly comparable because the scientific target or modeling method changed."
-    elif differences or cautions or outcome_differences or not (focus_ready and candidate_ready):
+    elif differences or cautions or not (focus_ready and candidate_ready):
         status = "partially_comparable"
         tone = "warning"
         label = "Partially comparable"

@@ -99,10 +99,10 @@ def _selected_model(bundle: dict[str, Any] | None) -> dict[str, str]:
 def _label_source(validation_summary: dict[str, Any] | None, target_definition: dict[str, Any]) -> str:
     validation_summary = validation_summary or {}
     explicit = _clean_text(validation_summary.get("label_source")).lower()
-    if explicit:
-        return explicit
     target_kind = _clean_text(target_definition.get("target_kind"), default=TargetKind.classification.value).lower()
     derived_rule = target_definition.get("derived_label_rule") if isinstance(target_definition.get("derived_label_rule"), dict) else None
+    if explicit and explicit not in {"missing", "not_recorded"}:
+        return explicit
     if derived_rule:
         return "derived"
     if target_kind == TargetKind.regression.value:

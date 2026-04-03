@@ -128,7 +128,9 @@
 
     {% set measurement_summary = workbench.measurement_summary or {} %}
     {% set ranking_diagnostics = workbench.ranking_diagnostics or {} %}
-    {% if measurement_summary or ranking_diagnostics %}
+    {% set scientific_truth = workbench.scientific_session_truth or {} %}
+    {% set evidence_loop = scientific_truth.evidence_loop or {} %}
+    {% if measurement_summary or ranking_diagnostics or evidence_loop.summary %}
       <section class="panel discovery-interpretation-panel">
         <div class="section-header">
           <div>
@@ -183,6 +185,42 @@
               <p>{{ trust_context.bridge_state_summary }}</p>
             </article>
           {% endif %}
+          {% if evidence_loop.summary %}
+            <article class="interpretation-card">
+              <strong>Evidence loop</strong>
+              <p>{{ evidence_loop.summary }}</p>
+            </article>
+          {% endif %}
+          {% if evidence_loop.learning_boundary_note %}
+            <article class="interpretation-card">
+              <strong>Learning boundary</strong>
+              <p>{{ evidence_loop.learning_boundary_note }}</p>
+            </article>
+          {% endif %}
+          {% if evidence_loop.activation_boundary_summary %}
+            <article class="interpretation-card">
+              <strong>Evidence boundary</strong>
+              <p>{{ evidence_loop.activation_boundary_summary }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.activation_policy_summary %}
+            <article class="interpretation-card">
+              <strong>{{ trust_context.activation_policy_label or "Selective evidence use" }}</strong>
+              <p>{{ trust_context.activation_policy_summary }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.controlled_reuse_summary %}
+            <article class="interpretation-card">
+              <strong>{{ trust_context.controlled_reuse_label or "Controlled evidence reuse" }}</strong>
+              <p>{{ trust_context.controlled_reuse_summary }}</p>
+            </article>
+          {% endif %}
+          {% if trust_context.future_eligibility_summary %}
+            <article class="interpretation-card">
+              <strong>{{ trust_context.future_eligibility_label or "Future activation eligibility" }}</strong>
+              <p>{{ trust_context.future_eligibility_summary }}</p>
+            </article>
+          {% endif %}
           {% if workbench.ranking_policy.primary_score_label %}
             <article class="interpretation-card">
               <strong>Primary ranking signal</strong>
@@ -220,6 +258,325 @@
               {% endfor %}
             </div>
           </details>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% set claims_summary = workbench.claims_summary or {} %}
+    {% set claim_refs = workbench.claim_refs or [] %}
+    {% set experiment_request_summary = workbench.experiment_request_summary or {} %}
+    {% set experiment_request_refs = workbench.experiment_request_refs or [] %}
+    {% set linked_result_summary = workbench.linked_result_summary or {} %}
+    {% set experiment_result_refs = workbench.experiment_result_refs or [] %}
+    {% set belief_update_summary = workbench.belief_update_summary or {} %}
+    {% set belief_update_refs = workbench.belief_update_refs or [] %}
+    {% set belief_state_summary = workbench.belief_state_summary or {} %}
+    {% if claims_summary.claim_count %}
+      <section class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Proposed Claims</h2>
+            <p class="helper-copy">These are bounded, recommendation-derived scientific assertions for the current session. They are not experimental confirmation.</p>
+          </div>
+        </div>
+        <div class="session-history-grid">
+          <article class="session-mini-card">
+            <span class="panel-label">Claim count</span>
+            <strong>{{ claims_summary.claim_count }}</strong>
+            <p>Proposed assertions created from the current shortlist.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Current status</span>
+            <strong>{{ claims_summary.proposed_count or 0 }}</strong>
+            <p>Claims are currently proposed, not experimentally validated.</p>
+          </article>
+        </div>
+        {% if claims_summary.summary_text %}
+          <div class="mini-callout">
+            <span class="panel-label">Claim summary</span>
+            <p>{{ claims_summary.summary_text }}</p>
+          </div>
+        {% endif %}
+        {% if claim_refs %}
+          <div class="mini-callout">
+            <span class="panel-label">Top proposed claims</span>
+            <ul class="compact-list">
+              {% for claim in claim_refs[:3] %}
+                <li>
+                  <strong>{{ claim.candidate_label or claim.candidate_id }}</strong>:
+                  {{ claim.claim_text }}
+                  {% if claim.support_level %}
+                    Support: {{ claim.support_level.replace("_", " ").title() }}.
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if experiment_request_summary.request_count %}
+      <section class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Proposed Experiment Requests</h2>
+            <p class="helper-copy">These are recommended next experiments derived from the current claims. They are not scheduled or completed lab work.</p>
+          </div>
+        </div>
+        <div class="session-history-grid">
+          <article class="session-mini-card">
+            <span class="panel-label">Request count</span>
+            <strong>{{ experiment_request_summary.request_count }}</strong>
+            <p>Recommended experiment requests linked to the current session claims.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Current status</span>
+            <strong>{{ experiment_request_summary.proposed_count or 0 }}</strong>
+            <p>Requests are currently proposed, not executed.</p>
+          </article>
+        </div>
+        {% if experiment_request_summary.summary_text %}
+          <div class="mini-callout">
+            <span class="panel-label">Experiment request summary</span>
+            <p>{{ experiment_request_summary.summary_text }}</p>
+          </div>
+        {% endif %}
+        {% if experiment_request_refs %}
+          <div class="mini-callout">
+            <span class="panel-label">Top proposed experiments</span>
+            <ul class="compact-list">
+              {% for request in experiment_request_refs[:3] %}
+                <li>
+                  <strong>{{ request.candidate_label or request.candidate_id }}</strong>:
+                  Measure {{ request.requested_measurement }}
+                  {% if request.requested_direction %}
+                    to {{ request.requested_direction }}.
+                  {% else %}
+                    for the current objective.
+                  {% endif %}
+                  {% if request.priority_tier %}
+                    Priority: {{ request.priority_tier.replace("_", " ").title() }}.
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if workbench.session_id and experiment_request_refs %}
+          <div class="mini-callout">
+            <span class="panel-label">Record an observed result</span>
+            <p>Use this compact form to record a measured outcome for one proposed experiment. This stores an observed result record only; it does not create a belief update or change the model.</p>
+            <form method="post" action="/experiment-results" class="workspace-switcher-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <input type="hidden" name="session_id" value="{{ workbench.session_id }}" />
+              <input type="hidden" name="next" value="/discovery?session_id={{ workbench.session_id }}" />
+              <label>
+                Experiment request
+                <select name="source_experiment_request_id">
+                  {% for request in experiment_request_refs[:5] %}
+                    <option value="{{ request.experiment_request_id }}">
+                      {{ request.candidate_label or request.candidate_id }} — {{ request.requested_measurement }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Observed value
+                <input type="text" name="observed_value" placeholder="e.g. 6.3" />
+              </label>
+              <label>
+                Observed label
+                <input type="text" name="observed_label" placeholder="optional binary outcome" />
+              </label>
+              <label>
+                Measurement unit
+                <input type="text" name="measurement_unit" placeholder="optional unit" />
+              </label>
+              <label>
+                Assay context
+                <input type="text" name="assay_context" placeholder="optional assay or run note" />
+              </label>
+              <label>
+                Result quality
+                <select name="result_quality">
+                  <option value="provisional">Provisional</option>
+                  <option value="screening">Screening</option>
+                  <option value="confirmatory">Confirmatory</option>
+                </select>
+              </label>
+              <label>
+                Notes
+                <input type="text" name="notes" placeholder="optional note" />
+              </label>
+              <button type="submit" class="btn-secondary">Record observed result</button>
+            </form>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if linked_result_summary.result_count %}
+      <section class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Observed Results</h2>
+            <p class="helper-copy">These are human-entered observed outcomes linked to this session. They are not belief updates or confirmed discoveries.</p>
+          </div>
+        </div>
+        <div class="session-history-grid">
+          <article class="session-mini-card">
+            <span class="panel-label">Result count</span>
+            <strong>{{ linked_result_summary.result_count }}</strong>
+            <p>Observed outcomes recorded for the current session.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Recorded shape</span>
+            <strong>{{ linked_result_summary.with_numeric_value_count or 0 }} value / {{ linked_result_summary.with_label_count or 0 }} label</strong>
+            <p>Recorded outcomes can carry numeric values, labels, or both.</p>
+          </article>
+        </div>
+        {% if linked_result_summary.summary_text %}
+          <div class="mini-callout">
+            <span class="panel-label">Observed result summary</span>
+            <p>{{ linked_result_summary.summary_text }}</p>
+          </div>
+        {% endif %}
+        {% if experiment_result_refs %}
+          <div class="mini-callout">
+            <span class="panel-label">Linked observed results</span>
+            <ul class="compact-list">
+              {% for result in experiment_result_refs[:3] %}
+                <li>
+                  <strong>{{ result.candidate_label or result.candidate_id }}</strong>:
+                  {% if result.observed_value is not none %}
+                    observed value {{ result.observed_value }}
+                    {% if result.measurement_unit %}
+                      {{ result.measurement_unit }}
+                    {% endif %}
+                  {% elif result.observed_label %}
+                    observed label {{ result.observed_label }}
+                  {% else %}
+                    observed outcome recorded
+                  {% endif %}
+                  {% if result.result_quality %}
+                    Quality: {{ result.result_quality.replace("_", " ").title() }}.
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if workbench.session_id and experiment_result_refs %}
+          <div class="mini-callout">
+            <span class="panel-label">Create a proposed belief update</span>
+            <p>Use this compact action to record a bounded support change from one observed result and its linked claim context. It does not prove the claim, imply causality, or change the model.</p>
+            <form method="post" action="/belief-updates" class="workspace-switcher-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <input type="hidden" name="session_id" value="{{ workbench.session_id }}" />
+              <input type="hidden" name="next" value="/discovery?session_id={{ workbench.session_id }}" />
+              <label>
+                Observed result
+                <select name="experiment_result_id">
+                  {% for result in experiment_result_refs[:5] %}
+                    <option value="{{ result.experiment_result_id }}">
+                      {{ result.candidate_label or result.candidate_id }} —
+                      {% if result.observed_value is not none %}
+                        value {{ result.observed_value }}
+                      {% elif result.observed_label %}
+                        label {{ result.observed_label }}
+                      {% else %}
+                        observed outcome
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </label>
+              <button type="submit" class="btn-secondary">Create proposed belief update</button>
+            </form>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if belief_update_summary.update_count %}
+      <section class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Belief Updates</h2>
+            <p class="helper-copy">These are human-triggered support-change records linked to claims and observed results. They are not final belief state or proof.</p>
+          </div>
+        </div>
+        <div class="session-history-grid">
+          <article class="session-mini-card">
+            <span class="panel-label">Belief update count</span>
+            <strong>{{ belief_update_summary.update_count }}</strong>
+            <p>Bounded support-change records recorded for the current session.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Current directions</span>
+            <strong>{{ belief_update_summary.strengthened_count or 0 }} strengthened / {{ belief_update_summary.weakened_count or 0 }} weakened</strong>
+            <p>Updates can strengthen, weaken, or leave support unresolved.</p>
+          </article>
+        </div>
+        {% if belief_update_summary.summary_text %}
+          <div class="mini-callout">
+            <span class="panel-label">Belief update summary</span>
+            <p>{{ belief_update_summary.summary_text }}</p>
+          </div>
+        {% endif %}
+        {% if belief_update_refs %}
+          <div class="mini-callout">
+            <span class="panel-label">Recorded belief updates</span>
+            <ul class="compact-list">
+              {% for update in belief_update_refs[:3] %}
+                <li>
+                  <strong>{{ update.candidate_label or update.candidate_id }}</strong>:
+                  support {{ update.update_direction.replace("_", " ") }}
+                  from {{ update.previous_support_level.replace("_", " ").title() }}
+                  to {{ update.updated_support_level.replace("_", " ").title() }}.
+                  {% if update.governance_status %}
+                    Status: {{ update.governance_status.replace("_", " ").title() }}.
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if belief_state_summary.active_claim_count %}
+      <section class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Current Belief State</h2>
+            <p class="helper-copy">This is the current target-scoped support picture derived from tracked belief updates. It is not final truth or live learning state.</p>
+          </div>
+        </div>
+        <div class="session-history-grid">
+          <article class="session-mini-card">
+            <span class="panel-label">Active claims</span>
+            <strong>{{ belief_state_summary.active_claim_count }}</strong>
+            <p>Claims currently contributing to the tracked support picture.</p>
+          </article>
+          <article class="session-mini-card">
+            <span class="panel-label">Current support mix</span>
+            <strong>{{ belief_state_summary.supported_claim_count or 0 }} supported / {{ belief_state_summary.weakened_claim_count or 0 }} weakened / {{ belief_state_summary.unresolved_claim_count or 0 }} unresolved</strong>
+            <p>The current picture is bounded and can remain mixed.</p>
+          </article>
+        </div>
+        {% if belief_state_summary.summary_text %}
+          <div class="mini-callout">
+            <span class="panel-label">Belief state summary</span>
+            <p>{{ belief_state_summary.summary_text }}</p>
+          </div>
+        {% endif %}
+        {% if belief_state_summary.governance_scope_summary %}
+          <div class="mini-callout">
+            <span class="panel-label">Governance scope</span>
+            <p>{{ belief_state_summary.governance_scope_summary }}</p>
+          </div>
         {% endif %}
       </section>
     {% endif %}

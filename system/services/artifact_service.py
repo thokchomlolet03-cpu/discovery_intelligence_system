@@ -388,6 +388,10 @@ def persist_pipeline_artifacts(
             result["analysis_report"],
         )
 
+    if result.get("scientific_session_truth"):
+        artifact_paths["scientific_session_truth_json"] = str(run_dir / "scientific_session_truth.json")
+        write_json_log(run_dir / "scientific_session_truth.json", result["scientific_session_truth"])
+
     return artifact_paths
 
 

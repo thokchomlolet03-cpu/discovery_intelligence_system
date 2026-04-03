@@ -69,6 +69,28 @@ def _humanize_token(value: str, *, default: str = "Not specified") -> str:
     return cleaned.replace("_", " ").strip().title()
 
 
+def _scientific_truth(
+    session_record: dict[str, Any] | None,
+    analysis_report: dict[str, Any] | None,
+    decision_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    session_record = session_record or {}
+    analysis_report = analysis_report or {}
+    decision_payload = decision_payload or {}
+    summary_metadata = session_record.get("summary_metadata") if isinstance(session_record, dict) else {}
+    summary_metadata = summary_metadata if isinstance(summary_metadata, dict) else {}
+    stored = summary_metadata.get("scientific_session_truth") if isinstance(summary_metadata.get("scientific_session_truth"), dict) else {}
+    if stored:
+        return stored
+    embedded = analysis_report.get("scientific_session_truth") if isinstance(analysis_report.get("scientific_session_truth"), dict) else {}
+    if embedded:
+        return embedded
+    embedded = decision_payload.get("scientific_session_truth") if isinstance(decision_payload.get("scientific_session_truth"), dict) else {}
+    if embedded:
+        return embedded
+    return {}
+
+
 def _normalize_target_definition(
     *,
     session_record: dict[str, Any] | None,
@@ -83,6 +105,7 @@ def _normalize_target_definition(
     summary_metadata = session_record.get("summary_metadata") if isinstance(session_record, dict) else {}
     summary_metadata = summary_metadata if isinstance(summary_metadata, dict) else {}
     upload_summary = summary_metadata.get("upload_session_summary") if isinstance(summary_metadata.get("upload_session_summary"), dict) else {}
+    scientific_truth = _scientific_truth(session_record, analysis_report, decision_payload)
 
     analysis_anchors = analysis_report.get("comparison_anchors") if isinstance(analysis_report.get("comparison_anchors"), dict) else {}
     decision_anchors = decision_payload.get("comparison_anchors") if isinstance(decision_payload.get("comparison_anchors"), dict) else {}
@@ -111,6 +134,7 @@ def _normalize_target_definition(
     anchor_target = {key: value for key, value in anchor_target.items() if value}
 
     existing = _first_dict(
+        scientific_truth.get("target_definition"),
         analysis_report.get("target_definition"),
         decision_payload.get("target_definition"),
         anchor_target,
@@ -233,6 +257,7 @@ def build_trust_context(
     validation_summary: dict[str, Any] | None = None,
     ranking_policy: dict[str, Any] | None = None,
     run_provenance: dict[str, Any] | None = None,
+    scientific_truth: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     target_definition = target_definition or {}
     analysis_report = analysis_report or {}
@@ -240,6 +265,7 @@ def build_trust_context(
     validation_summary = validation_summary or {}
     ranking_policy = ranking_policy or {}
     run_provenance = run_provenance or {}
+    scientific_truth = scientific_truth or {}
 
     target_name = _clean_text(target_definition.get("target_name"), default="the session target")
     dataset_type = _clean_text(
@@ -344,6 +370,62 @@ def build_trust_context(
     else:
         evidence_support_label = "Moderate evidence support"
 
+    evidence_activation_policy = (
+        scientific_truth.get("evidence_activation_policy")
+        if isinstance(scientific_truth.get("evidence_activation_policy"), dict)
+        else {}
+    )
+    activation_policy_summary = _clean_text(evidence_activation_policy.get("summary"))
+    activation_policy_label = ""
+    future_eligibility_summary = ""
+    future_eligibility_label = ""
+    controlled_reuse = (
+        scientific_truth.get("controlled_reuse")
+        if isinstance(scientific_truth.get("controlled_reuse"), dict)
+        else {}
+    )
+    controlled_reuse_label = ""
+    controlled_reuse_summary = ""
+    if activation_policy_summary:
+        activation_policy_label = "Selective evidence use"
+        ranking_summary = _clean_text(evidence_activation_policy.get("ranking_context_summary"))
+        interpretation_summary = _clean_text(evidence_activation_policy.get("interpretation_summary"))
+        if ranking_summary and interpretation_summary:
+            activation_policy_summary = f"{ranking_summary} {interpretation_summary}"
+        elif ranking_summary:
+            activation_policy_summary = ranking_summary
+        elif interpretation_summary:
+            activation_policy_summary = interpretation_summary
+    recommendation_reuse_summary = _clean_text(evidence_activation_policy.get("recommendation_reuse_summary"))
+    future_ranking_summary = _clean_text(evidence_activation_policy.get("future_ranking_context_summary"))
+    future_learning_summary = _clean_text(
+        evidence_activation_policy.get("future_learning_eligibility_summary")
+        or evidence_activation_policy.get("learning_eligibility_summary")
+    )
+    permanently_non_active_summary = _clean_text(evidence_activation_policy.get("permanently_non_active_summary"))
+    future_bits = [
+        item
+        for item in (
+            recommendation_reuse_summary,
+            future_ranking_summary,
+            future_learning_summary,
+            permanently_non_active_summary,
+        )
+        if item
+    ]
+    if future_bits:
+        future_eligibility_label = "Future activation eligibility"
+        future_eligibility_summary = " ".join(future_bits[:3])
+
+    if controlled_reuse:
+        controlled_reuse_label = "Controlled evidence reuse"
+        reuse_bits = [
+            _clean_text(controlled_reuse.get("recommendation_reuse_summary")),
+            _clean_text(controlled_reuse.get("ranking_context_reuse_summary")),
+            _clean_text(controlled_reuse.get("interpretation_support_summary")),
+        ]
+        controlled_reuse_summary = " ".join(bit for bit in reuse_bits if bit)
+
     return {
         "evidence_basis_label": evidence_basis_label,
         "evidence_basis_summary": evidence_basis_summary,
@@ -351,6 +433,12 @@ def build_trust_context(
         "model_basis_summary": model_basis_summary,
         "policy_basis_label": policy_basis_label,
         "policy_basis_summary": policy_basis_summary,
+        "activation_policy_label": activation_policy_label,
+        "activation_policy_summary": activation_policy_summary,
+        "controlled_reuse_label": controlled_reuse_label,
+        "controlled_reuse_summary": controlled_reuse_summary,
+        "future_eligibility_label": future_eligibility_label,
+        "future_eligibility_summary": future_eligibility_summary,
         "bridge_state_summary": bridge_state_summary,
         "evidence_support_label": evidence_support_label,
     }
@@ -468,6 +556,7 @@ def build_session_identity(
     decision_payload = decision_payload or {}
     summary_metadata = session_record.get("summary_metadata") if isinstance(session_record.get("summary_metadata"), dict) else {}
     upload_summary = summary_metadata.get("upload_session_summary") if isinstance(summary_metadata.get("upload_session_summary"), dict) else {}
+    scientific_truth = _scientific_truth(session_record, analysis_report, decision_payload)
 
     session_id = _first_text(
         session_record.get("session_id"),
@@ -486,6 +575,7 @@ def build_session_identity(
     )
     decision_intent = normalize_decision_intent(
         _first_text(
+            scientific_truth.get("decision_intent"),
             analysis_report.get("decision_intent"),
             decision_payload.get("decision_intent"),
             upload_metadata.get("decision_intent"),
@@ -494,6 +584,7 @@ def build_session_identity(
     )
     modeling_mode = normalize_modeling_mode(
         _first_text(
+            scientific_truth.get("modeling_mode"),
             analysis_report.get("modeling_mode"),
             decision_payload.get("modeling_mode"),
             upload_summary.get("modeling_mode"),
@@ -532,11 +623,15 @@ def build_session_identity(
         session_status, session_status_tone = "inspection_ready", "muted"
 
     run_contract = (
+        scientific_truth.get("run_contract") if isinstance(scientific_truth.get("run_contract"), dict) else {}
+    ) or (
         analysis_report.get("run_contract") if isinstance(analysis_report.get("run_contract"), dict) else {}
     ) or (
         decision_payload.get("run_contract") if isinstance(decision_payload.get("run_contract"), dict) else {}
     )
     comparison_anchors = (
+        scientific_truth.get("comparison_anchors") if isinstance(scientific_truth.get("comparison_anchors"), dict) else {}
+    ) or (
         analysis_report.get("comparison_anchors") if isinstance(analysis_report.get("comparison_anchors"), dict) else {}
     ) or (
         decision_payload.get("comparison_anchors") if isinstance(decision_payload.get("comparison_anchors"), dict) else {}
@@ -556,6 +651,7 @@ def build_session_identity(
         ),
         ranking_policy=analysis_report.get("ranking_policy") if isinstance(analysis_report.get("ranking_policy"), dict) else {},
         run_provenance=run_provenance,
+        scientific_truth=scientific_truth,
     )
 
     payload = {

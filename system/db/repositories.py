@@ -10,6 +10,11 @@ from sqlalchemy.exc import IntegrityError
 
 from system.contracts import (
     validate_artifact_pointer,
+    validate_belief_state_record,
+    validate_belief_update_record,
+    validate_claim_record,
+    validate_experiment_result_record,
+    validate_experiment_request_record,
     validate_job_state,
     validate_review_event_record,
     validate_session_metadata,
@@ -20,7 +25,12 @@ from system.contracts import (
 )
 from system.db.models import (
     ArtifactRecordModel,
+    BeliefStateModel,
+    BeliefUpdateModel,
     BillingWebhookEventModel,
+    ClaimModel,
+    ExperimentResultModel,
+    ExperimentRequestModel,
     JobModel,
     ReviewEventModel,
     SessionModel,
@@ -167,6 +177,131 @@ def _review_payload(record: ReviewEventModel) -> dict[str, Any]:
             "actor": record.actor,
             "reviewer": record.reviewer,
             "actor_user_id": record.actor_user_id or "",
+            "metadata": record.metadata_json or {},
+        }
+    )
+
+
+def _claim_payload(record: ClaimModel) -> dict[str, Any]:
+    return validate_claim_record(
+        {
+            "claim_id": record.claim_id,
+            "workspace_id": record.workspace_id,
+            "session_id": record.session_id,
+            "candidate_id": record.candidate_id,
+            "candidate_reference": record.candidate_reference or {},
+            "target_definition_snapshot": record.target_definition_snapshot or {},
+            "claim_type": record.claim_type,
+            "claim_text": record.claim_text,
+            "bounded_scope": record.bounded_scope,
+            "support_level": record.support_level,
+            "evidence_basis_summary": record.evidence_basis_summary,
+            "source_recommendation_rank": record.source_recommendation_rank,
+            "status": record.status,
+            "created_at": record.created_at,
+            "updated_at": record.updated_at,
+            "created_by": record.created_by,
+            "created_by_user_id": record.created_by_user_id or "",
+            "reviewed_at": record.reviewed_at,
+            "reviewed_by": record.reviewed_by,
+            "metadata": record.metadata_json or {},
+        }
+    )
+
+
+def _experiment_request_payload(record: ExperimentRequestModel) -> dict[str, Any]:
+    return validate_experiment_request_record(
+        {
+            "experiment_request_id": record.experiment_request_id,
+            "workspace_id": record.workspace_id,
+            "session_id": record.session_id,
+            "claim_id": record.claim_id,
+            "candidate_id": record.candidate_id,
+            "candidate_reference": record.candidate_reference or {},
+            "target_definition_snapshot": record.target_definition_snapshot or {},
+            "requested_measurement": record.requested_measurement,
+            "requested_direction": record.requested_direction,
+            "rationale_summary": record.rationale_summary,
+            "priority_tier": record.priority_tier,
+            "status": record.status,
+            "requested_at": record.requested_at,
+            "requested_by": record.requested_by,
+            "requested_by_user_id": record.requested_by_user_id or "",
+            "notes": record.notes,
+            "metadata": record.metadata_json or {},
+        }
+    )
+
+
+def _experiment_result_payload(record: ExperimentResultModel) -> dict[str, Any]:
+    return validate_experiment_result_record(
+        {
+            "experiment_result_id": record.experiment_result_id,
+            "workspace_id": record.workspace_id,
+            "session_id": record.session_id,
+            "source_experiment_request_id": record.source_experiment_request_id or "",
+            "source_claim_id": record.source_claim_id or "",
+            "candidate_id": record.candidate_id,
+            "candidate_reference": record.candidate_reference or {},
+            "target_definition_snapshot": record.target_definition_snapshot or {},
+            "observed_value": record.observed_value,
+            "observed_label": record.observed_label,
+            "measurement_unit": record.measurement_unit,
+            "assay_context": record.assay_context,
+            "result_quality": record.result_quality,
+            "result_source": record.result_source,
+            "ingested_at": record.ingested_at,
+            "ingested_by": record.ingested_by,
+            "ingested_by_user_id": record.ingested_by_user_id or "",
+            "notes": record.notes,
+            "metadata": record.metadata_json or {},
+        }
+    )
+
+
+def _belief_update_payload(record: BeliefUpdateModel) -> dict[str, Any]:
+    return validate_belief_update_record(
+        {
+            "belief_update_id": record.belief_update_id,
+            "workspace_id": record.workspace_id,
+            "session_id": record.session_id,
+            "claim_id": record.claim_id,
+            "experiment_result_id": record.experiment_result_id or "",
+            "candidate_id": record.candidate_id,
+            "candidate_label": record.candidate_label,
+            "previous_support_level": record.previous_support_level,
+            "updated_support_level": record.updated_support_level,
+            "update_direction": record.update_direction,
+            "update_reason": record.update_reason,
+            "governance_status": record.governance_status,
+            "created_at": record.created_at,
+            "created_by": record.created_by,
+            "created_by_user_id": record.created_by_user_id or "",
+            "reviewed_at": record.reviewed_at,
+            "reviewed_by": record.reviewed_by,
+            "metadata": record.metadata_json or {},
+        }
+    )
+
+
+def _belief_state_payload(record: BeliefStateModel) -> dict[str, Any]:
+    return validate_belief_state_record(
+        {
+            "belief_state_id": record.belief_state_id,
+            "workspace_id": record.workspace_id,
+            "target_key": record.target_key,
+            "target_definition_snapshot": record.target_definition_snapshot or {},
+            "summary_text": record.summary_text,
+            "active_claim_count": record.active_claim_count,
+            "supported_claim_count": record.supported_claim_count,
+            "weakened_claim_count": record.weakened_claim_count,
+            "unresolved_claim_count": record.unresolved_claim_count,
+            "last_updated_at": record.last_updated_at,
+            "last_update_source": record.last_update_source,
+            "version": record.version,
+            "latest_belief_update_refs": record.latest_belief_update_refs or [],
+            "support_distribution_summary": record.support_distribution_summary,
+            "governance_scope_summary": record.governance_scope_summary,
             "metadata": record.metadata_json or {},
         }
     )
@@ -738,6 +873,499 @@ class ReviewRepository:
                 statement = statement.where(ReviewEventModel.workspace_id == workspace_id)
             rows = db.execute(statement).scalars().all()
             return [_review_payload(row) for row in rows]
+
+
+class ClaimRepository:
+    def __init__(self, session_repository: SessionRepository | None = None) -> None:
+        self.session_repository = session_repository or SessionRepository()
+
+    def upsert_claim(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = validate_claim_record(payload)
+        if not record_payload.get("workspace_id"):
+            try:
+                record_payload["workspace_id"] = self.session_repository.get_session(record_payload["session_id"])["workspace_id"]
+            except FileNotFoundError:
+                record_payload["workspace_id"] = LEGACY_WORKSPACE_ID
+        self.session_repository.upsert_session(
+            session_id=record_payload["session_id"],
+            workspace_id=record_payload["workspace_id"],
+            created_by_user_id=record_payload.get("created_by_user_id") or None,
+        )
+        with session_scope() as db:
+            statement = select(ClaimModel).where(
+                ClaimModel.workspace_id == (record_payload["workspace_id"] or LEGACY_WORKSPACE_ID),
+                ClaimModel.session_id == record_payload["session_id"],
+                ClaimModel.candidate_id == record_payload["candidate_id"],
+                ClaimModel.claim_type == record_payload["claim_type"],
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = ClaimModel(
+                    claim_id=record_payload["claim_id"] or _make_id("claim"),
+                    session_id=record_payload["session_id"],
+                    workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    candidate_id=record_payload["candidate_id"],
+                    candidate_reference=record_payload.get("candidate_reference") or {},
+                    target_definition_snapshot=record_payload.get("target_definition_snapshot") or {},
+                    claim_type=record_payload["claim_type"],
+                    claim_text=record_payload["claim_text"],
+                    bounded_scope=record_payload["bounded_scope"],
+                    support_level=record_payload["support_level"],
+                    evidence_basis_summary=record_payload.get("evidence_basis_summary", ""),
+                    source_recommendation_rank=int(record_payload.get("source_recommendation_rank", 0) or 0),
+                    status=record_payload["status"],
+                    created_at=_to_datetime(record_payload["created_at"]),
+                    updated_at=_to_datetime(record_payload["updated_at"]),
+                    created_by=record_payload.get("created_by", "system") or "system",
+                    reviewed_at=_to_datetime(record_payload["reviewed_at"]) if record_payload.get("reviewed_at") else None,
+                    reviewed_by=record_payload.get("reviewed_by", ""),
+                    metadata_json=record_payload.get("metadata", {}),
+                )
+            else:
+                record.candidate_reference = record_payload.get("candidate_reference") or {}
+                record.target_definition_snapshot = record_payload.get("target_definition_snapshot") or {}
+                record.claim_text = record_payload["claim_text"]
+                record.bounded_scope = record_payload["bounded_scope"]
+                record.support_level = record_payload["support_level"]
+                record.evidence_basis_summary = record_payload.get("evidence_basis_summary", "")
+                record.source_recommendation_rank = int(record_payload.get("source_recommendation_rank", 0) or 0)
+                record.status = record_payload["status"]
+                record.updated_at = _to_datetime(record_payload["updated_at"])
+                record.created_by = record_payload.get("created_by", record.created_by) or record.created_by
+                if record_payload.get("created_by_user_id") is not None:
+                    record.created_by_user_id = record_payload.get("created_by_user_id") or None
+                record.reviewed_at = _to_datetime(record_payload["reviewed_at"]) if record_payload.get("reviewed_at") else None
+                record.reviewed_by = record_payload.get("reviewed_by", "")
+                record.metadata_json = record_payload.get("metadata", {})
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _claim_payload(record)
+
+    def list_claims(self, session_id: str | None = None, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ClaimModel).order_by(
+                ClaimModel.source_recommendation_rank.asc(),
+                ClaimModel.created_at.asc(),
+                ClaimModel.claim_id.asc(),
+            )
+            if session_id is not None:
+                statement = statement.where(ClaimModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ClaimModel.workspace_id == workspace_id)
+            rows = db.execute(statement).scalars().all()
+            return [_claim_payload(row) for row in rows]
+
+    def get_claim(self, claim_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(ClaimModel).where(ClaimModel.claim_id == claim_id)
+            if workspace_id is not None:
+                statement = statement.where(ClaimModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No persisted claim found for '{claim_id}'.")
+            return _claim_payload(record)
+
+
+class ExperimentRequestRepository:
+    def __init__(
+        self,
+        session_repository: SessionRepository | None = None,
+        claim_repository: ClaimRepository | None = None,
+    ) -> None:
+        self.session_repository = session_repository or SessionRepository()
+        self.claim_repository = claim_repository or ClaimRepository(session_repository=self.session_repository)
+
+    def upsert_experiment_request(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = validate_experiment_request_record(payload)
+        if not record_payload.get("workspace_id"):
+            try:
+                record_payload["workspace_id"] = self.session_repository.get_session(record_payload["session_id"])["workspace_id"]
+            except FileNotFoundError:
+                record_payload["workspace_id"] = LEGACY_WORKSPACE_ID
+        self.session_repository.upsert_session(
+            session_id=record_payload["session_id"],
+            workspace_id=record_payload["workspace_id"],
+            created_by_user_id=record_payload.get("requested_by_user_id") or None,
+        )
+        claim_payload = self.claim_repository.get_claim(
+            record_payload["claim_id"],
+            workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+        )
+        with session_scope() as db:
+            statement = select(ExperimentRequestModel).where(
+                ExperimentRequestModel.workspace_id == (record_payload["workspace_id"] or LEGACY_WORKSPACE_ID),
+                ExperimentRequestModel.session_id == record_payload["session_id"],
+                ExperimentRequestModel.claim_id == record_payload["claim_id"],
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = ExperimentRequestModel(
+                    experiment_request_id=record_payload["experiment_request_id"] or _make_id("expreq"),
+                    session_id=record_payload["session_id"],
+                    workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+                    claim_id=claim_payload["claim_id"],
+                    requested_by_user_id=record_payload.get("requested_by_user_id") or None,
+                    candidate_id=record_payload["candidate_id"],
+                    candidate_reference=record_payload.get("candidate_reference") or {},
+                    target_definition_snapshot=record_payload.get("target_definition_snapshot") or {},
+                    requested_measurement=record_payload.get("requested_measurement", ""),
+                    requested_direction=record_payload.get("requested_direction", ""),
+                    rationale_summary=record_payload.get("rationale_summary", ""),
+                    priority_tier=record_payload.get("priority_tier", "medium"),
+                    status=record_payload.get("status", "proposed"),
+                    requested_at=_to_datetime(record_payload["requested_at"]),
+                    requested_by=record_payload.get("requested_by", "system") or "system",
+                    notes=record_payload.get("notes", ""),
+                    metadata_json=record_payload.get("metadata", {}),
+                )
+            else:
+                record.requested_by_user_id = record_payload.get("requested_by_user_id") or None
+                record.candidate_id = record_payload["candidate_id"]
+                record.candidate_reference = record_payload.get("candidate_reference") or {}
+                record.target_definition_snapshot = record_payload.get("target_definition_snapshot") or {}
+                record.requested_measurement = record_payload.get("requested_measurement", "")
+                record.requested_direction = record_payload.get("requested_direction", "")
+                record.rationale_summary = record_payload.get("rationale_summary", "")
+                record.priority_tier = record_payload.get("priority_tier", "medium")
+                record.status = record_payload.get("status", "proposed")
+                record.requested_at = _to_datetime(record_payload["requested_at"])
+                record.requested_by = record_payload.get("requested_by", record.requested_by) or record.requested_by
+                record.notes = record_payload.get("notes", "")
+                record.metadata_json = record_payload.get("metadata", {})
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _experiment_request_payload(record)
+
+    def list_experiment_requests(
+        self,
+        session_id: str | None = None,
+        workspace_id: str | None = None,
+        claim_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ExperimentRequestModel).order_by(
+                ExperimentRequestModel.priority_tier.asc(),
+                ExperimentRequestModel.requested_at.asc(),
+                ExperimentRequestModel.experiment_request_id.asc(),
+            )
+            if session_id is not None:
+                statement = statement.where(ExperimentRequestModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ExperimentRequestModel.workspace_id == workspace_id)
+            if claim_id is not None:
+                statement = statement.where(ExperimentRequestModel.claim_id == claim_id)
+            rows = db.execute(statement).scalars().all()
+            return [_experiment_request_payload(row) for row in rows]
+
+    def get_experiment_request(self, experiment_request_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(ExperimentRequestModel).where(
+                ExperimentRequestModel.experiment_request_id == experiment_request_id
+            )
+            if workspace_id is not None:
+                statement = statement.where(ExperimentRequestModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No persisted experiment request found for '{experiment_request_id}'.")
+            return _experiment_request_payload(record)
+
+
+class ExperimentResultRepository:
+    def __init__(
+        self,
+        session_repository: SessionRepository | None = None,
+        claim_repository: ClaimRepository | None = None,
+        experiment_request_repository: ExperimentRequestRepository | None = None,
+    ) -> None:
+        self.session_repository = session_repository or SessionRepository()
+        self.claim_repository = claim_repository or ClaimRepository(session_repository=self.session_repository)
+        self.experiment_request_repository = experiment_request_repository or ExperimentRequestRepository(
+            session_repository=self.session_repository,
+            claim_repository=self.claim_repository,
+        )
+
+    def create_experiment_result(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = validate_experiment_result_record(payload)
+        if not record_payload.get("workspace_id"):
+            try:
+                record_payload["workspace_id"] = self.session_repository.get_session(record_payload["session_id"])["workspace_id"]
+            except FileNotFoundError:
+                record_payload["workspace_id"] = LEGACY_WORKSPACE_ID
+        self.session_repository.upsert_session(
+            session_id=record_payload["session_id"],
+            workspace_id=record_payload["workspace_id"],
+            created_by_user_id=record_payload.get("ingested_by_user_id") or None,
+        )
+        if record_payload.get("source_claim_id"):
+            self.claim_repository.get_claim(
+                record_payload["source_claim_id"],
+                workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+            )
+        if record_payload.get("source_experiment_request_id"):
+            self.experiment_request_repository.get_experiment_request(
+                record_payload["source_experiment_request_id"],
+                workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+            )
+
+        with session_scope() as db:
+            record = ExperimentResultModel(
+                experiment_result_id=record_payload["experiment_result_id"] or _make_id("expres"),
+                session_id=record_payload["session_id"],
+                workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+                source_experiment_request_id=record_payload.get("source_experiment_request_id") or None,
+                source_claim_id=record_payload.get("source_claim_id") or None,
+                ingested_by_user_id=record_payload.get("ingested_by_user_id") or None,
+                candidate_id=record_payload["candidate_id"],
+                candidate_reference=record_payload.get("candidate_reference") or {},
+                target_definition_snapshot=record_payload.get("target_definition_snapshot") or {},
+                observed_value=record_payload.get("observed_value"),
+                observed_label=record_payload.get("observed_label", ""),
+                measurement_unit=record_payload.get("measurement_unit", ""),
+                assay_context=record_payload.get("assay_context", ""),
+                result_quality=record_payload.get("result_quality", "provisional"),
+                result_source=record_payload.get("result_source", "manual_entry"),
+                ingested_at=_to_datetime(record_payload["ingested_at"]),
+                ingested_by=record_payload.get("ingested_by", ""),
+                notes=record_payload.get("notes", ""),
+                metadata_json=record_payload.get("metadata", {}),
+            )
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _experiment_result_payload(record)
+
+    def list_experiment_results(
+        self,
+        *,
+        session_id: str | None = None,
+        workspace_id: str | None = None,
+        source_experiment_request_id: str | None = None,
+        source_claim_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ExperimentResultModel).order_by(
+                desc(ExperimentResultModel.ingested_at),
+                ExperimentResultModel.experiment_result_id.asc(),
+            )
+            if session_id is not None:
+                statement = statement.where(ExperimentResultModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ExperimentResultModel.workspace_id == workspace_id)
+            if source_experiment_request_id is not None:
+                statement = statement.where(
+                    ExperimentResultModel.source_experiment_request_id == source_experiment_request_id
+                )
+            if source_claim_id is not None:
+                statement = statement.where(ExperimentResultModel.source_claim_id == source_claim_id)
+            rows = db.execute(statement).scalars().all()
+            return [_experiment_result_payload(row) for row in rows]
+
+    def get_experiment_result(self, experiment_result_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(ExperimentResultModel).where(
+                ExperimentResultModel.experiment_result_id == experiment_result_id
+            )
+            if workspace_id is not None:
+                statement = statement.where(ExperimentResultModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No persisted experiment result found for '{experiment_result_id}'.")
+            return _experiment_result_payload(record)
+
+
+class BeliefUpdateRepository:
+    def __init__(
+        self,
+        session_repository: SessionRepository | None = None,
+        claim_repository: ClaimRepository | None = None,
+        experiment_result_repository: ExperimentResultRepository | None = None,
+    ) -> None:
+        self.session_repository = session_repository or SessionRepository()
+        self.claim_repository = claim_repository or ClaimRepository(session_repository=self.session_repository)
+        self.experiment_result_repository = experiment_result_repository or ExperimentResultRepository(
+            session_repository=self.session_repository,
+            claim_repository=self.claim_repository,
+        )
+
+    def upsert_belief_update(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = validate_belief_update_record(payload)
+        if not record_payload.get("workspace_id"):
+            try:
+                record_payload["workspace_id"] = self.session_repository.get_session(record_payload["session_id"])["workspace_id"]
+            except FileNotFoundError:
+                record_payload["workspace_id"] = LEGACY_WORKSPACE_ID
+        self.session_repository.upsert_session(
+            session_id=record_payload["session_id"],
+            workspace_id=record_payload["workspace_id"],
+            created_by_user_id=record_payload.get("created_by_user_id") or None,
+        )
+        self.claim_repository.get_claim(
+            record_payload["claim_id"],
+            workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+        )
+        if record_payload.get("experiment_result_id"):
+            self.experiment_result_repository.get_experiment_result(
+                record_payload["experiment_result_id"],
+                workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+            )
+
+        with session_scope() as db:
+            statement = select(BeliefUpdateModel).where(
+                BeliefUpdateModel.workspace_id == (record_payload["workspace_id"] or LEGACY_WORKSPACE_ID),
+                BeliefUpdateModel.claim_id == record_payload["claim_id"],
+                BeliefUpdateModel.experiment_result_id == (record_payload.get("experiment_result_id") or None),
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = BeliefUpdateModel(
+                    belief_update_id=record_payload["belief_update_id"] or _make_id("belief"),
+                    session_id=record_payload["session_id"],
+                    workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+                    claim_id=record_payload["claim_id"],
+                    experiment_result_id=record_payload.get("experiment_result_id") or None,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    candidate_id=record_payload.get("candidate_id", ""),
+                    candidate_label=record_payload.get("candidate_label", ""),
+                    previous_support_level=record_payload.get("previous_support_level", "limited"),
+                    updated_support_level=record_payload.get("updated_support_level", "limited"),
+                    update_direction=record_payload.get("update_direction", "unresolved"),
+                    update_reason=record_payload.get("update_reason", ""),
+                    governance_status=record_payload.get("governance_status", "proposed"),
+                    created_at=_to_datetime(record_payload["created_at"]),
+                    created_by=record_payload.get("created_by", ""),
+                    reviewed_at=_to_datetime(record_payload["reviewed_at"]) if record_payload.get("reviewed_at") else None,
+                    reviewed_by=record_payload.get("reviewed_by", ""),
+                    metadata_json=record_payload.get("metadata", {}),
+                )
+            else:
+                record.session_id = record_payload["session_id"]
+                record.created_by_user_id = record_payload.get("created_by_user_id") or None
+                record.candidate_id = record_payload.get("candidate_id", "")
+                record.candidate_label = record_payload.get("candidate_label", "")
+                record.previous_support_level = record_payload.get("previous_support_level", "limited")
+                record.updated_support_level = record_payload.get("updated_support_level", "limited")
+                record.update_direction = record_payload.get("update_direction", "unresolved")
+                record.update_reason = record_payload.get("update_reason", "")
+                record.governance_status = record_payload.get("governance_status", "proposed")
+                record.created_at = _to_datetime(record_payload["created_at"])
+                record.created_by = record_payload.get("created_by", record.created_by) or record.created_by
+                record.reviewed_at = _to_datetime(record_payload["reviewed_at"]) if record_payload.get("reviewed_at") else None
+                record.reviewed_by = record_payload.get("reviewed_by", "")
+                record.metadata_json = record_payload.get("metadata", {})
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _belief_update_payload(record)
+
+    def list_belief_updates(
+        self,
+        *,
+        session_id: str | None = None,
+        workspace_id: str | None = None,
+        claim_id: str | None = None,
+        experiment_result_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(BeliefUpdateModel).order_by(
+                desc(BeliefUpdateModel.created_at),
+                BeliefUpdateModel.belief_update_id.asc(),
+            )
+            if session_id is not None:
+                statement = statement.where(BeliefUpdateModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(BeliefUpdateModel.workspace_id == workspace_id)
+            if claim_id is not None:
+                statement = statement.where(BeliefUpdateModel.claim_id == claim_id)
+            if experiment_result_id is not None:
+                statement = statement.where(BeliefUpdateModel.experiment_result_id == experiment_result_id)
+            rows = db.execute(statement).scalars().all()
+            return [_belief_update_payload(row) for row in rows]
+
+    def get_belief_update(self, belief_update_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(BeliefUpdateModel).where(BeliefUpdateModel.belief_update_id == belief_update_id)
+            if workspace_id is not None:
+                statement = statement.where(BeliefUpdateModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No persisted belief update found for '{belief_update_id}'.")
+            return _belief_update_payload(record)
+
+
+class BeliefStateRepository:
+    def __init__(self, session_repository: SessionRepository | None = None) -> None:
+        self.session_repository = session_repository or SessionRepository()
+
+    def upsert_belief_state(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = validate_belief_state_record(payload)
+        with session_scope() as db:
+            statement = select(BeliefStateModel).where(
+                BeliefStateModel.workspace_id == (record_payload["workspace_id"] or LEGACY_WORKSPACE_ID),
+                BeliefStateModel.target_key == record_payload["target_key"],
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = BeliefStateModel(
+                    belief_state_id=record_payload["belief_state_id"] or _make_id("beliefstate"),
+                    workspace_id=record_payload["workspace_id"] or LEGACY_WORKSPACE_ID,
+                    target_key=record_payload["target_key"],
+                    target_definition_snapshot=record_payload.get("target_definition_snapshot") or {},
+                    summary_text=record_payload.get("summary_text", ""),
+                    active_claim_count=int(record_payload.get("active_claim_count", 0) or 0),
+                    supported_claim_count=int(record_payload.get("supported_claim_count", 0) or 0),
+                    weakened_claim_count=int(record_payload.get("weakened_claim_count", 0) or 0),
+                    unresolved_claim_count=int(record_payload.get("unresolved_claim_count", 0) or 0),
+                    last_updated_at=_to_datetime(record_payload["last_updated_at"]),
+                    last_update_source=record_payload.get("last_update_source", ""),
+                    version=int(record_payload.get("version", 1) or 1),
+                    latest_belief_update_refs=record_payload.get("latest_belief_update_refs") or [],
+                    support_distribution_summary=record_payload.get("support_distribution_summary", ""),
+                    governance_scope_summary=record_payload.get("governance_scope_summary", ""),
+                    metadata_json=record_payload.get("metadata", {}),
+                )
+            else:
+                record.target_definition_snapshot = record_payload.get("target_definition_snapshot") or {}
+                record.summary_text = record_payload.get("summary_text", "")
+                record.active_claim_count = int(record_payload.get("active_claim_count", 0) or 0)
+                record.supported_claim_count = int(record_payload.get("supported_claim_count", 0) or 0)
+                record.weakened_claim_count = int(record_payload.get("weakened_claim_count", 0) or 0)
+                record.unresolved_claim_count = int(record_payload.get("unresolved_claim_count", 0) or 0)
+                record.last_updated_at = _to_datetime(record_payload["last_updated_at"])
+                record.last_update_source = record_payload.get("last_update_source", "")
+                record.version = int(record_payload.get("version", record.version) or record.version or 1)
+                record.latest_belief_update_refs = record_payload.get("latest_belief_update_refs") or []
+                record.support_distribution_summary = record_payload.get("support_distribution_summary", "")
+                record.governance_scope_summary = record_payload.get("governance_scope_summary", "")
+                record.metadata_json = record_payload.get("metadata", {})
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _belief_state_payload(record)
+
+    def get_belief_state(self, *, workspace_id: str, target_key: str) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(BeliefStateModel).where(
+                BeliefStateModel.workspace_id == workspace_id,
+                BeliefStateModel.target_key == target_key,
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No persisted belief state found for target '{target_key}'.")
+            return _belief_state_payload(record)
+
+    def list_belief_states(self, *, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(BeliefStateModel).order_by(
+                desc(BeliefStateModel.last_updated_at),
+                BeliefStateModel.target_key.asc(),
+            )
+            if workspace_id is not None:
+                statement = statement.where(BeliefStateModel.workspace_id == workspace_id)
+            rows = db.execute(statement).scalars().all()
+            return [_belief_state_payload(row) for row in rows]
 
 
 class WorkspaceUsageRepository:

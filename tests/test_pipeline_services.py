@@ -293,6 +293,9 @@ class PipelineServicesTest(unittest.TestCase):
         self.assertEqual(result["comparison_anchors"]["target_name"], "biodegradability")
         self.assertEqual(result["decision_output"]["comparison_anchors"]["run_contract_version"], "run_contract.v1")
         self.assertEqual(result["analysis_report"]["comparison_anchors"]["scoring_mode"], "balanced")
+        self.assertEqual(result["scientific_session_truth"]["session_id"], session_id)
+        self.assertTrue(result["scientific_session_truth"]["evidence_records"])
+        self.assertIn("Current recommendations use", result["scientific_session_truth"]["evidence_loop"]["summary"])
 
     @patch("system.run_pipeline.build_discovery_result")
     @patch("system.run_pipeline.persist_review_queue")

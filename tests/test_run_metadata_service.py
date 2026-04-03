@@ -129,6 +129,46 @@ class RunMetadataServiceTest(unittest.TestCase):
         self.assertTrue(ready["comparison_ready"])
         self.assertEqual(ready["training_scope"], "session_trained")
 
+    def test_infer_comparison_anchors_prefers_canonical_scientific_truth_when_present(self):
+        anchors = infer_comparison_anchors(
+            session_record={
+                "session_id": "session_truth",
+                "source_name": "upload.csv",
+                "input_type": "measurement_dataset",
+                "summary_metadata": {
+                    "scientific_session_truth": {
+                        "comparison_anchors": {
+                            "session_id": "session_truth",
+                            "source_name": "upload.csv",
+                            "input_type": "measurement_dataset",
+                            "target_name": "pIC50",
+                            "target_kind": "regression",
+                            "optimization_direction": "maximize",
+                            "measurement_column": "pic50",
+                            "dataset_type": "measurement_dataset",
+                            "mapping_confidence": "medium",
+                            "label_source": "continuous_measurement",
+                            "decision_intent": "prioritize_experiments",
+                            "modeling_mode": "regression",
+                            "scoring_mode": "balanced",
+                            "selected_model_name": "rf_regression",
+                            "training_scope": "session_trained",
+                            "target_contract_version": "target_definition.v1",
+                            "model_contract_version": "model_contract.v1",
+                            "scoring_policy_version": "scoring_policy.v1",
+                            "explanation_contract_version": "normalized_explanation.v1",
+                            "run_contract_version": "run_contract.v1",
+                            "comparison_ready": True,
+                        }
+                    }
+                },
+            }
+        )
+
+        self.assertEqual(anchors["target_name"], "pIC50")
+        self.assertEqual(anchors["modeling_mode"], "regression")
+        self.assertTrue(anchors["comparison_ready"])
+
     def test_build_run_provenance_exposes_comparison_and_model_context(self):
         provenance = build_run_provenance(
             run_contract={

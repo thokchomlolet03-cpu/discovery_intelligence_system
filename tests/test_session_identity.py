@@ -1,6 +1,6 @@
 import unittest
 
-from system.services.session_identity_service import build_metric_interpretation, build_session_identity
+from system.services.session_identity_service import build_metric_interpretation, build_session_identity, build_trust_context
 
 
 class SessionIdentityServiceTest(unittest.TestCase):
@@ -179,6 +179,79 @@ class SessionIdentityServiceTest(unittest.TestCase):
 
         self.assertEqual(identity["evidence_support_label"], "Limited evidence support")
         self.assertIn("legacy baseline bundle", identity["bridge_state_summary"].lower())
+
+    def test_builds_identity_from_canonical_scientific_truth_when_present(self):
+        identity = build_session_identity(
+            session_record={
+                "session_id": "session_truth",
+                "workspace_id": "workspace_1",
+                "source_name": "upload.csv",
+                "created_at": "2026-03-25T12:00:00+00:00",
+                "summary_metadata": {
+                    "last_job_status": "succeeded",
+                    "scientific_session_truth": {
+                        "target_definition": {
+                            "target_name": "pIC50",
+                            "target_kind": "regression",
+                            "optimization_direction": "maximize",
+                            "measurement_column": "pic50",
+                            "dataset_type": "measurement_dataset",
+                            "mapping_confidence": "medium",
+                            "scientific_meaning": "Higher predicted values are treated as more favorable.",
+                            "success_definition": "Use higher values as more favorable guidance.",
+                        },
+                        "decision_intent": "prioritize_experiments",
+                        "modeling_mode": "regression",
+                        "run_contract": {"training_scope": "session_trained"},
+                        "comparison_anchors": {"comparison_ready": True},
+                    },
+                },
+            },
+            analysis_report={},
+            decision_payload={"artifact_state": "ok", "summary": {"candidate_count": 2}},
+        )
+
+        self.assertEqual(identity["target_definition"]["target_name"], "pIC50")
+        self.assertEqual(identity["modeling_mode"], "regression")
+
+    def test_build_trust_context_surfaces_selective_evidence_use_without_claiming_learning(self):
+        trust = build_trust_context(
+            target_definition={"target_name": "pIC50", "target_kind": "regression", "dataset_type": "measurement_dataset"},
+            modeling_mode="regression",
+            analysis_report={"measurement_summary": {"rows_with_values": 12}},
+            decision_payload={},
+            ranking_policy={"primary_score_label": "Ranking compatibility"},
+            run_provenance={},
+            scientific_truth={
+                "evidence_activation_policy": {
+                    "summary": "Ranking context currently uses Retrieved reference chemistry context and Predicted continuous values.",
+                    "ranking_context_summary": "Active ranking context is currently limited to Retrieved reference chemistry context and Predicted continuous values.",
+                    "interpretation_summary": "Recommendation interpretation currently uses Human review outcomes and Workspace feedback memory.",
+                    "recommendation_reuse_summary": "Conservative recommendation reuse is currently eligible for Observed experimental values and Human review outcomes.",
+                    "future_learning_eligibility_summary": "Future learning consideration is currently limited to Observed experimental values and Queued learning evidence.",
+                    "permanently_non_active_summary": "Workspace feedback memory and Predicted continuous values are not eligible for stronger future activation.",
+                },
+                "controlled_reuse": {
+                    "recommendation_reuse_active": True,
+                    "ranking_context_reuse_active": True,
+                    "interpretation_support_active": True,
+                    "recommendation_reuse_summary": "Recommendation reuse is active from prior human review outcomes carried through workspace memory.",
+                    "ranking_context_reuse_summary": "Ranking-context reuse is active for framing only and does not change the model score.",
+                    "interpretation_support_summary": "Workspace feedback memory remains active as interpretation support.",
+                },
+            },
+        )
+
+        self.assertEqual(trust["activation_policy_label"], "Selective evidence use")
+        self.assertIn("ranking context", trust["activation_policy_summary"].lower())
+        self.assertIn("workspace feedback memory", trust["activation_policy_summary"].lower())
+        self.assertEqual(trust["controlled_reuse_label"], "Controlled evidence reuse")
+        self.assertIn("recommendation reuse is active", trust["controlled_reuse_summary"].lower())
+        self.assertIn("does not change the model score", trust["controlled_reuse_summary"].lower())
+        self.assertEqual(trust["future_eligibility_label"], "Future activation eligibility")
+        self.assertIn("recommendation reuse", trust["future_eligibility_summary"].lower())
+        self.assertIn("future learning consideration", trust["future_eligibility_summary"].lower())
+        self.assertIn("not eligible for stronger future activation", trust["future_eligibility_summary"].lower())
 
 
 if __name__ == "__main__":

@@ -304,6 +304,7 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(workbench["decision_overview"]["top_shortlist"][0]["candidate_id"], "cand_1")
         self.assertEqual(workbench["trust_context"]["evidence_support_label"], "Stronger evidence support")
         self.assertIn("observed values", workbench["trust_context"]["evidence_basis_summary"].lower())
+        self.assertEqual(workbench["scientific_session_truth"], {})
 
     def test_build_discovery_workbench_preserves_workspace_memory_annotations(self):
         decision_output = canonical_decision_output()
@@ -354,8 +355,167 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(candidate["workspace_memory"]["last_session_id"], "session_prior")
         self.assertEqual(candidate["workspace_memory"]["last_note"], "Carry this prior approval into the next run.")
         self.assertEqual(candidate["workspace_memory_history"][0]["status"], "approved")
+        self.assertTrue(candidate["selective_evidence_context"])
+        self.assertIn("interpretation support", candidate["selective_evidence_context"][0].lower())
+        self.assertTrue(candidate["controlled_reuse"]["recommendation_reuse_active"])
+        self.assertIn("without retraining the model", candidate["controlled_reuse"]["recommendation_reuse_summary"].lower())
+        self.assertIn("continuity across sessions", candidate["final_recommendation"]["summary"].lower())
+        self.assertIn("does not retrain the model", candidate["decision_policy"]["policy_summary"].lower())
         self.assertEqual(workbench["workspace_memory"]["matched_candidate_count"], 1)
         self.assertIn("prior workspace feedback", workbench["workspace_memory"]["summary"].lower())
+
+    def test_build_discovery_workbench_exposes_claim_refs_from_scientific_truth(self):
+        scientific_truth = {
+            "session_id": "session_claim_view",
+            "target_definition": {
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+            },
+            "claims_summary": {
+                "claim_count": 1,
+                "proposed_count": 1,
+                "accepted_count": 0,
+                "rejected_count": 0,
+                "superseded_count": 0,
+                "summary_text": "1 proposed claim was derived from the current shortlist. Claims remain bounded recommendation-derived assertions, not experimental confirmation.",
+                "top_claims": [],
+            },
+            "claim_refs": [
+                {
+                    "claim_id": "claim_1",
+                    "candidate_id": "cand_1",
+                    "candidate_label": "cand_1 (CCO)",
+                    "claim_type": "recommendation_assertion",
+                    "claim_text": "Under the current session evidence, cand_1 (CCO) is a plausible follow-up candidate to test for higher pIC50.",
+                    "support_level": "strong",
+                    "status": "proposed",
+                    "source_recommendation_rank": 1,
+                    "created_at": "2026-04-02T10:00:00+00:00",
+                }
+            ],
+            "experiment_request_summary": {
+                "request_count": 1,
+                "proposed_count": 1,
+                "accepted_count": 0,
+                "rejected_count": 0,
+                "completed_count": 0,
+                "superseded_count": 0,
+                "summary_text": "1 proposed experiment request was derived from the current claims. These requests recommend next experiments; they are not scheduled or completed lab work.",
+                "top_requests": [],
+            },
+            "experiment_request_refs": [
+                {
+                    "experiment_request_id": "expreq_1",
+                    "claim_id": "claim_1",
+                    "candidate_id": "cand_1",
+                    "candidate_label": "cand_1 (CCO)",
+                    "requested_measurement": "pIC50",
+                    "requested_direction": "measure for higher values",
+                    "priority_tier": "high",
+                    "status": "proposed",
+                    "requested_at": "2026-04-02T10:00:00+00:00",
+                }
+            ],
+            "linked_result_summary": {
+                "result_count": 1,
+                "recorded_count": 1,
+                "with_numeric_value_count": 1,
+                "with_label_count": 0,
+                "summary_text": "1 observed result has been recorded for this session. Observed results are stored outcome records, not belief updates or causal proof.",
+                "top_results": [],
+            },
+            "experiment_result_refs": [
+                {
+                    "experiment_result_id": "expres_1",
+                    "source_experiment_request_id": "expreq_1",
+                    "source_claim_id": "claim_1",
+                    "candidate_id": "cand_1",
+                    "candidate_label": "cand_1 (CCO)",
+                    "observed_value": 6.7,
+                    "measurement_unit": "log units",
+                    "result_quality": "confirmatory",
+                    "result_source": "manual_entry",
+                    "ingested_at": "2026-04-02T11:00:00+00:00",
+                }
+            ],
+            "belief_update_summary": {
+                "update_count": 1,
+                "proposed_count": 1,
+                "accepted_count": 0,
+                "rejected_count": 0,
+                "superseded_count": 0,
+                "strengthened_count": 1,
+                "weakened_count": 0,
+                "unresolved_count": 0,
+                "summary_text": "1 belief update has been recorded for this session. These updates track bounded support changes only; they do not prove claims, imply causality, or change the model.",
+                "top_updates": [],
+            },
+            "belief_update_refs": [
+                {
+                    "belief_update_id": "belief_1",
+                    "claim_id": "claim_1",
+                    "experiment_result_id": "expres_1",
+                    "candidate_id": "cand_1",
+                    "candidate_label": "cand_1 (CCO)",
+                    "previous_support_level": "strong",
+                    "updated_support_level": "strong",
+                    "update_direction": "strengthened",
+                    "governance_status": "proposed",
+                    "created_at": "2026-04-02T12:00:00+00:00",
+                }
+            ],
+            "belief_state_ref": {
+                "belief_state_id": "beliefstate_1",
+                "target_key": "pic50|regression|maximize|pic50|measurement_dataset",
+                "summary_text": "Current belief state for pIC50 tracks 1 active claim: 1 strengthened, 0 weakened, and 0 unresolved.",
+                "active_claim_count": 1,
+                "supported_claim_count": 1,
+                "weakened_claim_count": 0,
+                "unresolved_claim_count": 0,
+                "last_updated_at": "2026-04-02T12:05:00+00:00",
+                "last_update_source": "latest belief update linked to an observed result",
+                "version": 1,
+            },
+            "belief_state_summary": {
+                "summary_text": "Current belief state for pIC50 tracks 1 active claim: 1 strengthened, 0 weakened, and 0 unresolved. This is a bounded support summary, not final scientific truth or live learning state.",
+                "support_distribution_summary": "Supported 1, weakened 0, unresolved 0 across 1 currently tracked claim.",
+                "governance_scope_summary": "Current picture includes 0 accepted and 1 proposed belief update; rejected and superseded updates are excluded.",
+                "active_claim_count": 1,
+                "supported_claim_count": 1,
+                "weakened_claim_count": 0,
+                "unresolved_claim_count": 0,
+                "last_updated_at": "2026-04-02T12:05:00+00:00",
+                "last_update_source": "latest belief update linked to an observed result",
+            },
+        }
+
+        workbench = build_discovery_workbench(
+            decision_output=canonical_decision_output(),
+            analysis_report={"warnings": [], "top_level_recommendation_summary": "Start with the top candidate."},
+            review_queue={},
+            session_id=None,
+            evaluation_summary={"selected_model": {"name": "rf_isotonic", "calibration_method": "isotonic"}},
+            system_version="2.0.0",
+            scientific_session_truth=scientific_truth,
+        )
+
+        self.assertEqual(workbench["claims_summary"]["claim_count"], 1)
+        self.assertEqual(workbench["claim_refs"][0]["claim_id"], "claim_1")
+        self.assertIn("plausible follow-up candidate", workbench["claim_refs"][0]["claim_text"].lower())
+        self.assertEqual(workbench["experiment_request_summary"]["request_count"], 1)
+        self.assertEqual(workbench["experiment_request_refs"][0]["experiment_request_id"], "expreq_1")
+        self.assertEqual(workbench["experiment_request_refs"][0]["requested_measurement"], "pIC50")
+        self.assertEqual(workbench["linked_result_summary"]["result_count"], 1)
+        self.assertEqual(workbench["experiment_result_refs"][0]["experiment_result_id"], "expres_1")
+        self.assertEqual(workbench["experiment_result_refs"][0]["result_quality"], "confirmatory")
+        self.assertEqual(workbench["belief_update_summary"]["update_count"], 1)
+        self.assertEqual(workbench["belief_update_refs"][0]["belief_update_id"], "belief_1")
+        self.assertEqual(workbench["belief_update_refs"][0]["update_direction"], "strengthened")
+        self.assertEqual(workbench["belief_state_summary"]["active_claim_count"], 1)
+        self.assertEqual(workbench["belief_state_ref"]["belief_state_id"], "beliefstate_1")
 
     def test_build_discovery_workbench_reports_contract_error_for_missing_required_fields(self):
         invalid_decision_output = {
@@ -592,6 +752,8 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("Recommended for immediate testing", response.text)
         self.assertIn("Observed measurement evidence", response.text)
         self.assertIn("Observed or derived data facts", response.text)
+        self.assertIn("Evidence loop", response.text)
+        self.assertIn("Learning boundary", response.text)
 
     def test_discovery_page_can_reopen_session_from_nested_result_payload(self):
         self._store_result_only_session("session_result_only")
@@ -615,6 +777,8 @@ class DiscoveryRouteTest(unittest.TestCase):
         self.assertIn("cand_1", response.text)
         self.assertIn("Observed measurement evidence", response.text)
         self.assertIn("Stronger evidence support", response.text)
+        self.assertIn("Evidence loop", response.text)
+        self.assertIn("Memory is not learning", response.text)
 
     def test_dashboard_page_can_reopen_session_from_nested_result_payload(self):
         self._store_result_only_session("session_dashboard_result_only")

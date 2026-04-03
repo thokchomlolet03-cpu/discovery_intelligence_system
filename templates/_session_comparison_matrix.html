@@ -18,6 +18,12 @@
       <div class="mini-callout">
         <span class="panel-label">Focus comparison basis</span>
         <p>{{ comparison_matrix.focus_basis_label }}</p>
+        {% if comparison_matrix.focus_basis_source_label %}
+          <p class="helper-copy">Source: {{ comparison_matrix.focus_basis_source_label }}</p>
+        {% endif %}
+        {% if comparison_matrix.focus_activation_boundary_summary %}
+          <p class="helper-copy">{{ comparison_matrix.focus_activation_boundary_summary }}</p>
+        {% endif %}
       </div>
     {% endif %}
 
@@ -50,6 +56,12 @@
                   {{ row.comparison.label or "Not recorded" }}
                 </span>
                 <div class="helper-copy">{{ row.comparison.summary or "Comparison summary not recorded." }}</div>
+                <div class="helper-copy">Basis source: {{ row.basis_source_label }}</div>
+                <div class="helper-copy">Read-across basis: {{ row.comparison_basis_label or "Not recorded" }}</div>
+                <div class="helper-copy">Readiness: {{ row.comparison_ready_label }}</div>
+                {% if row.comparison.basis_source_summary %}
+                  <div class="helper-copy">{{ row.comparison.basis_source_summary }}</div>
+                {% endif %}
               </td>
               <td>
                 <strong>{{ row.target_name }}</strong>
@@ -64,6 +76,41 @@
               <td>
                 <strong>{{ row.decision_intent_label }}</strong>
                 <div class="helper-copy">{{ row.policy_version }}</div>
+                <div class="helper-copy">{{ row.evidence_basis_label }}</div>
+                <div class="helper-copy">{{ row.interpretation_evidence_label }}</div>
+                <div class="helper-copy">{{ row.activation_boundary_summary }}</div>
+                {% if row.activation_policy_summary %}
+                  <div class="helper-copy">{{ row.activation_policy_summary }}</div>
+                {% endif %}
+                {% if row.recommendation_reuse_summary %}
+                  <div class="helper-copy">{{ row.recommendation_reuse_summary }}</div>
+                {% endif %}
+                {% if row.controlled_reuse_summary %}
+                  <div class="helper-copy">{{ row.controlled_reuse_summary }}</div>
+                {% endif %}
+                {% if row.future_ranking_context_summary %}
+                  <div class="helper-copy">{{ row.future_ranking_context_summary }}</div>
+                {% endif %}
+                {% if row.future_learning_eligibility_summary %}
+                  <div class="helper-copy">{{ row.future_learning_eligibility_summary }}</div>
+                {% endif %}
+                {% if row.permanently_non_active_summary %}
+                  <div class="helper-copy">{{ row.permanently_non_active_summary }}</div>
+                {% endif %}
+                {% if row.bridge_state_summary %}
+                  <div class="helper-copy">Bridge-state: {{ row.bridge_state_summary }}</div>
+                {% endif %}
+                {% if row.recommendation_reuse_active or row.ranking_context_reuse_active or row.interpretation_support_active %}
+                  <div class="helper-copy">
+                    Active reuse:
+                    {% if row.recommendation_reuse_active %} recommendation {% endif %}
+                    {% if row.ranking_context_reuse_active %} ranking-context {% endif %}
+                    {% if row.interpretation_support_active %} interpretation-support {% endif %}
+                  </div>
+                {% endif %}
+                {% if row.future_activation_summary and row.future_activation_summary != "None recorded" %}
+                  <div class="helper-copy">Future activation: {{ row.future_activation_summary }}</div>
+                {% endif %}
               </td>
               <td>
                 <div><strong>{{ row.rows_total }}</strong> rows</div>

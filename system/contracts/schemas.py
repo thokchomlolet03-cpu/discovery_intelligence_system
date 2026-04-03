@@ -166,6 +166,106 @@ class DomainStatus(str, Enum):
     unknown = "unknown"
 
 
+class EvidenceType(str, Enum):
+    experimental_value = "experimental_value"
+    binary_label = "binary_label"
+    chemistry_feature = "chemistry_feature"
+    derived_label = "derived_label"
+    reference_context = "reference_context"
+    model_prediction = "model_prediction"
+    human_review = "human_review"
+    workspace_memory = "workspace_memory"
+    learning_queue = "learning_queue"
+
+
+class EvidenceTruthStatus(str, Enum):
+    observed = "observed"
+    computed = "computed"
+    retrieved = "retrieved"
+    derived = "derived"
+    predicted = "predicted"
+    reviewed = "reviewed"
+
+
+class EvidenceScope(str, Enum):
+    session_input = "session_input"
+    session_output = "session_output"
+    workspace_history = "workspace_history"
+    reference_corpus = "reference_corpus"
+    session_summary = "session_summary"
+
+
+class EvidenceUse(str, Enum):
+    active_modeling = "active_modeling"
+    active_ranking = "active_ranking"
+    interpretation_only = "interpretation_only"
+    memory_only = "memory_only"
+    stored_not_active = "stored_not_active"
+
+
+class EvidenceFutureUse(str, Enum):
+    none = "none"
+    may_inform_future_ranking = "may_inform_future_ranking"
+    may_inform_future_learning = "may_inform_future_learning"
+
+
+class EvidenceSupportLevel(str, Enum):
+    strong = "strong"
+    moderate = "moderate"
+    limited = "limited"
+    contextual = "contextual"
+
+
+class ClaimType(str, Enum):
+    recommendation_assertion = "recommendation_assertion"
+
+
+class ClaimStatus(str, Enum):
+    proposed = "proposed"
+    accepted = "accepted"
+    rejected = "rejected"
+    superseded = "superseded"
+
+
+class ExperimentRequestStatus(str, Enum):
+    proposed = "proposed"
+    accepted = "accepted"
+    rejected = "rejected"
+    completed = "completed"
+    superseded = "superseded"
+
+
+class PriorityTier(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class ExperimentResultQuality(str, Enum):
+    provisional = "provisional"
+    screening = "screening"
+    confirmatory = "confirmatory"
+
+
+class ExperimentResultSource(str, Enum):
+    manual_entry = "manual_entry"
+    uploaded_result = "uploaded_result"
+    external_record = "external_record"
+
+
+class BeliefUpdateDirection(str, Enum):
+    strengthened = "strengthened"
+    weakened = "weakened"
+    unresolved = "unresolved"
+
+
+class BeliefUpdateGovernanceStatus(str, Enum):
+    proposed = "proposed"
+    accepted = "accepted"
+    rejected = "rejected"
+    superseded = "superseded"
+
+
 BUCKET_VALUES = tuple(item.value for item in Bucket)
 RISK_LEVEL_VALUES = tuple(item.value for item in RiskLevel)
 REVIEW_STATUS_VALUES = tuple(item.value for item in ReviewStatus)
@@ -180,6 +280,20 @@ MAPPING_CONFIDENCE_VALUES = tuple(item.value for item in MappingConfidence)
 DECISION_INTENT_VALUES = tuple(item.value for item in DecisionIntent)
 MODELING_MODE_VALUES = tuple(item.value for item in ModelingMode)
 DOMAIN_STATUS_VALUES = tuple(item.value for item in DomainStatus)
+EVIDENCE_TYPE_VALUES = tuple(item.value for item in EvidenceType)
+EVIDENCE_TRUTH_STATUS_VALUES = tuple(item.value for item in EvidenceTruthStatus)
+EVIDENCE_SCOPE_VALUES = tuple(item.value for item in EvidenceScope)
+EVIDENCE_USE_VALUES = tuple(item.value for item in EvidenceUse)
+EVIDENCE_FUTURE_USE_VALUES = tuple(item.value for item in EvidenceFutureUse)
+EVIDENCE_SUPPORT_LEVEL_VALUES = tuple(item.value for item in EvidenceSupportLevel)
+CLAIM_TYPE_VALUES = tuple(item.value for item in ClaimType)
+CLAIM_STATUS_VALUES = tuple(item.value for item in ClaimStatus)
+EXPERIMENT_REQUEST_STATUS_VALUES = tuple(item.value for item in ExperimentRequestStatus)
+PRIORITY_TIER_VALUES = tuple(item.value for item in PriorityTier)
+EXPERIMENT_RESULT_QUALITY_VALUES = tuple(item.value for item in ExperimentResultQuality)
+EXPERIMENT_RESULT_SOURCE_VALUES = tuple(item.value for item in ExperimentResultSource)
+BELIEF_UPDATE_DIRECTION_VALUES = tuple(item.value for item in BeliefUpdateDirection)
+BELIEF_UPDATE_GOVERNANCE_STATUS_VALUES = tuple(item.value for item in BeliefUpdateGovernanceStatus)
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -692,6 +806,819 @@ class ComparisonAnchors(ContractBaseModel):
             if cleaned_key and cleaned_value:
                 payload[cleaned_key] = cleaned_value
         return payload
+
+
+class EvidenceRecord(ContractBaseModel):
+    name: str
+    evidence_type: EvidenceType
+    truth_status: EvidenceTruthStatus
+    source: str = ""
+    scope: EvidenceScope = EvidenceScope.session_summary
+    support_level: EvidenceSupportLevel = EvidenceSupportLevel.contextual
+    current_use: EvidenceUse = EvidenceUse.interpretation_only
+    future_use: EvidenceFutureUse = EvidenceFutureUse.none
+    active_in_live_pipeline: bool = False
+    summary: str = ""
+
+    @validator("name", "source", "summary", pre=True, always=True)
+    def _clean_evidence_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("evidence_type", "truth_status", "scope", "support_level", "current_use", "future_use", pre=True)
+    def _clean_evidence_tokens(cls, value: Any) -> str:
+        return _clean_text(value).lower()
+
+
+class EvidenceLoopSummary(ContractBaseModel):
+    schema_version: str = "evidence_loop.v1"
+    summary: str = ""
+    learning_boundary_note: str = ""
+    activation_boundary_summary: str = ""
+    active_modeling_evidence: list[str] = Field(default_factory=list)
+    active_ranking_evidence: list[str] = Field(default_factory=list)
+    interpretation_only_evidence: list[str] = Field(default_factory=list)
+    memory_only_evidence: list[str] = Field(default_factory=list)
+    stored_not_active_evidence: list[str] = Field(default_factory=list)
+    future_activation_candidates: list[str] = Field(default_factory=list)
+
+    @validator("summary", "learning_boundary_note", "activation_boundary_summary", pre=True, always=True)
+    def _clean_loop_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator(
+        "active_modeling_evidence",
+        "active_ranking_evidence",
+        "interpretation_only_evidence",
+        "memory_only_evidence",
+        "stored_not_active_evidence",
+        "future_activation_candidates",
+        pre=True,
+    )
+    def _clean_loop_lists(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class EvidenceActivationRule(ContractBaseModel):
+    evidence_type: EvidenceType
+    name: str = ""
+    model_training_allowed: bool = False
+    ranking_context_allowed: bool = False
+    interpretation_allowed: bool = False
+    comparison_allowed: bool = False
+    future_learning_eligible: bool = False
+    eligible_for_recommendation_reuse: bool = False
+    eligible_for_ranking_context: bool = False
+    eligible_for_future_learning: bool = False
+    requires_stronger_validation: bool = False
+    memory_only: bool = False
+    stored_only: bool = False
+    permanently_non_active: bool = False
+    currently_active: bool = False
+    ineligibility_reason: str = ""
+    activation_summary: str = ""
+    eligibility_summary: str = ""
+
+    @validator("evidence_type", pre=True)
+    def _clean_activation_evidence_type(cls, value: Any) -> str:
+        return _clean_text(value).lower()
+
+    @validator("name", "ineligibility_reason", "activation_summary", "eligibility_summary", pre=True, always=True)
+    def _clean_activation_rule_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+
+class EvidenceActivationPolicy(ContractBaseModel):
+    schema_version: str = "evidence_activation_policy.v2"
+    summary: str = ""
+    ranking_context_summary: str = ""
+    interpretation_summary: str = ""
+    learning_eligibility_summary: str = ""
+    recommendation_reuse_summary: str = ""
+    future_ranking_context_summary: str = ""
+    future_learning_eligibility_summary: str = ""
+    stored_only_summary: str = ""
+    permanently_non_active_summary: str = ""
+    rules: list[EvidenceActivationRule] = Field(default_factory=list)
+
+    @validator(
+        "summary",
+        "ranking_context_summary",
+        "interpretation_summary",
+        "learning_eligibility_summary",
+        "recommendation_reuse_summary",
+        "future_ranking_context_summary",
+        "future_learning_eligibility_summary",
+        "stored_only_summary",
+        "permanently_non_active_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_activation_policy_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("rules", pre=True)
+    def _clean_activation_policy_rules(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+
+class ControlledReuseState(ContractBaseModel):
+    schema_version: str = "controlled_reuse.v1"
+    recommendation_reuse_active: bool = False
+    ranking_context_reuse_active: bool = False
+    interpretation_support_active: bool = False
+    reused_evidence: list[str] = Field(default_factory=list)
+    support_carriers: list[str] = Field(default_factory=list)
+    recommendation_reuse_summary: str = ""
+    ranking_context_reuse_summary: str = ""
+    interpretation_support_summary: str = ""
+    inactive_boundary_summary: str = ""
+
+    @validator(
+        "recommendation_reuse_summary",
+        "ranking_context_reuse_summary",
+        "interpretation_support_summary",
+        "inactive_boundary_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_controlled_reuse_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("reused_evidence", "support_carriers", pre=True)
+    def _clean_controlled_reuse_lists(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class ClaimRecord(ContractBaseModel):
+    schema_version: str = "claim.v1"
+    claim_id: str
+    workspace_id: str = ""
+    session_id: str
+    candidate_id: str
+    candidate_reference: dict[str, Any] = Field(default_factory=dict)
+    target_definition_snapshot: TargetDefinition | None = None
+    claim_type: ClaimType = ClaimType.recommendation_assertion
+    claim_text: str
+    bounded_scope: str
+    support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
+    evidence_basis_summary: str = ""
+    source_recommendation_rank: int = Field(default=0, ge=0)
+    status: ClaimStatus = ClaimStatus.proposed
+    created_at: datetime
+    updated_at: datetime
+    created_by: str = "system"
+    created_by_user_id: str = ""
+    reviewed_at: datetime | None = None
+    reviewed_by: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "claim_id",
+        "workspace_id",
+        "session_id",
+        "candidate_id",
+        "claim_text",
+        "bounded_scope",
+        "evidence_basis_summary",
+        "created_by",
+        "created_by_user_id",
+        "reviewed_by",
+        pre=True,
+        always=True,
+    )
+    def _clean_claim_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("claim_type", pre=True)
+    def _clean_claim_type(cls, value: Any) -> str:
+        return _clean_text(value, default=ClaimType.recommendation_assertion.value).lower()
+
+    @validator("support_level", pre=True)
+    def _clean_claim_support_level(cls, value: Any) -> str:
+        return _clean_text(value, default=EvidenceSupportLevel.limited.value).lower()
+
+    @validator("status", pre=True)
+    def _clean_claim_status(cls, value: Any) -> str:
+        return _clean_text(value, default=ClaimStatus.proposed.value).lower()
+
+    @validator("created_at", "updated_at", "reviewed_at", pre=True)
+    def _coerce_claim_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+    @validator("candidate_reference", "metadata", pre=True)
+    def _clean_claim_maps(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class ClaimReference(ContractBaseModel):
+    claim_id: str
+    candidate_id: str
+    candidate_label: str = ""
+    claim_type: ClaimType = ClaimType.recommendation_assertion
+    claim_text: str
+    support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
+    status: ClaimStatus = ClaimStatus.proposed
+    source_recommendation_rank: int = Field(default=0, ge=0)
+    created_at: datetime | None = None
+
+    @validator("claim_id", "candidate_id", "candidate_label", "claim_text", pre=True, always=True)
+    def _clean_claim_ref_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("claim_type", pre=True)
+    def _clean_claim_ref_type(cls, value: Any) -> str:
+        return _clean_text(value, default=ClaimType.recommendation_assertion.value).lower()
+
+    @validator("support_level", pre=True)
+    def _clean_claim_ref_support(cls, value: Any) -> str:
+        return _clean_text(value, default=EvidenceSupportLevel.limited.value).lower()
+
+    @validator("status", pre=True)
+    def _clean_claim_ref_status(cls, value: Any) -> str:
+        return _clean_text(value, default=ClaimStatus.proposed.value).lower()
+
+    @validator("created_at", pre=True)
+    def _coerce_claim_ref_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+
+class ClaimsSummary(ContractBaseModel):
+    claim_count: int = Field(default=0, ge=0)
+    proposed_count: int = Field(default=0, ge=0)
+    accepted_count: int = Field(default=0, ge=0)
+    rejected_count: int = Field(default=0, ge=0)
+    superseded_count: int = Field(default=0, ge=0)
+    summary_text: str = ""
+    top_claims: list[ClaimReference] = Field(default_factory=list)
+
+    @validator("summary_text", pre=True, always=True)
+    def _clean_claim_summary_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("top_claims", pre=True)
+    def _clean_top_claims(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+
+class ExperimentRequestRecord(ContractBaseModel):
+    schema_version: str = "experiment_request.v1"
+    experiment_request_id: str
+    workspace_id: str = ""
+    session_id: str
+    claim_id: str
+    candidate_id: str
+    candidate_reference: dict[str, Any] = Field(default_factory=dict)
+    target_definition_snapshot: TargetDefinition | None = None
+    requested_measurement: str
+    requested_direction: str = ""
+    rationale_summary: str
+    priority_tier: PriorityTier = PriorityTier.medium
+    status: ExperimentRequestStatus = ExperimentRequestStatus.proposed
+    requested_at: datetime
+    requested_by: str = "system"
+    requested_by_user_id: str = ""
+    notes: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "experiment_request_id",
+        "workspace_id",
+        "session_id",
+        "claim_id",
+        "candidate_id",
+        "requested_measurement",
+        "requested_direction",
+        "rationale_summary",
+        "requested_by",
+        "requested_by_user_id",
+        "notes",
+        pre=True,
+        always=True,
+    )
+    def _clean_experiment_request_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("priority_tier", pre=True)
+    def _clean_experiment_request_priority(cls, value: Any) -> str:
+        return _clean_text(value, default=PriorityTier.medium.value).lower()
+
+    @validator("status", pre=True)
+    def _clean_experiment_request_status(cls, value: Any) -> str:
+        return _clean_text(value, default=ExperimentRequestStatus.proposed.value).lower()
+
+    @validator("requested_at", pre=True)
+    def _coerce_experiment_request_datetime(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("candidate_reference", "metadata", pre=True)
+    def _clean_experiment_request_maps(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class ExperimentRequestReference(ContractBaseModel):
+    experiment_request_id: str
+    claim_id: str
+    candidate_id: str
+    candidate_label: str = ""
+    requested_measurement: str = ""
+    requested_direction: str = ""
+    priority_tier: PriorityTier = PriorityTier.medium
+    status: ExperimentRequestStatus = ExperimentRequestStatus.proposed
+    requested_at: datetime | None = None
+
+    @validator(
+        "experiment_request_id",
+        "claim_id",
+        "candidate_id",
+        "candidate_label",
+        "requested_measurement",
+        "requested_direction",
+        pre=True,
+        always=True,
+    )
+    def _clean_experiment_request_ref_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("priority_tier", pre=True)
+    def _clean_experiment_request_ref_priority(cls, value: Any) -> str:
+        return _clean_text(value, default=PriorityTier.medium.value).lower()
+
+    @validator("status", pre=True)
+    def _clean_experiment_request_ref_status(cls, value: Any) -> str:
+        return _clean_text(value, default=ExperimentRequestStatus.proposed.value).lower()
+
+    @validator("requested_at", pre=True)
+    def _coerce_experiment_request_ref_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+
+class ExperimentRequestSummary(ContractBaseModel):
+    request_count: int = Field(default=0, ge=0)
+    proposed_count: int = Field(default=0, ge=0)
+    accepted_count: int = Field(default=0, ge=0)
+    rejected_count: int = Field(default=0, ge=0)
+    completed_count: int = Field(default=0, ge=0)
+    superseded_count: int = Field(default=0, ge=0)
+    summary_text: str = ""
+    top_requests: list[ExperimentRequestReference] = Field(default_factory=list)
+
+    @validator("summary_text", pre=True, always=True)
+    def _clean_experiment_request_summary_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("top_requests", pre=True)
+    def _clean_top_requests(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+
+class ExperimentResultRecord(ContractBaseModel):
+    schema_version: str = "experiment_result.v1"
+    experiment_result_id: str
+    workspace_id: str = ""
+    session_id: str
+    source_experiment_request_id: str = ""
+    source_claim_id: str = ""
+    candidate_id: str
+    candidate_reference: dict[str, Any] = Field(default_factory=dict)
+    target_definition_snapshot: TargetDefinition | None = None
+    observed_value: float | None = None
+    observed_label: str = ""
+    measurement_unit: str = ""
+    assay_context: str = ""
+    result_quality: ExperimentResultQuality = ExperimentResultQuality.provisional
+    result_source: ExperimentResultSource = ExperimentResultSource.manual_entry
+    ingested_at: datetime
+    ingested_by: str = ""
+    ingested_by_user_id: str = ""
+    notes: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "experiment_result_id",
+        "workspace_id",
+        "session_id",
+        "source_experiment_request_id",
+        "source_claim_id",
+        "candidate_id",
+        "observed_label",
+        "measurement_unit",
+        "assay_context",
+        "ingested_by",
+        "ingested_by_user_id",
+        "notes",
+        pre=True,
+        always=True,
+    )
+    def _clean_experiment_result_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("result_quality", pre=True)
+    def _clean_experiment_result_quality(cls, value: Any) -> str:
+        return _clean_text(value, default=ExperimentResultQuality.provisional.value).lower()
+
+    @validator("result_source", pre=True)
+    def _clean_experiment_result_source(cls, value: Any) -> str:
+        return _clean_text(value, default=ExperimentResultSource.manual_entry.value).lower()
+
+    @validator("observed_value", pre=True)
+    def _coerce_experiment_result_value(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("ingested_at", pre=True)
+    def _coerce_experiment_result_datetime(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("candidate_reference", "metadata", pre=True)
+    def _clean_experiment_result_maps(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class ExperimentResultReference(ContractBaseModel):
+    experiment_result_id: str
+    source_experiment_request_id: str = ""
+    source_claim_id: str = ""
+    candidate_id: str
+    candidate_label: str = ""
+    observed_value: float | None = None
+    observed_label: str = ""
+    measurement_unit: str = ""
+    result_quality: ExperimentResultQuality = ExperimentResultQuality.provisional
+    result_source: ExperimentResultSource = ExperimentResultSource.manual_entry
+    ingested_at: datetime | None = None
+
+    @validator(
+        "experiment_result_id",
+        "source_experiment_request_id",
+        "source_claim_id",
+        "candidate_id",
+        "candidate_label",
+        "observed_label",
+        "measurement_unit",
+        pre=True,
+        always=True,
+    )
+    def _clean_experiment_result_ref_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("result_quality", pre=True)
+    def _clean_experiment_result_ref_quality(cls, value: Any) -> str:
+        return _clean_text(value, default=ExperimentResultQuality.provisional.value).lower()
+
+    @validator("result_source", pre=True)
+    def _clean_experiment_result_ref_source(cls, value: Any) -> str:
+        return _clean_text(value, default=ExperimentResultSource.manual_entry.value).lower()
+
+    @validator("observed_value", pre=True)
+    def _coerce_experiment_result_ref_value(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("ingested_at", pre=True)
+    def _coerce_experiment_result_ref_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+
+class ExperimentResultSummary(ContractBaseModel):
+    result_count: int = Field(default=0, ge=0)
+    recorded_count: int = Field(default=0, ge=0)
+    with_numeric_value_count: int = Field(default=0, ge=0)
+    with_label_count: int = Field(default=0, ge=0)
+    summary_text: str = ""
+    top_results: list[ExperimentResultReference] = Field(default_factory=list)
+
+    @validator("summary_text", pre=True, always=True)
+    def _clean_experiment_result_summary_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("top_results", pre=True)
+    def _clean_top_results(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+
+class BeliefUpdateRecord(ContractBaseModel):
+    schema_version: str = "belief_update.v1"
+    belief_update_id: str
+    workspace_id: str = ""
+    session_id: str
+    claim_id: str
+    experiment_result_id: str = ""
+    candidate_id: str = ""
+    candidate_label: str = ""
+    previous_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
+    updated_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
+    update_direction: BeliefUpdateDirection = BeliefUpdateDirection.unresolved
+    update_reason: str = ""
+    governance_status: BeliefUpdateGovernanceStatus = BeliefUpdateGovernanceStatus.proposed
+    created_at: datetime
+    created_by: str = ""
+    created_by_user_id: str = ""
+    reviewed_at: datetime | None = None
+    reviewed_by: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "belief_update_id",
+        "workspace_id",
+        "session_id",
+        "claim_id",
+        "experiment_result_id",
+        "candidate_id",
+        "candidate_label",
+        "update_reason",
+        "created_by",
+        "created_by_user_id",
+        "reviewed_by",
+        pre=True,
+        always=True,
+    )
+    def _clean_belief_update_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("previous_support_level", "updated_support_level", pre=True)
+    def _clean_belief_update_support_levels(cls, value: Any) -> str:
+        return _clean_text(value, default=EvidenceSupportLevel.limited.value).lower()
+
+    @validator("update_direction", pre=True)
+    def _clean_belief_update_direction(cls, value: Any) -> str:
+        return _clean_text(value, default=BeliefUpdateDirection.unresolved.value).lower()
+
+    @validator("governance_status", pre=True)
+    def _clean_belief_update_governance(cls, value: Any) -> str:
+        return _clean_text(value, default=BeliefUpdateGovernanceStatus.proposed.value).lower()
+
+    @validator("created_at", "reviewed_at", pre=True)
+    def _coerce_belief_update_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+    @validator("metadata", pre=True)
+    def _clean_belief_update_maps(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class BeliefUpdateReference(ContractBaseModel):
+    belief_update_id: str
+    claim_id: str
+    experiment_result_id: str = ""
+    candidate_id: str = ""
+    candidate_label: str = ""
+    previous_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
+    updated_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
+    update_direction: BeliefUpdateDirection = BeliefUpdateDirection.unresolved
+    governance_status: BeliefUpdateGovernanceStatus = BeliefUpdateGovernanceStatus.proposed
+    created_at: datetime | None = None
+
+    @validator(
+        "belief_update_id",
+        "claim_id",
+        "experiment_result_id",
+        "candidate_id",
+        "candidate_label",
+        pre=True,
+        always=True,
+    )
+    def _clean_belief_update_ref_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("previous_support_level", "updated_support_level", pre=True)
+    def _clean_belief_update_ref_support_levels(cls, value: Any) -> str:
+        return _clean_text(value, default=EvidenceSupportLevel.limited.value).lower()
+
+    @validator("update_direction", pre=True)
+    def _clean_belief_update_ref_direction(cls, value: Any) -> str:
+        return _clean_text(value, default=BeliefUpdateDirection.unresolved.value).lower()
+
+    @validator("governance_status", pre=True)
+    def _clean_belief_update_ref_governance(cls, value: Any) -> str:
+        return _clean_text(value, default=BeliefUpdateGovernanceStatus.proposed.value).lower()
+
+    @validator("created_at", pre=True)
+    def _coerce_belief_update_ref_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+
+class BeliefUpdateSummary(ContractBaseModel):
+    update_count: int = Field(default=0, ge=0)
+    proposed_count: int = Field(default=0, ge=0)
+    accepted_count: int = Field(default=0, ge=0)
+    rejected_count: int = Field(default=0, ge=0)
+    superseded_count: int = Field(default=0, ge=0)
+    strengthened_count: int = Field(default=0, ge=0)
+    weakened_count: int = Field(default=0, ge=0)
+    unresolved_count: int = Field(default=0, ge=0)
+    summary_text: str = ""
+    top_updates: list[BeliefUpdateReference] = Field(default_factory=list)
+
+    @validator("summary_text", pre=True, always=True)
+    def _clean_belief_update_summary_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("top_updates", pre=True)
+    def _clean_top_belief_updates(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+
+class BeliefStateRecord(ContractBaseModel):
+    schema_version: str = "belief_state.v1"
+    belief_state_id: str
+    workspace_id: str = ""
+    target_key: str
+    target_definition_snapshot: TargetDefinition | None = None
+    summary_text: str = ""
+    active_claim_count: int = Field(default=0, ge=0)
+    supported_claim_count: int = Field(default=0, ge=0)
+    weakened_claim_count: int = Field(default=0, ge=0)
+    unresolved_claim_count: int = Field(default=0, ge=0)
+    last_updated_at: datetime
+    last_update_source: str = ""
+    version: int = Field(default=1, ge=1)
+    latest_belief_update_refs: list[BeliefUpdateReference] = Field(default_factory=list)
+    support_distribution_summary: str = ""
+    governance_scope_summary: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "belief_state_id",
+        "workspace_id",
+        "target_key",
+        "summary_text",
+        "last_update_source",
+        "support_distribution_summary",
+        "governance_scope_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_belief_state_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("last_updated_at", pre=True)
+    def _coerce_belief_state_datetime(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("latest_belief_update_refs", pre=True)
+    def _clean_belief_state_refs(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+    @validator("metadata", pre=True)
+    def _clean_belief_state_maps(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class BeliefStateReference(ContractBaseModel):
+    belief_state_id: str
+    target_key: str
+    summary_text: str = ""
+    active_claim_count: int = Field(default=0, ge=0)
+    supported_claim_count: int = Field(default=0, ge=0)
+    weakened_claim_count: int = Field(default=0, ge=0)
+    unresolved_claim_count: int = Field(default=0, ge=0)
+    last_updated_at: datetime | None = None
+    last_update_source: str = ""
+    version: int = Field(default=1, ge=1)
+
+    @validator(
+        "belief_state_id",
+        "target_key",
+        "summary_text",
+        "last_update_source",
+        pre=True,
+        always=True,
+    )
+    def _clean_belief_state_ref_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("last_updated_at", pre=True)
+    def _coerce_belief_state_ref_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+
+class BeliefStateSummary(ContractBaseModel):
+    summary_text: str = ""
+    support_distribution_summary: str = ""
+    governance_scope_summary: str = ""
+    active_claim_count: int = Field(default=0, ge=0)
+    supported_claim_count: int = Field(default=0, ge=0)
+    weakened_claim_count: int = Field(default=0, ge=0)
+    unresolved_claim_count: int = Field(default=0, ge=0)
+    last_updated_at: datetime | None = None
+    last_update_source: str = ""
+
+    @validator(
+        "summary_text",
+        "support_distribution_summary",
+        "governance_scope_summary",
+        "last_update_source",
+        pre=True,
+        always=True,
+    )
+    def _clean_belief_state_summary_text_fields(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("last_updated_at", pre=True)
+    def _coerce_belief_state_summary_datetime(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _coerce_datetime(value)
+
+
+class ScientificSessionTruth(ContractBaseModel):
+    schema_version: str = "scientific_session_truth.v1"
+    session_id: str
+    workspace_id: str = ""
+    source_name: str = ""
+    generated_at: datetime
+    session_identity: SessionIdentity | None = None
+    target_definition: TargetDefinition | None = None
+    decision_intent: DecisionIntent | None = None
+    modeling_mode: ModelingMode | None = None
+    run_contract: RunContract | None = None
+    comparison_anchors: ComparisonAnchors | None = None
+    evidence_records: list[EvidenceRecord] = Field(default_factory=list)
+    evidence_loop: EvidenceLoopSummary | None = None
+    evidence_activation_policy: EvidenceActivationPolicy | None = None
+    controlled_reuse: ControlledReuseState | None = None
+    claim_refs: list[ClaimReference] = Field(default_factory=list)
+    claims_summary: ClaimsSummary | None = None
+    experiment_request_refs: list[ExperimentRequestReference] = Field(default_factory=list)
+    experiment_request_summary: ExperimentRequestSummary | None = None
+    experiment_result_refs: list[ExperimentResultReference] = Field(default_factory=list)
+    linked_result_summary: ExperimentResultSummary | None = None
+    belief_update_refs: list[BeliefUpdateReference] = Field(default_factory=list)
+    belief_update_summary: BeliefUpdateSummary | None = None
+    belief_state_ref: BeliefStateReference | None = None
+    belief_state_summary: BeliefStateSummary | None = None
+    bridge_state_notes: list[str] = Field(default_factory=list)
+    core_outputs: dict[str, Any] = Field(default_factory=dict)
+    decision_policy_summary: dict[str, Any] = Field(default_factory=dict)
+    review_summary: dict[str, Any] = Field(default_factory=dict)
+    comparison_ready: bool = False
+    contract_versions: dict[str, str] = Field(default_factory=dict)
+
+    @validator("session_id", "workspace_id", "source_name", pre=True, always=True)
+    def _clean_scientific_truth_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("generated_at", pre=True)
+    def _coerce_scientific_truth_datetime(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("decision_intent", "modeling_mode", pre=True)
+    def _clean_scientific_truth_tokens(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return _clean_text(value).lower()
+
+    @validator("bridge_state_notes", pre=True)
+    def _clean_bridge_state_notes(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+    @validator("claim_refs", pre=True)
+    def _clean_claim_refs(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+    @validator("experiment_request_refs", pre=True)
+    def _clean_experiment_request_refs(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+    @validator("experiment_result_refs", pre=True)
+    def _clean_experiment_result_refs(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+    @validator("belief_update_refs", pre=True)
+    def _clean_belief_update_refs(cls, value: Any) -> list[dict[str, Any]]:
+        return value if isinstance(value, list) else []
+
+    @validator("core_outputs", "decision_policy_summary", "review_summary", "contract_versions", pre=True)
+    def _clean_scientific_truth_maps(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
 
 
 class ApplicabilityDomainAssessment(ContractBaseModel):
@@ -1724,6 +2651,78 @@ def validate_run_contract(payload: Any) -> dict[str, Any]:
 
 def validate_comparison_anchors(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(ComparisonAnchors, payload))
+
+
+def validate_evidence_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(EvidenceRecord, payload))
+
+
+def validate_evidence_activation_policy(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(EvidenceActivationPolicy, payload))
+
+
+def validate_claim_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ClaimRecord, payload))
+
+
+def validate_claim_reference(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ClaimReference, payload))
+
+
+def validate_claims_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ClaimsSummary, payload))
+
+
+def validate_experiment_request_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ExperimentRequestRecord, payload))
+
+
+def validate_experiment_request_reference(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ExperimentRequestReference, payload))
+
+
+def validate_experiment_request_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ExperimentRequestSummary, payload))
+
+
+def validate_experiment_result_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ExperimentResultRecord, payload))
+
+
+def validate_experiment_result_reference(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ExperimentResultReference, payload))
+
+
+def validate_experiment_result_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ExperimentResultSummary, payload))
+
+
+def validate_belief_update_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(BeliefUpdateRecord, payload))
+
+
+def validate_belief_update_reference(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(BeliefUpdateReference, payload))
+
+
+def validate_belief_update_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(BeliefUpdateSummary, payload))
+
+
+def validate_belief_state_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(BeliefStateRecord, payload))
+
+
+def validate_belief_state_reference(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(BeliefStateReference, payload))
+
+
+def validate_belief_state_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(BeliefStateSummary, payload))
+
+
+def validate_scientific_session_truth(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ScientificSessionTruth, payload))
 
 
 def validate_normalized_explanation(payload: Any) -> dict[str, Any]:

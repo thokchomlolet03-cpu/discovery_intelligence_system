@@ -25,6 +25,188 @@ def _as_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _clean_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+def _join_compact(values: list[str], *, default: str = "Not recorded") -> str:
+    cleaned = [_clean_text(value) for value in values if _clean_text(value)]
+    if not cleaned:
+        return default
+    if len(cleaned) == 1:
+        return cleaned[0]
+    return ", ".join(cleaned[:3]) if len(cleaned) > 3 else ", ".join(cleaned)
+
+
+def _scientific_truth(session: dict[str, Any]) -> dict[str, Any]:
+    truth = session.get("scientific_session_truth") if isinstance(session.get("scientific_session_truth"), dict) else {}
+    return truth
+
+
+def _comparison_anchors(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    canonical = truth.get("comparison_anchors") if isinstance(truth.get("comparison_anchors"), dict) else {}
+    if canonical:
+        return canonical
+    anchors = session.get("comparison_anchors") if isinstance(session.get("comparison_anchors"), dict) else {}
+    return anchors
+
+
+def _run_contract(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    contract = truth.get("run_contract") if isinstance(truth.get("run_contract"), dict) else {}
+    return contract
+
+
+def _evidence_loop(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    loop = truth.get("evidence_loop") if isinstance(truth.get("evidence_loop"), dict) else {}
+    return loop
+
+
+def _review_summary(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    summary = truth.get("review_summary") if isinstance(truth.get("review_summary"), dict) else {}
+    return summary
+
+
+def _evidence_activation_policy(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    policy = truth.get("evidence_activation_policy") if isinstance(truth.get("evidence_activation_policy"), dict) else {}
+    return policy
+
+
+def _bridge_state_notes(session: dict[str, Any]) -> list[str]:
+    truth = _scientific_truth(session)
+    return _clean_list(truth.get("bridge_state_notes"))
+
+
+def _controlled_reuse(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    controlled_reuse = truth.get("controlled_reuse") if isinstance(truth.get("controlled_reuse"), dict) else {}
+    if controlled_reuse:
+        return controlled_reuse
+    reuse = session.get("controlled_reuse") if isinstance(session.get("controlled_reuse"), dict) else {}
+    return reuse
+
+
+def _basis_source_label(session: dict[str, Any]) -> str:
+    explicit = _clean_text(session.get("scientific_truth_source_label"))
+    if explicit:
+        return explicit
+    if _scientific_truth(session):
+        return "Canonical scientific session truth"
+    return "Compatibility reconstruction"
+
+
+def _evidence_basis_label(session: dict[str, Any]) -> str:
+    evidence_loop = _evidence_loop(session)
+    modeling = _clean_list(evidence_loop.get("active_modeling_evidence"))
+    ranking = _clean_list(evidence_loop.get("active_ranking_evidence"))
+    parts: list[str] = []
+    if modeling:
+        parts.append(f"Modeling: {_join_compact(modeling)}")
+    if ranking:
+        parts.append(f"Ranking: {_join_compact(ranking)}")
+    if not parts:
+        return "Evidence basis not explicitly recorded."
+    return " / ".join(parts)
+
+
+def _activation_boundary_summary(session: dict[str, Any]) -> str:
+    evidence_loop = _evidence_loop(session)
+    summary = _clean_text(evidence_loop.get("activation_boundary_summary"))
+    if summary:
+        return summary
+    interpretation = _clean_list(evidence_loop.get("interpretation_only_evidence"))
+    memory = _clean_list(evidence_loop.get("memory_only_evidence"))
+    stored = _clean_list(evidence_loop.get("stored_not_active_evidence"))
+    future = _clean_list(evidence_loop.get("future_activation_candidates"))
+    bits: list[str] = []
+    if interpretation:
+        bits.append(f"Interpretation-only: {_join_compact(interpretation)}")
+    if memory:
+        bits.append(f"Memory-only: {_join_compact(memory)}")
+    if stored:
+        bits.append(f"Stored not active: {_join_compact(stored)}")
+    if future:
+        bits.append(f"Future candidates: {_join_compact(future)}")
+    return " / ".join(bits) if bits else "No explicit activation boundary recorded."
+
+
+def _comparison_basis_label(session: dict[str, Any]) -> str:
+    anchors = _comparison_anchors(session)
+    return comparison_anchor_summary(anchors)
+
+
+def _activation_policy_summary(session: dict[str, Any]) -> str:
+    policy = _evidence_activation_policy(session)
+    return _clean_text(policy.get("summary"), default="No explicit selective evidence-use policy recorded.")
+
+
+def _interpretation_evidence_label(session: dict[str, Any]) -> str:
+    policy = _evidence_activation_policy(session)
+    summary = _clean_text(policy.get("interpretation_summary"))
+    if summary:
+        return summary
+    evidence_loop = _evidence_loop(session)
+    interpretation = _clean_list(evidence_loop.get("interpretation_only_evidence"))
+    memory = _clean_list(evidence_loop.get("memory_only_evidence"))
+    parts: list[str] = []
+    if interpretation:
+        parts.append(f"Interpretation: {_join_compact(interpretation)}")
+    if memory:
+        parts.append(f"Memory: {_join_compact(memory)}")
+    return " / ".join(parts) if parts else "No explicit interpretation evidence recorded."
+
+
+def _recommendation_reuse_summary(session: dict[str, Any]) -> str:
+    policy = _evidence_activation_policy(session)
+    return _clean_text(
+        policy.get("recommendation_reuse_summary"),
+        default="No evidence is currently marked as eligible for recommendation reuse.",
+    )
+
+
+def _future_ranking_context_summary(session: dict[str, Any]) -> str:
+    policy = _evidence_activation_policy(session)
+    return _clean_text(
+        policy.get("future_ranking_context_summary"),
+        default="No evidence is currently marked as eligible for future ranking-context reuse.",
+    )
+
+
+def _future_learning_eligibility_summary(session: dict[str, Any]) -> str:
+    policy = _evidence_activation_policy(session)
+    return _clean_text(
+        policy.get("future_learning_eligibility_summary") or policy.get("learning_eligibility_summary"),
+        default="No evidence is currently marked as eligible for future learning consideration.",
+    )
+
+
+def _permanently_non_active_summary(session: dict[str, Any]) -> str:
+    policy = _evidence_activation_policy(session)
+    return _clean_text(
+        policy.get("permanently_non_active_summary"),
+        default="No evidence is currently marked as permanently non-active.",
+    )
+
+
+def _controlled_reuse_summary(session: dict[str, Any]) -> str:
+    reuse = _controlled_reuse(session)
+    if not reuse:
+        return "No controlled evidence reuse is recorded."
+    parts = [
+        _clean_text(reuse.get("recommendation_reuse_summary")),
+        _clean_text(reuse.get("ranking_context_reuse_summary")),
+        _clean_text(reuse.get("interpretation_support_summary")),
+    ]
+    summary = " ".join(part for part in parts if part)
+    return summary or "No controlled evidence reuse is recorded."
+
+
 def _comparison_rank(status: str) -> int:
     cleaned = _clean_text(status)
     if cleaned == "directly_comparable":
@@ -197,14 +379,8 @@ def compare_session_basis(
 ) -> dict[str, Any]:
     focus_session = focus_session if isinstance(focus_session, dict) else {}
     candidate_session = candidate_session if isinstance(candidate_session, dict) else {}
-    focus_anchors = (
-        focus_session.get("comparison_anchors") if isinstance(focus_session.get("comparison_anchors"), dict) else {}
-    )
-    candidate_anchors = (
-        candidate_session.get("comparison_anchors")
-        if isinstance(candidate_session.get("comparison_anchors"), dict)
-        else {}
-    )
+    focus_anchors = _comparison_anchors(focus_session)
+    candidate_anchors = _comparison_anchors(candidate_session)
     focus_status = (
         focus_session.get("status_semantics") if isinstance(focus_session.get("status_semantics"), dict) else {}
     )
@@ -227,6 +403,16 @@ def compare_session_basis(
         if isinstance(candidate_session.get("candidate_preview"), list)
         else []
     )
+    focus_evidence_loop = _evidence_loop(focus_session)
+    candidate_evidence_loop = _evidence_loop(candidate_session)
+    focus_activation_policy = _evidence_activation_policy(focus_session)
+    candidate_activation_policy = _evidence_activation_policy(candidate_session)
+    focus_review_summary = _review_summary(focus_session)
+    candidate_review_summary = _review_summary(candidate_session)
+    focus_bridge_state = _bridge_state_notes(focus_session)
+    candidate_bridge_state = _bridge_state_notes(candidate_session)
+    focus_controlled_reuse = _controlled_reuse(focus_session)
+    candidate_controlled_reuse = _controlled_reuse(candidate_session)
 
     matches: list[str] = []
     differences: list[str] = []
@@ -316,6 +502,96 @@ def compare_session_basis(
             f"Dataset type differs: {_humanize_token(focus_dataset_type)} vs {_humanize_token(candidate_dataset_type)}."
         )
 
+    focus_active_modeling = _clean_list(focus_evidence_loop.get("active_modeling_evidence"))
+    candidate_active_modeling = _clean_list(candidate_evidence_loop.get("active_modeling_evidence"))
+    if focus_active_modeling or candidate_active_modeling:
+        if focus_active_modeling == candidate_active_modeling:
+            if focus_active_modeling:
+                matches.append(f"Same active modeling evidence: {_join_compact(focus_active_modeling)}.")
+        else:
+            differences.append(
+                "Active modeling evidence differs: "
+                f"{_join_compact(focus_active_modeling)} vs {_join_compact(candidate_active_modeling)}."
+            )
+
+    focus_active_ranking = _clean_list(focus_evidence_loop.get("active_ranking_evidence"))
+    candidate_active_ranking = _clean_list(candidate_evidence_loop.get("active_ranking_evidence"))
+    if focus_active_ranking or candidate_active_ranking:
+        if focus_active_ranking == candidate_active_ranking:
+            if focus_active_ranking:
+                matches.append(f"Same active ranking context: {_join_compact(focus_active_ranking)}.")
+        else:
+            differences.append(
+                "Active ranking context differs: "
+                f"{_join_compact(focus_active_ranking)} vs {_join_compact(candidate_active_ranking)}."
+            )
+
+    focus_future_activation = _clean_list(focus_evidence_loop.get("future_activation_candidates"))
+    candidate_future_activation = _clean_list(candidate_evidence_loop.get("future_activation_candidates"))
+    if focus_future_activation or candidate_future_activation:
+        if focus_future_activation != candidate_future_activation:
+            cautions.append(
+                "Future activation boundary differs: "
+                f"{_join_compact(focus_future_activation)} vs {_join_compact(candidate_future_activation)}."
+            )
+
+    focus_interpretation_summary = _clean_text(focus_activation_policy.get("interpretation_summary"))
+    candidate_interpretation_summary = _clean_text(candidate_activation_policy.get("interpretation_summary"))
+    if focus_interpretation_summary or candidate_interpretation_summary:
+        if focus_interpretation_summary != candidate_interpretation_summary:
+            differences.append(
+                "Selective interpretation use differs: "
+                f"{focus_interpretation_summary or 'not recorded'} vs {candidate_interpretation_summary or 'not recorded'}."
+            )
+
+    focus_reuse_summary = _clean_text(focus_activation_policy.get("recommendation_reuse_summary"))
+    candidate_reuse_summary = _clean_text(candidate_activation_policy.get("recommendation_reuse_summary"))
+    if focus_reuse_summary or candidate_reuse_summary:
+        if focus_reuse_summary != candidate_reuse_summary:
+            cautions.append(
+                "Recommendation-reuse eligibility differs: "
+                f"{focus_reuse_summary or 'not recorded'} vs {candidate_reuse_summary or 'not recorded'}."
+            )
+
+    focus_reuse_active = _as_bool(focus_controlled_reuse.get("recommendation_reuse_active"))
+    candidate_reuse_active = _as_bool(candidate_controlled_reuse.get("recommendation_reuse_active"))
+    if focus_reuse_active != candidate_reuse_active:
+        cautions.append(
+            "Active recommendation reuse differs: "
+            f"{'active' if focus_reuse_active else 'inactive'} vs {'active' if candidate_reuse_active else 'inactive'}."
+        )
+
+    focus_ranking_reuse_active = _as_bool(focus_controlled_reuse.get("ranking_context_reuse_active"))
+    candidate_ranking_reuse_active = _as_bool(candidate_controlled_reuse.get("ranking_context_reuse_active"))
+    if focus_ranking_reuse_active != candidate_ranking_reuse_active:
+        cautions.append(
+            "Active ranking-context reuse differs: "
+            f"{'active' if focus_ranking_reuse_active else 'inactive'} vs {'active' if candidate_ranking_reuse_active else 'inactive'}."
+        )
+
+    focus_interpretation_support_active = _as_bool(focus_controlled_reuse.get("interpretation_support_active"))
+    candidate_interpretation_support_active = _as_bool(candidate_controlled_reuse.get("interpretation_support_active"))
+    if focus_interpretation_support_active != candidate_interpretation_support_active:
+        differences.append(
+            "Active interpretation support differs: "
+            f"{'active' if focus_interpretation_support_active else 'inactive'} vs {'active' if candidate_interpretation_support_active else 'inactive'}."
+        )
+
+    focus_future_learning_summary = _clean_text(
+        focus_activation_policy.get("future_learning_eligibility_summary")
+        or focus_activation_policy.get("learning_eligibility_summary")
+    )
+    candidate_future_learning_summary = _clean_text(
+        candidate_activation_policy.get("future_learning_eligibility_summary")
+        or candidate_activation_policy.get("learning_eligibility_summary")
+    )
+    if focus_future_learning_summary or candidate_future_learning_summary:
+        if focus_future_learning_summary != candidate_future_learning_summary:
+            cautions.append(
+                "Future-learning eligibility differs: "
+                f"{focus_future_learning_summary or 'not recorded'} vs {candidate_future_learning_summary or 'not recorded'}."
+            )
+
     if focus_measurement or candidate_measurement:
         if focus_measurement == candidate_measurement:
             if focus_measurement:
@@ -347,11 +623,33 @@ def compare_session_basis(
         cautions.append(f"Focus fallback recorded: {focus_fallback.replace('_', ' ')}.")
     if candidate_fallback:
         cautions.append(f"Comparison fallback recorded: {candidate_fallback.replace('_', ' ')}.")
+    if focus_bridge_state or candidate_bridge_state:
+        if focus_bridge_state != candidate_bridge_state:
+            cautions.append(
+                "Bridge-state behavior differs: "
+                f"{_join_compact(focus_bridge_state)} vs {_join_compact(candidate_bridge_state)}."
+            )
+        else:
+            cautions.append(f"Both sessions share the same bridge-state note: {_join_compact(focus_bridge_state)}.")
 
     if "trustworthy_recommendations" in candidate_status and not _as_bool(candidate_status.get("trustworthy_recommendations")):
         cautions.append("The comparison session does not currently have fully trustworthy recommendation artifacts.")
     if "viewable_artifacts" in candidate_status and not _as_bool(candidate_status.get("viewable_artifacts")):
         cautions.append("Saved artifacts are not fully viewable for the comparison session.")
+
+    if focus_review_summary or candidate_review_summary:
+        focus_review_total = sum(
+            int(value or 0)
+            for value in ((focus_review_summary.get("counts") if isinstance(focus_review_summary.get("counts"), dict) else {}).values())
+        )
+        candidate_review_total = sum(
+            int(value or 0)
+            for value in ((candidate_review_summary.get("counts") if isinstance(candidate_review_summary.get("counts"), dict) else {}).values())
+        )
+        if focus_review_total != candidate_review_total:
+            differences.append(
+                f"Recorded review state differs: {focus_review_total} saved review outcome(s) vs {candidate_review_total}."
+            )
 
     focus_bucket = _clean_text(focus_outcome.get("leading_bucket"))
     candidate_bucket = _clean_text(candidate_outcome.get("leading_bucket"))
@@ -430,12 +728,17 @@ def compare_session_basis(
         "tone": tone,
         "label": label,
         "summary": summary,
+        "basis_source_summary": (
+            f"{_basis_source_label(focus_session)} vs {_basis_source_label(candidate_session)}."
+            if _basis_source_label(focus_session) != _basis_source_label(candidate_session)
+            else _basis_source_label(focus_session)
+        ),
         "matches": matches[:5],
         "differences": differences[:5],
         "outcome_differences": outcome_differences[:5],
         "candidate_comparison_summary": candidate_comparison.get("summary") or "",
         "candidate_differences": candidate_comparison.get("differences") or [],
-        "cautions": cautions[:5],
+        "cautions": cautions[:6],
         "blockers": blockers[:5],
     }
 
@@ -503,9 +806,7 @@ def build_session_comparison_matrix(
             },
         }
 
-    focus_anchors = (
-        focus_session.get("comparison_anchors") if isinstance(focus_session.get("comparison_anchors"), dict) else {}
-    )
+    focus_anchors = _comparison_anchors(focus_session)
     focus_rows_total = int(focus_session.get("rows_total") or 0)
     focus_value_rows = int(focus_session.get("rows_with_values") or 0)
     focus_candidate_count = int(focus_session.get("candidate_count") or 0)
@@ -526,13 +827,17 @@ def build_session_comparison_matrix(
 
     def _row_for_item(item: dict[str, Any], comparison: dict[str, Any] | None, *, is_focus: bool) -> dict[str, Any]:
         comparison = comparison if isinstance(comparison, dict) else {}
-        anchors = item.get("comparison_anchors") if isinstance(item.get("comparison_anchors"), dict) else {}
+        anchors = _comparison_anchors(item)
         outcome_profile = item.get("outcome_profile") if isinstance(item.get("outcome_profile"), dict) else {}
         top_experiment_value = item.get("top_experiment_value")
         try:
             top_experiment_value = float(top_experiment_value)
         except (TypeError, ValueError):
             top_experiment_value = None
+        evidence_loop = _evidence_loop(item)
+        activation_policy = _evidence_activation_policy(item)
+        bridge_state_notes = _bridge_state_notes(item)
+        controlled_reuse = _controlled_reuse(item)
 
         if is_focus:
             comparison_payload = {
@@ -595,6 +900,26 @@ def build_session_comparison_matrix(
                 comparison_payload.get("candidate_comparison_summary"),
                 default="Reference shortlist preview." if is_focus else "Shortlist preview not compared.",
             ),
+            "basis_source_label": _basis_source_label(item),
+            "comparison_basis_label": _comparison_basis_label(item),
+            "evidence_basis_label": _evidence_basis_label(item),
+            "interpretation_evidence_label": _interpretation_evidence_label(item),
+            "activation_boundary_summary": _activation_boundary_summary(item),
+            "activation_policy_summary": _clean_text(activation_policy.get("summary")),
+            "recommendation_reuse_summary": _recommendation_reuse_summary(item),
+            "future_ranking_context_summary": _future_ranking_context_summary(item),
+            "future_learning_eligibility_summary": _future_learning_eligibility_summary(item),
+            "permanently_non_active_summary": _permanently_non_active_summary(item),
+            "controlled_reuse_summary": _controlled_reuse_summary(item),
+            "recommendation_reuse_active": _as_bool(controlled_reuse.get("recommendation_reuse_active")),
+            "ranking_context_reuse_active": _as_bool(controlled_reuse.get("ranking_context_reuse_active")),
+            "interpretation_support_active": _as_bool(controlled_reuse.get("interpretation_support_active")),
+            "future_activation_summary": _join_compact(
+                _clean_list(evidence_loop.get("future_activation_candidates")),
+                default="None recorded",
+            ),
+            "comparison_ready_label": "Comparison-ready" if _as_bool(anchors.get("comparison_ready")) else "Partial basis",
+            "bridge_state_summary": _clean_text(bridge_state_notes[0] if bridge_state_notes else ""),
             "results_ready": bool(item.get("results_ready")),
             "discovery_url": item.get("discovery_url") or "",
             "dashboard_url": item.get("dashboard_url") or "",
@@ -628,7 +953,9 @@ def build_session_comparison_matrix(
 
     return {
         "focus_session_id": focus_session.get("session_id") or "",
-        "focus_basis_label": comparison_anchor_summary(focus_anchors),
+        "focus_basis_label": _comparison_basis_label(focus_session),
+        "focus_basis_source_label": _basis_source_label(focus_session),
+        "focus_activation_boundary_summary": _activation_boundary_summary(focus_session),
         "rows": [focus_row, *comparison_rows],
         "counts": counts,
     }

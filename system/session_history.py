@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 from system.discovery_workbench import humanize_timestamp
 from system.services.run_metadata_service import comparison_anchor_summary, infer_comparison_anchors
+from system.services.scientific_session_truth_service import build_controlled_reuse_state, build_scientific_session_truth
 from system.services.session_comparison_service import (
     build_candidate_preview,
     build_session_comparison_matrix,
@@ -13,7 +14,11 @@ from system.services.session_comparison_service import (
 from system.services.session_identity_service import build_session_identity
 from system.services.status_semantics_service import build_status_semantics
 from system.services.workspace_feedback_service import build_session_workspace_memory, build_workspace_feedback_summary
-from system.session_artifacts import load_analysis_report_payload, load_decision_artifact_payload
+from system.session_artifacts import (
+    load_analysis_report_payload,
+    load_decision_artifact_payload,
+    load_scientific_session_truth_payload,
+)
 from system.db.repositories import ReviewRepository
 
 
@@ -29,6 +34,19 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _scientific_truth_source_label(source_path: str, *, backfilled: bool) -> str:
+    if backfilled:
+        return "Compatibility backfill"
+    source = str(source_path or "").strip()
+    if source.endswith("scientific_session_truth.json"):
+        return "Canonical scientific session truth"
+    if source == "session_summary_metadata#scientific_session_truth":
+        return "Session summary scientific truth"
+    if source.endswith("#scientific_session_truth"):
+        return "Nested result scientific truth"
+    return "Scientific truth not recorded"
 
 
 def _measurement_summary(session: dict[str, Any], analysis_report: dict[str, Any]) -> dict[str, Any]:
@@ -178,6 +196,20 @@ def build_session_history_context(
         validation = validation if isinstance(validation, dict) else {}
         summary_metadata = session.get("summary_metadata") or {}
         summary_metadata = summary_metadata if isinstance(summary_metadata, dict) else {}
+        scientific_truth_payload = load_scientific_session_truth_payload(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            allow_global_fallback=False,
+        )
+        scientific_truth = (
+            scientific_truth_payload
+            if isinstance(scientific_truth_payload, dict)
+            and str(scientific_truth_payload.get("artifact_state") or "").strip().lower() == "ok"
+            else summary_metadata.get("scientific_session_truth")
+            if isinstance(summary_metadata.get("scientific_session_truth"), dict)
+            else {}
+        )
+        scientific_truth_backfilled = False
 
         latest_job_id = str(session.get("latest_job_id") or "").strip()
         latest_job: dict[str, Any] | None = None
@@ -197,6 +229,20 @@ def build_session_history_context(
             workspace_id=workspace_id,
             allow_global_fallback=False,
         )
+        if not scientific_truth and (
+            isinstance(analysis_report, dict) and analysis_report
+            or isinstance(decision_payload, dict) and decision_payload
+        ):
+            scientific_truth = build_scientific_session_truth(
+                session_id=session_id,
+                workspace_id=workspace_id,
+                source_name=str(session.get("source_name") or upload_metadata.get("filename") or ""),
+                session_record=session,
+                upload_metadata=upload_metadata,
+                analysis_report=analysis_report,
+                decision_payload=decision_payload,
+            )
+            scientific_truth_backfilled = True
 
         results_ready = str(decision_payload.get("artifact_state") or "").strip().lower() == "ok"
         measurement = _measurement_summary(session, analysis_report)
@@ -243,6 +289,21 @@ def build_session_history_context(
         outcome_profile = _outcome_profile(decision_payload, analysis_report)
         candidate_preview = build_candidate_preview(decision_payload)
         workspace_memory_candidates = build_candidate_preview(decision_payload, limit=25)
+        evidence_loop = scientific_truth.get("evidence_loop") if isinstance(scientific_truth.get("evidence_loop"), dict) else {}
+        evidence_activation_policy = (
+            scientific_truth.get("evidence_activation_policy")
+            if isinstance(scientific_truth.get("evidence_activation_policy"), dict)
+            else {}
+        )
+        controlled_reuse = (
+            scientific_truth.get("controlled_reuse")
+            if isinstance(scientific_truth.get("controlled_reuse"), dict)
+            else {}
+        )
+        scientific_truth_source_label = _scientific_truth_source_label(
+            str(scientific_truth_payload.get("source_path") or ""),
+            backfilled=scientific_truth_backfilled,
+        )
 
         items.append(
             {
@@ -275,6 +336,52 @@ def build_session_history_context(
                 "primary_score_label": str(ranking_policy.get("primary_score_label") or ""),
                 "recommendation_summary": recommendation_summary,
                 "session_identity": session_identity,
+                "scientific_session_truth": scientific_truth,
+                "scientific_truth_source_label": scientific_truth_source_label,
+                "claims_summary": scientific_truth.get("claims_summary") if isinstance(scientific_truth.get("claims_summary"), dict) else {},
+                "claim_refs": list(scientific_truth.get("claim_refs") or []) if isinstance(scientific_truth.get("claim_refs"), list) else [],
+                "experiment_request_summary": scientific_truth.get("experiment_request_summary")
+                if isinstance(scientific_truth.get("experiment_request_summary"), dict)
+                else {},
+                "experiment_request_refs": list(scientific_truth.get("experiment_request_refs") or [])
+                if isinstance(scientific_truth.get("experiment_request_refs"), list)
+                else [],
+                "linked_result_summary": scientific_truth.get("linked_result_summary")
+                if isinstance(scientific_truth.get("linked_result_summary"), dict)
+                else {},
+                "experiment_result_refs": list(scientific_truth.get("experiment_result_refs") or [])
+                if isinstance(scientific_truth.get("experiment_result_refs"), list)
+                else [],
+                "belief_update_summary": scientific_truth.get("belief_update_summary")
+                if isinstance(scientific_truth.get("belief_update_summary"), dict)
+                else {},
+                "belief_update_refs": list(scientific_truth.get("belief_update_refs") or [])
+                if isinstance(scientific_truth.get("belief_update_refs"), list)
+                else [],
+                "belief_state_ref": scientific_truth.get("belief_state_ref")
+                if isinstance(scientific_truth.get("belief_state_ref"), dict)
+                else {},
+                "belief_state_summary": scientific_truth.get("belief_state_summary")
+                if isinstance(scientific_truth.get("belief_state_summary"), dict)
+                else {},
+                "evidence_loop_summary": str((evidence_loop.get("summary")) or "").strip(),
+                "learning_boundary_note": str((evidence_loop.get("learning_boundary_note")) or "").strip(),
+                "activation_boundary_summary": str((evidence_loop.get("activation_boundary_summary")) or "").strip(),
+                "future_activation_candidates": list(evidence_loop.get("future_activation_candidates") or [])
+                if isinstance(evidence_loop.get("future_activation_candidates"), list)
+                else [],
+                "activation_policy_summary": str((evidence_activation_policy.get("summary")) or "").strip(),
+                "recommendation_reuse_summary": str((evidence_activation_policy.get("recommendation_reuse_summary")) or "").strip(),
+                "future_ranking_context_summary": str((evidence_activation_policy.get("future_ranking_context_summary")) or "").strip(),
+                "future_learning_eligibility_summary": str(
+                    (evidence_activation_policy.get("future_learning_eligibility_summary") or evidence_activation_policy.get("learning_eligibility_summary")) or ""
+                ).strip(),
+                "permanently_non_active_summary": str((evidence_activation_policy.get("permanently_non_active_summary")) or "").strip(),
+                "controlled_reuse": controlled_reuse,
+                "controlled_reuse_summary": str((controlled_reuse.get("recommendation_reuse_summary")) or "").strip(),
+                "ranking_context_reuse_summary": str((controlled_reuse.get("ranking_context_reuse_summary")) or "").strip(),
+                "interpretation_support_summary": str((controlled_reuse.get("interpretation_support_summary")) or "").strip(),
+                "comparison_ready": bool(scientific_truth.get("comparison_ready")),
                 "status_semantics": status_semantics,
                 "comparison_anchors": comparison_anchors,
                 "comparison_basis_label": comparison_anchor_summary(comparison_anchors),
@@ -311,6 +418,19 @@ def build_session_history_context(
             review_events=workspace_reviews,
             session_labels=source_name_by_session_id,
         )
+        if not item.get("controlled_reuse"):
+            item["controlled_reuse"] = build_controlled_reuse_state(
+                evidence_activation_policy=(
+                    (item.get("scientific_session_truth") or {}).get("evidence_activation_policy")
+                    if isinstance(item.get("scientific_session_truth"), dict)
+                    else {}
+                ),
+                workspace_memory=item.get("workspace_memory"),
+            )
+        controlled_reuse = item.get("controlled_reuse") if isinstance(item.get("controlled_reuse"), dict) else {}
+        item["controlled_reuse_summary"] = str(controlled_reuse.get("recommendation_reuse_summary") or "").strip()
+        item["ranking_context_reuse_summary"] = str(controlled_reuse.get("ranking_context_reuse_summary") or "").strip()
+        item["interpretation_support_summary"] = str(controlled_reuse.get("interpretation_support_summary") or "").strip()
 
     continuation_items = [
         item

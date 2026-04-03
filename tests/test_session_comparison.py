@@ -4,6 +4,67 @@ from system.services.session_comparison_service import build_session_comparison_
 
 
 class SessionComparisonServiceTest(unittest.TestCase):
+    def test_compare_session_basis_prefers_canonical_scientific_truth_over_legacy_anchor_fragments(self):
+        comparison = compare_session_basis(
+            focus_session={
+                "comparison_anchors": {
+                    "target_name": "legacy_target",
+                    "target_kind": "classification",
+                    "modeling_mode": "binary_classification",
+                    "decision_intent": "estimate_labels",
+                    "comparison_ready": False,
+                },
+                "scientific_session_truth": {
+                    "comparison_anchors": {
+                        "target_name": "pIC50",
+                        "target_kind": "regression",
+                        "optimization_direction": "maximize",
+                        "modeling_mode": "regression",
+                        "decision_intent": "prioritize_experiments",
+                        "scoring_policy_version": "scoring_policy.v1",
+                        "selected_model_name": "rf_regression",
+                        "training_scope": "session_trained",
+                        "comparison_ready": True,
+                    },
+                    "evidence_loop": {
+                        "active_modeling_evidence": ["Observed experimental values", "Computed chemistry features"],
+                        "active_ranking_evidence": ["Retrieved reference chemistry context", "Predicted continuous values"],
+                    },
+                },
+                "status_semantics": {
+                    "trustworthy_recommendations": True,
+                    "viewable_artifacts": True,
+                },
+            },
+            candidate_session={
+                "scientific_session_truth": {
+                    "comparison_anchors": {
+                        "target_name": "pIC50",
+                        "target_kind": "regression",
+                        "optimization_direction": "maximize",
+                        "modeling_mode": "regression",
+                        "decision_intent": "prioritize_experiments",
+                        "scoring_policy_version": "scoring_policy.v1",
+                        "selected_model_name": "rf_regression",
+                        "training_scope": "session_trained",
+                        "comparison_ready": True,
+                    },
+                    "evidence_loop": {
+                        "active_modeling_evidence": ["Observed experimental values", "Computed chemistry features"],
+                        "active_ranking_evidence": ["Retrieved reference chemistry context", "Predicted continuous values"],
+                    },
+                },
+                "status_semantics": {
+                    "trustworthy_recommendations": True,
+                    "viewable_artifacts": True,
+                },
+            },
+        )
+
+        self.assertEqual(comparison["status"], "directly_comparable")
+        self.assertIn("Same target property: pIC50.", comparison["matches"])
+        self.assertEqual(comparison["basis_source_summary"], "Canonical scientific session truth")
+
     def test_compare_session_basis_marks_direct_match_when_target_mode_and_policy_align(self):
         comparison = compare_session_basis(
             focus_session={
@@ -205,6 +266,85 @@ class SessionComparisonServiceTest(unittest.TestCase):
             any("Shared candidate bucket changed for cand_2 (CCN)" in item for item in comparison["candidate_differences"])
         )
 
+    def test_compare_session_basis_surfaces_activation_boundary_and_bridge_state_differences(self):
+        comparison = compare_session_basis(
+            focus_session={
+                "scientific_session_truth": {
+                    "comparison_anchors": {
+                        "target_name": "pIC50",
+                        "target_kind": "regression",
+                        "optimization_direction": "maximize",
+                        "modeling_mode": "regression",
+                        "decision_intent": "prioritize_experiments",
+                        "scoring_policy_version": "scoring_policy.v1",
+                        "comparison_ready": True,
+                    },
+                    "evidence_loop": {
+                        "active_modeling_evidence": ["Observed experimental values"],
+                        "active_ranking_evidence": ["Predicted continuous values"],
+                        "future_activation_candidates": ["Human review outcomes"],
+                    },
+                    "evidence_activation_policy": {
+                        "interpretation_summary": "Recommendation interpretation currently uses Human review outcomes.",
+                        "recommendation_reuse_summary": "Conservative recommendation reuse is currently eligible for Observed experimental values and Human review outcomes.",
+                        "future_learning_eligibility_summary": "Future learning consideration is currently limited to Observed experimental values.",
+                    },
+                    "controlled_reuse": {
+                        "recommendation_reuse_active": True,
+                        "ranking_context_reuse_active": False,
+                        "interpretation_support_active": True,
+                        "recommendation_reuse_summary": "Recommendation reuse is active from prior human review outcomes carried through workspace memory.",
+                        "ranking_context_reuse_summary": "No prior evidence is currently active for ranking-context reuse in this session.",
+                        "interpretation_support_summary": "Workspace feedback memory remains active as interpretation support.",
+                    },
+                    "bridge_state_notes": ["Legacy baseline bundle still informed ranking."],
+                },
+                "status_semantics": {"trustworthy_recommendations": True, "viewable_artifacts": True},
+            },
+            candidate_session={
+                "scientific_session_truth": {
+                    "comparison_anchors": {
+                        "target_name": "pIC50",
+                        "target_kind": "regression",
+                        "optimization_direction": "maximize",
+                        "modeling_mode": "regression",
+                        "decision_intent": "prioritize_experiments",
+                        "scoring_policy_version": "scoring_policy.v1",
+                        "comparison_ready": True,
+                    },
+                    "evidence_loop": {
+                        "active_modeling_evidence": ["Observed experimental values"],
+                        "active_ranking_evidence": ["Predicted continuous values"],
+                        "future_activation_candidates": ["Human review outcomes", "Workspace feedback memory"],
+                    },
+                    "evidence_activation_policy": {
+                        "interpretation_summary": "Recommendation interpretation currently uses Human review outcomes and Workspace feedback memory.",
+                        "recommendation_reuse_summary": "Conservative recommendation reuse is currently eligible for Observed experimental values.",
+                        "future_learning_eligibility_summary": "Future learning consideration is currently limited to Observed experimental values and Queued learning evidence.",
+                    },
+                    "controlled_reuse": {
+                        "recommendation_reuse_active": False,
+                        "ranking_context_reuse_active": True,
+                        "interpretation_support_active": True,
+                        "recommendation_reuse_summary": "No prior human review outcome is currently active for recommendation reuse in this session.",
+                        "ranking_context_reuse_summary": "Ranking-context reuse is active for shortlist framing because prior human review outcomes provide stronger reusable continuity context.",
+                        "interpretation_support_summary": "Workspace feedback memory remains active as interpretation support.",
+                    },
+                    "bridge_state_notes": ["No baseline fallback was recorded."],
+                },
+                "status_semantics": {"trustworthy_recommendations": True, "viewable_artifacts": True},
+            },
+        )
+
+        self.assertEqual(comparison["status"], "partially_comparable")
+        self.assertTrue(any("Future activation boundary differs" in item for item in comparison["cautions"]))
+        self.assertTrue(any("Bridge-state behavior differs" in item for item in comparison["cautions"]))
+        self.assertTrue(any("Selective interpretation use differs" in item for item in comparison["differences"]))
+        self.assertTrue(any("Recommendation-reuse eligibility differs" in item for item in comparison["cautions"]))
+        self.assertTrue(any("Active recommendation reuse differs" in item for item in comparison["cautions"]))
+        self.assertTrue(any("Active ranking-context reuse differs" in item for item in comparison["cautions"]))
+        self.assertTrue(any("Future-learning eligibility differs" in item for item in comparison["cautions"]))
+
     def test_build_session_comparison_matrix_includes_focus_and_deltas(self):
         focus = {
             "session_id": "focus",
@@ -237,6 +377,36 @@ class SessionComparisonServiceTest(unittest.TestCase):
                 "training_scope": "session_trained",
                 "comparison_ready": True,
             },
+            "scientific_session_truth": {
+                "comparison_anchors": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "measurement_column": "pic50",
+                    "modeling_mode": "regression",
+                    "decision_intent": "prioritize_experiments",
+                    "scoring_policy_version": "scoring_policy.v1",
+                    "selected_model_name": "rf_regression",
+                    "training_scope": "session_trained",
+                    "comparison_ready": True,
+                },
+                "evidence_loop": {
+                    "active_modeling_evidence": ["Observed experimental values"],
+                    "active_ranking_evidence": ["Retrieved reference chemistry context", "Predicted continuous values"],
+                    "activation_boundary_summary": "Active modeling uses Observed experimental values. Future activation candidates: Human review outcomes.",
+                    "future_activation_candidates": ["Human review outcomes"],
+                },
+                "controlled_reuse": {
+                    "recommendation_reuse_active": True,
+                    "ranking_context_reuse_active": False,
+                    "interpretation_support_active": True,
+                    "recommendation_reuse_summary": "Recommendation reuse is active from prior human review outcomes carried through workspace memory.",
+                    "ranking_context_reuse_summary": "No prior evidence is currently active for ranking-context reuse in this session.",
+                    "interpretation_support_summary": "Workspace feedback memory remains active as interpretation support.",
+                },
+                "bridge_state_notes": ["Legacy baseline bundle still informed ranking."],
+            },
+            "scientific_truth_source_label": "Canonical scientific session truth",
         }
         candidate = {
             "session_id": "candidate",
@@ -269,6 +439,35 @@ class SessionComparisonServiceTest(unittest.TestCase):
                 "training_scope": "session_trained",
                 "comparison_ready": True,
             },
+            "scientific_session_truth": {
+                "comparison_anchors": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "measurement_column": "pic50",
+                    "modeling_mode": "regression",
+                    "decision_intent": "prioritize_experiments",
+                    "scoring_policy_version": "scoring_policy.v1",
+                    "selected_model_name": "rf_regression",
+                    "training_scope": "session_trained",
+                    "comparison_ready": True,
+                },
+                "evidence_loop": {
+                    "active_modeling_evidence": ["Observed experimental values"],
+                    "active_ranking_evidence": ["Retrieved reference chemistry context", "Predicted continuous values"],
+                    "activation_boundary_summary": "Active modeling uses Observed experimental values. Future activation candidates: Human review outcomes and Workspace feedback memory.",
+                    "future_activation_candidates": ["Human review outcomes", "Workspace feedback memory"],
+                },
+                "controlled_reuse": {
+                    "recommendation_reuse_active": False,
+                    "ranking_context_reuse_active": True,
+                    "interpretation_support_active": True,
+                    "recommendation_reuse_summary": "No prior human review outcome is currently active for recommendation reuse in this session.",
+                    "ranking_context_reuse_summary": "Ranking-context reuse is active for shortlist framing because prior human review outcomes provide stronger reusable continuity context.",
+                    "interpretation_support_summary": "Workspace feedback memory remains active as interpretation support.",
+                },
+            },
+            "scientific_truth_source_label": "Canonical scientific session truth",
             "discovery_url": "/discovery?session_id=candidate",
             "dashboard_url": "/dashboard?session_id=candidate",
             "status_semantics": {
@@ -284,12 +483,19 @@ class SessionComparisonServiceTest(unittest.TestCase):
 
         self.assertEqual(matrix["rows"][0]["session_id"], "focus")
         self.assertEqual(matrix["rows"][0]["comparison"]["label"], "Focus session")
-        self.assertEqual(matrix["rows"][1]["comparison"]["status"], "directly_comparable")
+        self.assertEqual(matrix["rows"][1]["comparison"]["status"], "partially_comparable")
         self.assertEqual(matrix["rows"][1]["rows_total_delta"], 4)
         self.assertAlmostEqual(matrix["rows"][1]["top_experiment_value_delta"], 0.09, places=6)
         self.assertEqual(matrix["rows"][1]["leading_bucket_label"], "Exploit")
         self.assertIn("Rank corr 0.620", matrix["rows"][1]["diagnostics_summary"])
         self.assertIn("shared across the compared shortlist previews", matrix["rows"][1]["candidate_comparison_summary"])
+        self.assertEqual(matrix["focus_basis_source_label"], "Canonical scientific session truth")
+        self.assertIn("Active modeling uses", matrix["focus_activation_boundary_summary"])
+        self.assertEqual(matrix["rows"][1]["basis_source_label"], "Canonical scientific session truth")
+        self.assertIn("Modeling: Observed experimental values", matrix["rows"][1]["evidence_basis_label"])
+        self.assertIn("Human review outcomes", matrix["rows"][1]["future_activation_summary"])
+        self.assertTrue(matrix["rows"][1]["ranking_context_reuse_active"])
+        self.assertIn("Workspace feedback memory remains active as interpretation support", matrix["rows"][1]["controlled_reuse_summary"])
 
 
 if __name__ == "__main__":

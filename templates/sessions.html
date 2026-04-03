@@ -112,6 +112,9 @@
           <div class="mini-callout">
             <span class="panel-label">Comparison basis</span>
             <p>{{ session_history.focus_session.comparison_basis_label }}</p>
+            {% if session_history.focus_session.scientific_truth_source_label %}
+              <p class="helper-copy">Source: {{ session_history.focus_session.scientific_truth_source_label }}</p>
+            {% endif %}
             {% if session_history.focus_session.comparison_anchors.fallback_reason %}
               <p class="helper-copy">Fallback: {{ session_history.focus_session.comparison_anchors.fallback_reason.replace("_", " ") }}</p>
             {% endif %}
@@ -161,6 +164,143 @@
             {% endif %}
             {% if session_history.focus_session.recommendation_summary %}
               <p>{{ session_history.focus_session.recommendation_summary }}</p>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% if session_history.focus_session.evidence_loop_summary %}
+          <div class="mini-callout">
+            <span class="panel-label">Evidence loop</span>
+            <p>{{ session_history.focus_session.evidence_loop_summary }}</p>
+            {% if session_history.focus_session.activation_boundary_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.activation_boundary_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.activation_policy_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.activation_policy_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.recommendation_reuse_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.recommendation_reuse_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.ranking_context_reuse_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.ranking_context_reuse_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.interpretation_support_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.interpretation_support_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.future_learning_eligibility_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.future_learning_eligibility_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.permanently_non_active_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.permanently_non_active_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.learning_boundary_note %}
+              <p class="helper-copy">{{ session_history.focus_session.learning_boundary_note }}</p>
+            {% endif %}
+            {% if session_history.focus_session.future_activation_candidates %}
+              <p class="helper-copy">
+                Future activation candidates: {{ session_history.focus_session.future_activation_candidates | join(", ") }}.
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% if session_history.focus_session.claims_summary and session_history.focus_session.claims_summary.claim_count %}
+          <div class="mini-callout">
+            <span class="panel-label">Proposed claims</span>
+            <p>{{ session_history.focus_session.claims_summary.summary_text }}</p>
+            {% if session_history.focus_session.claim_refs %}
+              <ul class="compact-list">
+                {% for claim in session_history.focus_session.claim_refs[:3] %}
+                  <li>
+                    {{ claim.candidate_label or claim.candidate_id }}: {{ claim.claim_text }}
+                    {% if claim.support_level %}
+                      Support {{ claim.support_level.replace("_", " ").title() }}.
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if session_history.focus_session.experiment_request_summary and session_history.focus_session.experiment_request_summary.request_count %}
+          <div class="mini-callout">
+            <span class="panel-label">Proposed experiment requests</span>
+            <p>{{ session_history.focus_session.experiment_request_summary.summary_text }}</p>
+            {% if session_history.focus_session.experiment_request_refs %}
+              <ul class="compact-list">
+                {% for request in session_history.focus_session.experiment_request_refs[:3] %}
+                  <li>
+                    {{ request.candidate_label or request.candidate_id }}: Measure {{ request.requested_measurement }}
+                    {% if request.requested_direction %}
+                      to {{ request.requested_direction }}.
+                    {% endif %}
+                    {% if request.priority_tier %}
+                      Priority {{ request.priority_tier.replace("_", " ").title() }}.
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if session_history.focus_session.linked_result_summary and session_history.focus_session.linked_result_summary.result_count %}
+          <div class="mini-callout">
+            <span class="panel-label">Observed results</span>
+            <p>{{ session_history.focus_session.linked_result_summary.summary_text }}</p>
+            {% if session_history.focus_session.experiment_result_refs %}
+              <ul class="compact-list">
+                {% for result in session_history.focus_session.experiment_result_refs[:3] %}
+                  <li>
+                    {{ result.candidate_label or result.candidate_id }}:
+                    {% if result.observed_value is not none %}
+                      observed value {{ result.observed_value }}
+                      {% if result.measurement_unit %}
+                        {{ result.measurement_unit }}
+                      {% endif %}
+                    {% elif result.observed_label %}
+                      observed label {{ result.observed_label }}
+                    {% else %}
+                      observed outcome recorded
+                    {% endif %}
+                    {% if result.result_quality %}
+                      Quality {{ result.result_quality.replace("_", " ").title() }}.
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if session_history.focus_session.belief_update_summary and session_history.focus_session.belief_update_summary.update_count %}
+          <div class="mini-callout">
+            <span class="panel-label">Belief updates</span>
+            <p>{{ session_history.focus_session.belief_update_summary.summary_text }}</p>
+            {% if session_history.focus_session.belief_update_refs %}
+              <ul class="compact-list">
+                {% for update in session_history.focus_session.belief_update_refs[:3] %}
+                  <li>
+                    {{ update.candidate_label or update.candidate_id }}:
+                    support {{ update.update_direction.replace("_", " ") }}
+                    from {{ update.previous_support_level.replace("_", " ").title() }}
+                    to {{ update.updated_support_level.replace("_", " ").title() }}.
+                    {% if update.governance_status %}
+                      Status {{ update.governance_status.replace("_", " ").title() }}.
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if session_history.focus_session.belief_state_summary and session_history.focus_session.belief_state_summary.active_claim_count %}
+          <div class="mini-callout">
+            <span class="panel-label">Current belief state</span>
+            <p>{{ session_history.focus_session.belief_state_summary.summary_text }}</p>
+            {% if session_history.focus_session.belief_state_summary.support_distribution_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.belief_state_summary.support_distribution_summary }}</p>
+            {% endif %}
+            {% if session_history.focus_session.belief_state_summary.governance_scope_summary %}
+              <p class="helper-copy">{{ session_history.focus_session.belief_state_summary.governance_scope_summary }}</p>
             {% endif %}
           </div>
         {% endif %}
@@ -319,6 +459,24 @@
                 <p>{{ item.comparison_basis_label }}</p>
               </div>
             {% endif %}
+            {% if item.claims_summary and item.claims_summary.claim_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Proposed claims</span>
+                <p>{{ item.claims_summary.summary_text }}</p>
+              </div>
+            {% endif %}
+            {% if item.experiment_request_summary and item.experiment_request_summary.request_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Proposed experiment requests</span>
+                <p>{{ item.experiment_request_summary.summary_text }}</p>
+              </div>
+            {% endif %}
+            {% if item.linked_result_summary and item.linked_result_summary.result_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Observed results</span>
+                <p>{{ item.linked_result_summary.summary_text }}</p>
+              </div>
+            {% endif %}
             {% if item.workspace_memory and item.workspace_memory.matched_candidate_count %}
               <div class="mini-callout">
                 <span class="panel-label">Workspace memory</span>
@@ -439,6 +597,24 @@
               <div class="mini-callout">
                 <span class="panel-label">Comparison basis</span>
                 <p>{{ item.comparison_basis_label }}</p>
+              </div>
+            {% endif %}
+            {% if item.claims_summary and item.claims_summary.claim_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Proposed claims</span>
+                <p>{{ item.claims_summary.summary_text }}</p>
+              </div>
+            {% endif %}
+            {% if item.experiment_request_summary and item.experiment_request_summary.request_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Proposed experiment requests</span>
+                <p>{{ item.experiment_request_summary.summary_text }}</p>
+              </div>
+            {% endif %}
+            {% if item.linked_result_summary and item.linked_result_summary.result_count %}
+              <div class="mini-callout">
+                <span class="panel-label">Observed results</span>
+                <p>{{ item.linked_result_summary.summary_text }}</p>
               </div>
             {% endif %}
             {% if item.workspace_memory and item.workspace_memory.matched_candidate_count %}

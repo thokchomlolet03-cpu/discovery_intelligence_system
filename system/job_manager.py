@@ -117,6 +117,14 @@ class JobManager:
             "analysis_report_copy_json": {
                 "warnings_count": len(analysis_report.get("warnings") or []),
             },
+            "scientific_session_truth_json": {
+                "comparison_ready": bool((result.get("scientific_session_truth") or {}).get("comparison_ready")),
+                "evidence_records": len((result.get("scientific_session_truth") or {}).get("evidence_records") or []),
+                "claims": int((((result.get("scientific_session_truth") or {}).get("claims_summary") or {}).get("claim_count")) or 0),
+                "experiment_requests": int(
+                    ((((result.get("scientific_session_truth") or {}).get("experiment_request_summary") or {}).get("request_count")) or 0)
+                ),
+            },
             "upload_session_summary_json": {
                 "semantic_mode": ((upload_summary.get("measurement_summary") or {}).get("semantic_mode") or ""),
             },
@@ -382,6 +390,7 @@ class JobManager:
                 "run_contract": result.get("run_contract") or {},
                 "comparison_anchors": result.get("comparison_anchors") or {},
                 "analysis_report": result.get("analysis_report") or {},
+                "scientific_session_truth": result.get("scientific_session_truth") or {},
                 "upload_session_summary": result.get("upload_session_summary") or {},
                 "artifact_index": artifact_index,
             },

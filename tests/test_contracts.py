@@ -2,8 +2,13 @@ import unittest
 
 from system.contracts import (
     validate_comparison_anchors,
+    validate_belief_state_record,
+    validate_belief_update_record,
     ContractValidationError,
+    validate_claim_record,
     validate_decision_artifact,
+    validate_experiment_result_record,
+    validate_experiment_request_record,
     validate_label_builder_config,
     validate_review_event_record,
     validate_run_contract,
@@ -122,6 +127,155 @@ class ContractValidationTest(unittest.TestCase):
         self.assertEqual(review["status"], "approved")
         self.assertEqual(review["previous_status"], "suggested")
         self.assertEqual(review["reviewer"], "qa")
+
+    def test_claim_record_validates_bounded_recommendation_assertion(self):
+        claim = validate_claim_record(
+            {
+                "claim_id": "claim_1",
+                "workspace_id": "workspace_1",
+                "session_id": "session_1",
+                "candidate_id": "cand_1",
+                "candidate_reference": {"candidate_label": "cand_1 (CCO)", "smiles": "CCO", "rank": 1},
+                "target_definition_snapshot": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "dataset_type": "measurement_dataset",
+                    "mapping_confidence": "medium",
+                },
+                "claim_type": "recommendation_assertion",
+                "claim_text": "Under the current session evidence, cand_1 (CCO) is a plausible follow-up candidate to test for higher pIC50.",
+                "bounded_scope": "This proposed claim is scoped to the current session and is not experimental confirmation or causal proof.",
+                "support_level": "moderate",
+                "evidence_basis_summary": "Modeling uses Observed experimental values. Ranking uses Model predictions.",
+                "source_recommendation_rank": 1,
+                "status": "proposed",
+                "created_at": "2026-04-02T10:00:00+00:00",
+                "updated_at": "2026-04-02T10:00:00+00:00",
+                "created_by": "system",
+            }
+        )
+
+        self.assertEqual(claim["claim_type"], "recommendation_assertion")
+        self.assertEqual(claim["status"], "proposed")
+        self.assertEqual(claim["support_level"], "moderate")
+
+    def test_experiment_request_record_validates_recommended_experiment(self):
+        request = validate_experiment_request_record(
+            {
+                "experiment_request_id": "expreq_1",
+                "workspace_id": "workspace_1",
+                "session_id": "session_1",
+                "claim_id": "claim_1",
+                "candidate_id": "cand_1",
+                "candidate_reference": {"candidate_label": "cand_1 (CCO)", "smiles": "CCO", "rank": 1},
+                "target_definition_snapshot": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "dataset_type": "measurement_dataset",
+                    "mapping_confidence": "medium",
+                },
+                "requested_measurement": "pIC50",
+                "requested_direction": "measure for higher values",
+                "rationale_summary": "This proposed experiment request is derived from the current claim. It is not scheduled lab work.",
+                "priority_tier": "high",
+                "status": "proposed",
+                "requested_at": "2026-04-02T12:00:00+00:00",
+                "requested_by": "system",
+            }
+        )
+
+        self.assertEqual(request["requested_measurement"], "pIC50")
+        self.assertEqual(request["priority_tier"], "high")
+        self.assertEqual(request["status"], "proposed")
+
+    def test_experiment_result_record_validates_observed_outcome(self):
+        result = validate_experiment_result_record(
+            {
+                "experiment_result_id": "expres_1",
+                "workspace_id": "workspace_1",
+                "session_id": "session_1",
+                "source_experiment_request_id": "expreq_1",
+                "source_claim_id": "claim_1",
+                "candidate_id": "cand_1",
+                "candidate_reference": {"candidate_label": "cand_1 (CCO)", "smiles": "CCO", "rank": 1},
+                "target_definition_snapshot": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "dataset_type": "measurement_dataset",
+                    "mapping_confidence": "medium",
+                },
+                "observed_value": 6.4,
+                "observed_label": "",
+                "measurement_unit": "log units",
+                "assay_context": "screen_a repeat 1",
+                "result_quality": "screening",
+                "result_source": "manual_entry",
+                "ingested_at": "2026-04-02T14:00:00+00:00",
+                "ingested_by": "system",
+                "notes": "Observed outcome recorded.",
+            }
+        )
+
+        self.assertEqual(result["observed_value"], 6.4)
+        self.assertEqual(result["result_quality"], "screening")
+        self.assertEqual(result["result_source"], "manual_entry")
+
+    def test_belief_update_record_validates_bounded_support_change(self):
+        belief_update = validate_belief_update_record(
+            {
+                "belief_update_id": "belief_1",
+                "workspace_id": "workspace_1",
+                "session_id": "session_1",
+                "claim_id": "claim_1",
+                "experiment_result_id": "expres_1",
+                "candidate_id": "cand_1",
+                "candidate_label": "cand_1 (CCO)",
+                "previous_support_level": "moderate",
+                "updated_support_level": "strong",
+                "update_direction": "strengthened",
+                "update_reason": "This proposed belief update strengthens support in a bounded way only.",
+                "governance_status": "proposed",
+                "created_at": "2026-04-02T15:00:00+00:00",
+                "created_by": "scientist",
+            }
+        )
+
+        self.assertEqual(belief_update["update_direction"], "strengthened")
+        self.assertEqual(belief_update["governance_status"], "proposed")
+        self.assertEqual(belief_update["updated_support_level"], "strong")
+
+    def test_belief_state_record_validates_current_support_picture(self):
+        belief_state = validate_belief_state_record(
+            {
+                "belief_state_id": "beliefstate_1",
+                "workspace_id": "workspace_1",
+                "target_key": "pic50|regression|maximize|pic50|measurement_dataset",
+                "target_definition_snapshot": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "dataset_type": "measurement_dataset",
+                    "mapping_confidence": "medium",
+                },
+                "summary_text": "Current belief state tracks 2 active claims. This is a bounded support summary, not final truth.",
+                "active_claim_count": 2,
+                "supported_claim_count": 1,
+                "weakened_claim_count": 0,
+                "unresolved_claim_count": 1,
+                "last_updated_at": "2026-04-02T16:00:00+00:00",
+                "last_update_source": "latest belief update linked to an observed result",
+                "version": 1,
+                "support_distribution_summary": "Supported 1, weakened 0, unresolved 1.",
+                "governance_scope_summary": "Current picture includes 1 accepted and 1 proposed belief update.",
+            }
+        )
+
+        self.assertEqual(belief_state["active_claim_count"], 2)
+        self.assertEqual(belief_state["supported_claim_count"], 1)
+        self.assertEqual(belief_state["version"], 1)
 
     def test_label_builder_config_validates_threshold_rule(self):
         validated = validate_label_builder_config(

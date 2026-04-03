@@ -187,7 +187,10 @@
 
   {% set measurement_summary = dashboard.analysis_report.get("measurement_summary", {}) %}
   {% set ranking_diagnostics = dashboard.analysis_report.get("ranking_diagnostics", {}) %}
-  {% if measurement_summary or ranking_diagnostics %}
+  {% set scientific_truth = dashboard.scientific_session_truth or {} %}
+  {% set evidence_loop = scientific_truth.evidence_loop or {} %}
+  {% set linked_result_summary = dashboard.linked_result_summary or {} %}
+  {% if measurement_summary or ranking_diagnostics or evidence_loop.summary or linked_result_summary.result_count %}
     {% set ranking_policy = dashboard.analysis_report.get("ranking_policy", {}) %}
     <section class="panel">
       <div class="section-header">
@@ -231,6 +234,69 @@
             <span class="panel-label">{{ dashboard.insight_summary.model_basis_label or "Model basis" }}</span>
             <strong>{{ session_identity.modeling_mode_label or "Not recorded" }}</strong>
             <p>{{ dashboard.insight_summary.model_basis_summary }}</p>
+          </article>
+        {% endif %}
+        {% if evidence_loop.summary %}
+          <article class="stat-card">
+            <span class="panel-label">Evidence loop</span>
+            <strong>{{ "Explicit" if scientific_truth.evidence_records else "Partial" }}</strong>
+            <p>{{ evidence_loop.summary }}</p>
+          </article>
+        {% endif %}
+        {% if evidence_loop.learning_boundary_note %}
+          <article class="stat-card">
+            <span class="panel-label">Learning boundary</span>
+            <strong>Memory is not learning</strong>
+            <p>{{ evidence_loop.learning_boundary_note }}</p>
+          </article>
+        {% endif %}
+        {% if evidence_loop.activation_boundary_summary %}
+          <article class="stat-card">
+            <span class="panel-label">Evidence boundary</span>
+            <strong>Explicit use limits</strong>
+            <p>{{ evidence_loop.activation_boundary_summary }}</p>
+          </article>
+        {% endif %}
+        {% if dashboard.insight_summary.activation_policy_summary %}
+          <article class="stat-card">
+            <span class="panel-label">{{ dashboard.insight_summary.activation_policy_label or "Selective evidence use" }}</span>
+            <strong>Operationally explicit</strong>
+            <p>{{ dashboard.insight_summary.activation_policy_summary }}</p>
+          </article>
+        {% endif %}
+        {% if dashboard.insight_summary.controlled_reuse_summary %}
+          <article class="stat-card">
+            <span class="panel-label">{{ dashboard.insight_summary.controlled_reuse_label or "Controlled evidence reuse" }}</span>
+            <strong>Framing only</strong>
+            <p>{{ dashboard.insight_summary.controlled_reuse_summary }}</p>
+          </article>
+        {% endif %}
+        {% if dashboard.insight_summary.future_eligibility_summary %}
+          <article class="stat-card">
+            <span class="panel-label">{{ dashboard.insight_summary.future_eligibility_label or "Future activation eligibility" }}</span>
+            <strong>Eligible is not active</strong>
+            <p>{{ dashboard.insight_summary.future_eligibility_summary }}</p>
+          </article>
+        {% endif %}
+        {% if linked_result_summary.result_count %}
+          <article class="stat-card">
+            <span class="panel-label">Observed results</span>
+            <strong>{{ linked_result_summary.result_count }}</strong>
+            <p>{{ linked_result_summary.summary_text }}</p>
+          </article>
+        {% endif %}
+        {% if dashboard.belief_update_summary.update_count %}
+          <article class="stat-card">
+            <span class="panel-label">Belief updates</span>
+            <strong>{{ dashboard.belief_update_summary.update_count }}</strong>
+            <p>{{ dashboard.belief_update_summary.summary_text }}</p>
+          </article>
+        {% endif %}
+        {% if dashboard.belief_state_summary.active_claim_count %}
+          <article class="stat-card">
+            <span class="panel-label">Current belief state</span>
+            <strong>{{ dashboard.belief_state_summary.active_claim_count }}</strong>
+            <p>{{ dashboard.belief_state_summary.summary_text }}</p>
           </article>
         {% endif %}
         {% if ranking_policy.get("primary_score_label") %}

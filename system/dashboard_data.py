@@ -9,14 +9,18 @@ import plotly.express as px
 
 from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
 from system.db import resolve_artifact_path
+from system.db.repositories import SessionRepository
 from system.review_manager import build_review_queue
 from system.services.run_metadata_service import build_run_provenance
+from system.services.scientific_session_truth_service import build_scientific_session_truth
 from system.services.data_service import canonical_label_column
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context, domain_chip_label
+from system.services.workspace_feedback_service import build_session_workspace_memory
 from system.session_artifacts import (
     load_analysis_report_payload,
     load_decision_artifact_payload,
     load_evaluation_summary_payload,
+    load_scientific_session_truth_payload,
 )
 from utils.artifact_writer import REPO_ROOT, uploaded_session_dir
 
@@ -28,6 +32,7 @@ CANDIDATE_ARTIFACT_TYPES = ("scored_candidates_csv", "processed_candidates_csv")
 REVIEW_QUEUE_PATHS = ("review_queue.json", "data/review_queue.json")
 REVIEW_QUEUE_ARTIFACT_TYPES = ("review_queue_json",)
 EVOLUTION_PATHS = ("iteration_history.csv",)
+session_repository = SessionRepository()
 
 
 def _safe_float(value: Any, default: float | None = None) -> float | None:
@@ -226,6 +231,7 @@ def _dashboard_insight_summary(
     target_definition: dict[str, Any],
     modeling_mode: str,
     run_provenance: dict[str, Any],
+    scientific_truth: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
     ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
@@ -239,6 +245,7 @@ def _dashboard_insight_summary(
         decision_payload=decision_payload,
         ranking_policy=ranking_policy if isinstance(ranking_policy, dict) else {},
         run_provenance=run_provenance,
+        scientific_truth=scientific_truth if isinstance(scientific_truth, dict) else {},
     )
     target_kind = str(target_definition.get("target_kind") or "classification").strip().lower()
     target_name = str(target_definition.get("target_name") or "the session target").strip() or "the session target"
@@ -355,6 +362,12 @@ def _dashboard_insight_summary(
         "model_basis_summary": trust_context.get("model_basis_summary", ""),
         "policy_basis_label": trust_context.get("policy_basis_label", ""),
         "policy_basis_summary": trust_context.get("policy_basis_summary", ""),
+        "activation_policy_label": trust_context.get("activation_policy_label", ""),
+        "activation_policy_summary": trust_context.get("activation_policy_summary", ""),
+        "controlled_reuse_label": trust_context.get("controlled_reuse_label", ""),
+        "controlled_reuse_summary": trust_context.get("controlled_reuse_summary", ""),
+        "future_eligibility_label": trust_context.get("future_eligibility_label", ""),
+        "future_eligibility_summary": trust_context.get("future_eligibility_summary", ""),
         "bridge_state_summary": trust_context.get("bridge_state_summary", ""),
         "strengths": strengths[:3],
         "cautions": cautions[:3],
@@ -364,6 +377,12 @@ def _dashboard_insight_summary(
 
 def build_dashboard_context(session_id: str | None = None, workspace_id: str | None = None) -> dict[str, Any]:
     run_root = _run_root(session_id)
+    session_record: dict[str, Any] = {}
+    if session_id:
+        try:
+            session_record = session_repository.get_session(session_id, workspace_id=workspace_id)
+        except FileNotFoundError:
+            session_record = {}
     dataset = _load_csv(
         _resolve_run_artifact(
             session_id=session_id,
@@ -431,12 +450,43 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     if not isinstance(review_payload, dict):
         review_payload = build_review_queue(decision_rows, session_id=session_id, workspace_id=workspace_id)
 
+    scientific_truth_payload = load_scientific_session_truth_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=workspace_id is None,
+    )
+    scientific_truth = (
+        scientific_truth_payload
+        if isinstance(scientific_truth_payload, dict) and str(scientific_truth_payload.get("artifact_state") or "") == "ok"
+        else {}
+    )
+    if not scientific_truth and session_id:
+        workspace_memory = build_session_workspace_memory(
+            decision_payload.get("top_experiments") if isinstance(decision_payload, dict) else [],
+            session_id=session_id,
+            workspace_id=workspace_id,
+        )
+        scientific_truth = build_scientific_session_truth(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            source_name=str(session_record.get("source_name") or ""),
+            session_record=session_record,
+            upload_metadata=(session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {}),
+            analysis_report=analysis_report if isinstance(analysis_report, dict) else {},
+            decision_payload=decision_payload if isinstance(decision_payload, dict) else {},
+            review_queue=review_payload if isinstance(review_payload, dict) else {},
+            workspace_memory=workspace_memory,
+        )
+
     warnings = analysis_report.get("warnings", []) if isinstance(analysis_report, dict) else []
-    target_definition = analysis_report.get("target_definition") if isinstance(analysis_report, dict) and isinstance(analysis_report.get("target_definition"), dict) else {}
+    target_definition = scientific_truth.get("target_definition") if isinstance(scientific_truth.get("target_definition"), dict) else {}
+    if not target_definition:
+        target_definition = analysis_report.get("target_definition") if isinstance(analysis_report, dict) and isinstance(analysis_report.get("target_definition"), dict) else {}
     if not target_definition and isinstance(decision_payload.get("target_definition"), dict):
         target_definition = decision_payload.get("target_definition") or {}
     modeling_mode = str(
-        (analysis_report.get("modeling_mode") if isinstance(analysis_report, dict) else "")
+        (scientific_truth.get("modeling_mode") if isinstance(scientific_truth, dict) else "")
+        or (analysis_report.get("modeling_mode") if isinstance(analysis_report, dict) else "")
         or decision_payload.get("modeling_mode")
         or ""
     ).strip()
@@ -446,14 +496,18 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         ranking_policy=analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {},
     )
     run_contract = (
-        analysis_report.get("run_contract")
+        scientific_truth.get("run_contract")
+        if isinstance(scientific_truth.get("run_contract"), dict)
+        else analysis_report.get("run_contract")
         if isinstance(analysis_report, dict) and isinstance(analysis_report.get("run_contract"), dict)
         else decision_payload.get("run_contract")
         if isinstance(decision_payload.get("run_contract"), dict)
         else {}
     )
     comparison_anchors = (
-        analysis_report.get("comparison_anchors")
+        scientific_truth.get("comparison_anchors")
+        if isinstance(scientific_truth.get("comparison_anchors"), dict)
+        else analysis_report.get("comparison_anchors")
         if isinstance(analysis_report, dict) and isinstance(analysis_report.get("comparison_anchors"), dict)
         else decision_payload.get("comparison_anchors")
         if isinstance(decision_payload.get("comparison_anchors"), dict)
@@ -473,6 +527,17 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
     if measurement_summary:
         cards.append({"label": "Rows with values", "value": int(measurement_summary.get("rows_with_values", 0) or 0)})
+    if scientific_truth and isinstance(scientific_truth.get("evidence_records"), list):
+        cards.append({"label": "Evidence records", "value": len(scientific_truth.get("evidence_records") or [])})
+    linked_result_summary = scientific_truth.get("linked_result_summary") if isinstance(scientific_truth.get("linked_result_summary"), dict) else {}
+    if linked_result_summary.get("result_count"):
+        cards.append({"label": "Observed results", "value": int(linked_result_summary.get("result_count") or 0)})
+    belief_update_summary = scientific_truth.get("belief_update_summary") if isinstance(scientific_truth.get("belief_update_summary"), dict) else {}
+    if belief_update_summary.get("update_count"):
+        cards.append({"label": "Belief updates", "value": int(belief_update_summary.get("update_count") or 0)})
+    belief_state_summary = scientific_truth.get("belief_state_summary") if isinstance(scientific_truth.get("belief_state_summary"), dict) else {}
+    if belief_state_summary.get("active_claim_count"):
+        cards.append({"label": "Belief state claims", "value": int(belief_state_summary.get("active_claim_count") or 0)})
     if ranking_diagnostics.get("out_of_domain_rate") is not None:
         cards.append(
             {
@@ -628,10 +693,18 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
             target_definition=target_definition,
             modeling_mode=modeling_mode,
             run_provenance=run_provenance,
+            scientific_truth=scientific_truth,
         ),
         "review_summary": review_payload.get("summary", {}),
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},
         "evaluation_summary": evaluation_summary if isinstance(evaluation_summary, dict) else {},
+        "scientific_session_truth": scientific_truth,
+        "linked_result_summary": linked_result_summary,
+        "belief_update_summary": belief_update_summary,
+        "belief_state_ref": scientific_truth.get("belief_state_ref")
+        if isinstance(scientific_truth.get("belief_state_ref"), dict)
+        else {},
+        "belief_state_summary": belief_state_summary,
         "target_definition": target_definition,
         "run_contract": run_contract,
         "comparison_anchors": comparison_anchors,

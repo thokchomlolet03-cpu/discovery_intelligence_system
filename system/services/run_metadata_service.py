@@ -238,10 +238,13 @@ def infer_comparison_anchors(
     analysis_report = analysis_report or {}
     decision_payload = decision_payload or {}
     summary_metadata = session_record.get("summary_metadata") if isinstance(session_record.get("summary_metadata"), dict) else {}
+    scientific_truth = summary_metadata.get("scientific_session_truth") if isinstance(summary_metadata.get("scientific_session_truth"), dict) else {}
 
     existing = summary_metadata.get("comparison_anchors") if isinstance(summary_metadata.get("comparison_anchors"), dict) else {}
     if existing:
         return validate_comparison_anchors(existing)
+    if scientific_truth and isinstance(scientific_truth.get("comparison_anchors"), dict):
+        return validate_comparison_anchors(scientific_truth.get("comparison_anchors"))
     payload_existing = (
         decision_payload.get("comparison_anchors")
         if isinstance(decision_payload.get("comparison_anchors"), dict)
@@ -253,7 +256,9 @@ def infer_comparison_anchors(
         return validate_comparison_anchors(payload_existing)
 
     run_contract = (
-        summary_metadata.get("run_contract")
+        scientific_truth.get("run_contract")
+        if isinstance(scientific_truth.get("run_contract"), dict)
+        else summary_metadata.get("run_contract")
         if isinstance(summary_metadata.get("run_contract"), dict)
         else decision_payload.get("run_contract")
         if isinstance(decision_payload.get("run_contract"), dict)
@@ -263,7 +268,9 @@ def infer_comparison_anchors(
         run_contract = {}
 
     target_definition = (
-        analysis_report.get("target_definition")
+        scientific_truth.get("target_definition")
+        if isinstance(scientific_truth.get("target_definition"), dict)
+        else analysis_report.get("target_definition")
         if isinstance(analysis_report.get("target_definition"), dict)
         else decision_payload.get("target_definition")
         if isinstance(decision_payload.get("target_definition"), dict)
@@ -272,7 +279,9 @@ def infer_comparison_anchors(
         else {}
     )
     contract_versions = (
-        analysis_report.get("contract_versions")
+        scientific_truth.get("contract_versions")
+        if isinstance(scientific_truth.get("contract_versions"), dict)
+        else analysis_report.get("contract_versions")
         if isinstance(analysis_report.get("contract_versions"), dict)
         else decision_payload.get("contract_versions")
         if isinstance(decision_payload.get("contract_versions"), dict)
@@ -296,13 +305,15 @@ def infer_comparison_anchors(
         column_mapping=column_mapping,
         target_definition=target_definition,
         decision_intent=(
-            analysis_report.get("decision_intent")
+            scientific_truth.get("decision_intent")
+            or analysis_report.get("decision_intent")
             or decision_payload.get("decision_intent")
             or upload_metadata.get("decision_intent")
             or summary_metadata.get("decision_intent")
         ),
         modeling_mode=(
-            analysis_report.get("modeling_mode")
+            scientific_truth.get("modeling_mode")
+            or analysis_report.get("modeling_mode")
             or decision_payload.get("modeling_mode")
             or summary_metadata.get("modeling_mode")
             or run_contract.get("modeling_mode")

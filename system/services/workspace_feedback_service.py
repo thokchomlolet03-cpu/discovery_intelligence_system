@@ -7,6 +7,8 @@ from system.db.repositories import ReviewRepository
 
 
 review_repository = ReviewRepository()
+RECOMMENDATION_REUSE_STATUSES = {"approved", "tested", "ingested"}
+RANKING_CONTEXT_REUSE_STATUSES = {"tested", "ingested"}
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -92,6 +94,73 @@ def _serialize_review_event(
         "upload_url": f"/upload?session_id={session_id}" if session_id else "",
         "discovery_url": f"/discovery?session_id={session_id}" if session_id else "",
         "dashboard_url": f"/dashboard?session_id={session_id}" if session_id else "",
+    }
+
+
+def build_candidate_controlled_reuse(candidate: dict[str, Any]) -> dict[str, Any]:
+    history = candidate.get("workspace_memory_history") if isinstance(candidate.get("workspace_memory_history"), list) else []
+    workspace_memory = candidate.get("workspace_memory") if isinstance(candidate.get("workspace_memory"), dict) else {}
+    event_count = int(candidate.get("workspace_memory_count") or len(history) or 0)
+    session_count = int(workspace_memory.get("session_count") or 0)
+    statuses = [_clean_text(item.get("status")).lower() for item in history if _clean_text(item.get("status"))]
+    reusable_statuses = [status for status in statuses if status in RECOMMENDATION_REUSE_STATUSES]
+    stronger_ranking_statuses = [status for status in statuses if status in RANKING_CONTEXT_REUSE_STATUSES]
+    recommendation_reuse_active = bool(reusable_statuses)
+    ranking_context_reuse_active = bool(stronger_ranking_statuses) or len(reusable_statuses) >= 2
+    interpretation_support_active = event_count > 0
+    reused_evidence = ["Human review outcomes"] if recommendation_reuse_active or ranking_context_reuse_active else []
+    support_carriers = ["Workspace feedback memory"] if interpretation_support_active else []
+
+    if recommendation_reuse_active:
+        recommendation_reuse_summary = (
+            f"Recommendation reuse is active from {len(reusable_statuses)} prior review outcome"
+            f"{'' if len(reusable_statuses) == 1 else 's'} carried through workspace memory. "
+            "This supports continuity across sessions without retraining the model."
+        )
+    else:
+        recommendation_reuse_summary = (
+            "No prior review outcome is currently active for recommendation reuse."
+            if interpretation_support_active
+            else "No recommendation reuse context is active."
+        )
+
+    if ranking_context_reuse_active:
+        ranking_context_reuse_summary = (
+            f"Ranking-context reuse is active for framing because {len(stronger_ranking_statuses) or len(reusable_statuses)} "
+            "prior review outcomes provide stronger reusable continuity context. This does not change the model score."
+        )
+    else:
+        ranking_context_reuse_summary = (
+            "No prior evidence is currently active for ranking-context reuse."
+            if interpretation_support_active
+            else "No ranking-context reuse is active."
+        )
+
+    if interpretation_support_active:
+        interpretation_support_summary = (
+            f"Prior workspace feedback remains active as interpretation support for {event_count} matched review event"
+            f"{'' if event_count == 1 else 's'} across {session_count or 1} earlier session"
+            f"{'' if session_count == 1 else 's'}."
+        )
+    else:
+        interpretation_support_summary = "No prior workspace feedback matched this candidate."
+
+    inactive_boundary_summary = (
+        "Workspace memory is still only a carrier for prior review continuity. It does not retrain the model or replace new observed evidence."
+        if interpretation_support_active
+        else "No inactive reuse boundary is needed because no prior workspace evidence matched this candidate."
+    )
+
+    return {
+        "recommendation_reuse_active": recommendation_reuse_active,
+        "ranking_context_reuse_active": ranking_context_reuse_active,
+        "interpretation_support_active": interpretation_support_active,
+        "reused_evidence": reused_evidence,
+        "support_carriers": support_carriers,
+        "recommendation_reuse_summary": recommendation_reuse_summary,
+        "ranking_context_reuse_summary": ranking_context_reuse_summary,
+        "interpretation_support_summary": interpretation_support_summary,
+        "inactive_boundary_summary": inactive_boundary_summary,
     }
 
 
@@ -281,6 +350,7 @@ def annotate_candidates_with_workspace_memory(
             "discovery_url": _clean_text(latest.get("discovery_url")),
             "dashboard_url": _clean_text(latest.get("dashboard_url")),
         }
+        row["controlled_reuse"] = build_candidate_controlled_reuse(row)
         annotated.append(row)
 
     return annotated
@@ -344,6 +414,7 @@ def build_workspace_feedback_summary(
 
 __all__ = [
     "annotate_candidates_with_workspace_memory",
+    "build_candidate_controlled_reuse",
     "build_session_workspace_memory",
     "build_workspace_feedback_summary",
 ]

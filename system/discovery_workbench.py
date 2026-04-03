@@ -8,6 +8,7 @@ from system.contracts import ContractValidationError, validate_decision_artifact
 from system.review_manager import STATUS_ORDER, normalize_status
 from system.services.run_metadata_service import build_run_provenance
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context
+from system.services.workspace_feedback_service import build_candidate_controlled_reuse
 from system.session_report import ranking_policy as build_ranking_policy
 
 
@@ -890,6 +891,17 @@ def normalize_candidate(
     review_history = normalize_review_history(candidate.get("review_history"))
     workspace_memory = candidate.get("workspace_memory") if isinstance(candidate.get("workspace_memory"), dict) else {}
     workspace_memory_history = normalize_workspace_memory_history(candidate.get("workspace_memory_history"))
+    controlled_reuse = (
+        candidate.get("controlled_reuse")
+        if isinstance(candidate.get("controlled_reuse"), dict)
+        else build_candidate_controlled_reuse(
+            {
+                "workspace_memory_history": workspace_memory_history,
+                "workspace_memory_count": candidate.get("workspace_memory_count"),
+                "workspace_memory": workspace_memory,
+            }
+        )
+    )
     reviewed_at = _to_iso(candidate.get("reviewed_at") or review_summary.get("reviewed_at"))
     reviewer = str(candidate.get("reviewer") or review_summary.get("reviewer") or "unassigned")
     review_note = str(candidate.get("review_note") or review_summary.get("note") or "").strip()
@@ -1029,6 +1041,82 @@ def normalize_candidate(
                 f"Measure {target_name} experimentally to validate the shortlist ordering."
             )
 
+    selective_evidence_context: list[str] = []
+    workspace_memory_count = int(candidate.get("workspace_memory_count") or 0)
+    last_memory_status = str((workspace_memory or {}).get("last_status") or "").strip().lower()
+    last_memory_session = str((workspace_memory or {}).get("last_session_label") or (workspace_memory or {}).get("last_session_id") or "an earlier session").strip()
+    if workspace_memory_count > 0:
+        memory_note = str(
+            controlled_reuse.get("interpretation_support_summary")
+            or f"Prior workspace feedback from {last_memory_session} is active only for continuity and recommendation interpretation; it does not change the model score."
+        ).strip()
+        selective_evidence_context.append(memory_note)
+        if memory_note not in rationale["session_context"]:
+            rationale["session_context"].insert(0, memory_note)
+        if bool(controlled_reuse.get("recommendation_reuse_active")):
+            reuse_strength = str(
+                controlled_reuse.get("recommendation_reuse_summary")
+                or "Prior human review outcomes are active as recommendation reuse context for this candidate. This supports continuity across sessions without retraining the model."
+            ).strip()
+            if reuse_strength not in rationale["strengths"]:
+                rationale["strengths"].insert(0, reuse_strength)
+        if bool(controlled_reuse.get("ranking_context_reuse_active")):
+            ranking_note = str(
+                controlled_reuse.get("ranking_context_reuse_summary")
+                or "Prior human review outcomes are active as ranking-context reuse for this candidate. This strengthens prioritization framing without changing the underlying model score."
+            ).strip()
+            selective_evidence_context.append(ranking_note)
+            decision_policy = dict(decision_policy)
+            decision_policy["reuse_support_label"] = "Reuse-supported prioritization framing"
+            decision_policy["ranking_context_reuse_active"] = True
+            policy_summary = str(decision_policy.get("policy_summary") or "").strip()
+            if ranking_note not in policy_summary:
+                decision_policy["policy_summary"] = f"{policy_summary} {ranking_note}".strip()
+        elif last_memory_status in {"rejected", "tested"}:
+            caution = "Earlier workspace review already flagged this chemistry, so revisit the prior outcome before treating the current rank as a fresh lead."
+            if caution not in rationale["cautions"]:
+                rationale["cautions"].insert(0, caution)
+        elif last_memory_status in {"approved", "ingested"}:
+            strength = "Earlier workspace review supports continuity into the current shortlist, but that support is interpretation-only rather than retraining."
+            if strength not in rationale["strengths"]:
+                rationale["strengths"].insert(0, strength)
+
+        decision_policy = dict(decision_policy)
+        policy_summary = str(decision_policy.get("policy_summary") or "").strip()
+        continuity_text = str(
+            controlled_reuse.get("inactive_boundary_summary")
+            or "Prior workspace feedback is being used as continuity context only; it does not change the underlying model ranking."
+        ).strip()
+        if continuity_text not in policy_summary:
+            decision_policy["policy_summary"] = f"{policy_summary} {continuity_text}".strip()
+
+        normalized_explanation = dict(normalized_explanation)
+        why_now = str(normalized_explanation.get("why_now") or rationale["why_now"]).strip()
+        if continuity_text not in why_now:
+            normalized_explanation["why_now"] = f"{why_now} {continuity_text}".strip()
+
+        final_recommendation = dict(final_recommendation)
+        recommendation_summary = str(final_recommendation.get("summary") or rationale["summary"] or "").strip()
+        if bool(controlled_reuse.get("recommendation_reuse_active")):
+            review_text = str(
+                controlled_reuse.get("recommendation_reuse_summary")
+                or "Prior human review outcomes are active as recommendation reuse context for this candidate. This supports continuity without retraining the model."
+            ).strip()
+        else:
+            review_text = "Prior workspace review affects how this recommendation should be interpreted, not how the model was trained."
+        if review_text not in recommendation_summary:
+            final_recommendation["summary"] = f"{recommendation_summary} {review_text}".strip()
+
+    current_status = normalize_status(candidate.get("status"))
+    if current_status in {"approved", "rejected", "tested", "ingested", "under review"}:
+        selective_evidence_context.append(
+            f"Current review status ({current_status.replace('_', ' ')}) is active for recommendation interpretation and comparison, not for model retraining."
+        )
+
+    rationale["session_context"] = rationale["session_context"][:4]
+    rationale["strengths"] = rationale["strengths"][:4]
+    rationale["cautions"] = rationale["cautions"][:4]
+
     return {
         "rank": int(candidate.get("rank") or position),
         "candidate_id": candidate_id,
@@ -1098,8 +1186,10 @@ def normalize_candidate(
             "dashboard_url": str(workspace_memory.get("dashboard_url") or "").strip(),
         },
         "workspace_memory_history": workspace_memory_history,
-        "workspace_memory_count": int(candidate.get("workspace_memory_count") or 0),
+        "workspace_memory_count": workspace_memory_count,
         "workspace_memory_session_count": int((workspace_memory or {}).get("session_count") or 0),
+        "controlled_reuse": controlled_reuse,
+        "selective_evidence_context": selective_evidence_context[:3],
         "suggested_next_action": suggested_action,
         "observed_value": observed_value,
         "assay": assay,
@@ -1236,6 +1326,7 @@ def build_discovery_workbench(
     session_id: str | None,
     evaluation_summary: dict[str, Any] | None,
     system_version: str,
+    scientific_session_truth: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     artifact_state = str(decision_output.get("artifact_state") or "ok")
     raw_candidate_rows = (
@@ -1245,13 +1336,18 @@ def build_discovery_workbench(
     )
     annotation_lookup = _build_candidate_annotation_lookup(raw_candidate_rows)
     analysis_payload = analysis_report if isinstance(analysis_report, dict) else {}
+    scientific_truth = scientific_session_truth if isinstance(scientific_session_truth, dict) else {}
     target_definition = (
+        scientific_truth.get("target_definition") if isinstance(scientific_truth.get("target_definition"), dict) else {}
+    ) or (
         decision_output.get("target_definition") if isinstance(decision_output.get("target_definition"), dict) else {}
     ) or (
         analysis_payload.get("target_definition") if isinstance(analysis_payload.get("target_definition"), dict) else {}
     )
     modeling_mode = str(
-        decision_output.get("modeling_mode")
+        scientific_truth.get("modeling_mode")
+        or scientific_truth.get("session_identity", {}).get("modeling_mode")
+        or decision_output.get("modeling_mode")
         or analysis_payload.get("modeling_mode")
         or ""
     ).strip()
@@ -1266,11 +1362,15 @@ def build_discovery_workbench(
         ranking_policy=ranking_policy,
     )
     run_contract = (
+        scientific_truth.get("run_contract") if isinstance(scientific_truth.get("run_contract"), dict) else {}
+    ) or (
         decision_output.get("run_contract") if isinstance(decision_output.get("run_contract"), dict) else {}
     ) or (
         analysis_payload.get("run_contract") if isinstance(analysis_payload.get("run_contract"), dict) else {}
     )
     comparison_anchors = (
+        scientific_truth.get("comparison_anchors") if isinstance(scientific_truth.get("comparison_anchors"), dict) else {}
+    ) or (
         decision_output.get("comparison_anchors") if isinstance(decision_output.get("comparison_anchors"), dict) else {}
     ) or (
         analysis_payload.get("comparison_anchors") if isinstance(analysis_payload.get("comparison_anchors"), dict) else {}
@@ -1286,6 +1386,7 @@ def build_discovery_workbench(
         decision_payload=decision_output,
         ranking_policy=ranking_policy,
         run_provenance=run_provenance,
+        scientific_truth=scientific_truth,
     )
     if artifact_state == "error":
         state = {
@@ -1313,6 +1414,7 @@ def build_discovery_workbench(
             "system_version": system_version,
             "candidates": [],
             "workspace_memory": workspace_memory_summary_from_candidates([]),
+            "scientific_session_truth": scientific_truth,
             "target_definition": target_definition,
             "measurement_summary": analysis_payload.get("measurement_summary", {}),
             "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
@@ -1351,6 +1453,7 @@ def build_discovery_workbench(
                 "system_version": system_version,
                 "candidates": [],
                 "workspace_memory": workspace_memory_summary_from_candidates([]),
+                "scientific_session_truth": scientific_truth,
                 "target_definition": target_definition,
                 "measurement_summary": analysis_payload.get("measurement_summary", {}),
                 "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
@@ -1422,8 +1525,35 @@ def build_discovery_workbench(
         "state": state,
         "session_id": session_id,
         "source_path": validated_output.get("source_path") or "decision_output.json",
-        "target_definition": validated_output.get("target_definition") or analysis_payload.get("target_definition") or {},
+        "target_definition": scientific_truth.get("target_definition") or validated_output.get("target_definition") or analysis_payload.get("target_definition") or {},
         "scientific_contract": validated_output.get("scientific_contract") or {},
+        "scientific_session_truth": scientific_truth,
+        "claim_refs": list(scientific_truth.get("claim_refs") or []) if isinstance(scientific_truth.get("claim_refs"), list) else [],
+        "claims_summary": scientific_truth.get("claims_summary") if isinstance(scientific_truth.get("claims_summary"), dict) else {},
+        "experiment_request_refs": list(scientific_truth.get("experiment_request_refs") or [])
+        if isinstance(scientific_truth.get("experiment_request_refs"), list)
+        else [],
+        "experiment_request_summary": scientific_truth.get("experiment_request_summary")
+        if isinstance(scientific_truth.get("experiment_request_summary"), dict)
+        else {},
+        "experiment_result_refs": list(scientific_truth.get("experiment_result_refs") or [])
+        if isinstance(scientific_truth.get("experiment_result_refs"), list)
+        else [],
+        "linked_result_summary": scientific_truth.get("linked_result_summary")
+        if isinstance(scientific_truth.get("linked_result_summary"), dict)
+        else {},
+        "belief_update_refs": list(scientific_truth.get("belief_update_refs") or [])
+        if isinstance(scientific_truth.get("belief_update_refs"), list)
+        else [],
+        "belief_update_summary": scientific_truth.get("belief_update_summary")
+        if isinstance(scientific_truth.get("belief_update_summary"), dict)
+        else {},
+        "belief_state_ref": scientific_truth.get("belief_state_ref")
+        if isinstance(scientific_truth.get("belief_state_ref"), dict)
+        else {},
+        "belief_state_summary": scientific_truth.get("belief_state_summary")
+        if isinstance(scientific_truth.get("belief_state_summary"), dict)
+        else {},
         "run_contract": validated_output.get("run_contract") or analysis_payload.get("run_contract") or {},
         "comparison_anchors": validated_output.get("comparison_anchors") or analysis_payload.get("comparison_anchors") or {},
         "run_provenance": build_run_provenance(

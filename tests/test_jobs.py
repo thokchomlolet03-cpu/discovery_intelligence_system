@@ -16,6 +16,9 @@ from system.db import ensure_database_ready, reset_database_state
 from system.db.repositories import ArtifactRepository, SessionRepository, UserRepository, WorkspaceRepository
 from system.job_manager import DatabaseJobStore, JobManager
 from system.review_manager import latest_review_map, record_review_action, review_history_map
+from system.services.claim_service import create_session_claims
+from system.services.experiment_result_service import list_session_experiment_results
+from system.services.experiment_request_service import create_session_experiment_requests, list_session_experiment_requests
 
 
 class DatabaseBackedTestCase(unittest.TestCase):
@@ -862,6 +865,112 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn("Active", response.text)
         self.assertIn(f"/discovery?session_id={session_id}", response.text)
         self.assertIn("Scoring candidates now.", response.text)
+
+    def test_result_ingestion_route_records_observed_outcome_and_surfaces_it_in_pages(self):
+        session_id = "session_results_ready"
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            source_name="measurements.csv",
+            input_type="measurement_dataset",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        self._store_ready_session_artifacts(session_id)
+        decision_payload = json.loads((Path(self.tmpdir.name) / session_id / "decision_output.json").read_text())
+        scientific_truth_seed = {
+            "session_id": session_id,
+            "target_definition": {
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "measurement_column": "pic50",
+                "measurement_unit": "log units",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+            },
+            "evidence_loop": {
+                "active_modeling_evidence": ["Observed experimental values"],
+                "active_ranking_evidence": ["Model predictions"],
+            },
+        }
+        claims = create_session_claims(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            decision_payload=decision_payload,
+            scientific_truth=scientific_truth_seed,
+            created_by_user_id=self.user["user_id"],
+        )
+        create_session_experiment_requests(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            claims=claims,
+            decision_payload=decision_payload,
+            requested_by_user_id=self.user["user_id"],
+        )
+        experiment_request = list_session_experiment_requests(session_id, workspace_id=self.workspace["workspace_id"])[0]
+
+        response = self.client.post(
+            "/experiment-results",
+            data={
+                "session_id": session_id,
+                "csrf_token": self._authenticated_csrf(f"/discovery?session_id={session_id}"),
+                "source_experiment_request_id": experiment_request["experiment_request_id"],
+                "observed_value": "6.7",
+                "measurement_unit": "log units",
+                "assay_context": "screen_a repeat 1",
+                "result_quality": "confirmatory",
+                "notes": "Manual observed result entry.",
+                "next": f"/discovery?session_id={session_id}",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        discovery_response = self.client.get(f"/discovery?session_id={session_id}")
+        self.assertEqual(discovery_response.status_code, 200)
+        self.assertIn("Observed Results", discovery_response.text)
+        self.assertIn("observed value 6.7", discovery_response.text.lower())
+
+        dashboard_response = self.client.get(f"/dashboard?session_id={session_id}")
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertIn("Observed results", dashboard_response.text)
+
+        sessions_response = self.client.get(f"/sessions?session_id={session_id}")
+        self.assertEqual(sessions_response.status_code, 200)
+        self.assertIn("Observed results", sessions_response.text)
+
+        experiment_result = list_session_experiment_results(
+            session_id,
+            workspace_id=self.workspace["workspace_id"],
+        )[0]
+        belief_response = self.client.post(
+            "/belief-updates",
+            data={
+                "session_id": session_id,
+                "csrf_token": self._authenticated_csrf(f"/discovery?session_id={session_id}"),
+                "experiment_result_id": experiment_result["experiment_result_id"],
+                "next": f"/discovery?session_id={session_id}",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(belief_response.status_code, 303)
+        discovery_response = self.client.get(f"/discovery?session_id={session_id}")
+        self.assertEqual(discovery_response.status_code, 200)
+        self.assertIn("Belief Updates", discovery_response.text)
+        self.assertIn("Current Belief State", discovery_response.text)
+        self.assertIn("support unresolved", discovery_response.text.lower())
+
+        dashboard_response = self.client.get(f"/dashboard?session_id={session_id}")
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertIn("Belief updates", dashboard_response.text)
+        self.assertIn("Current belief state", dashboard_response.text)
+
+        sessions_response = self.client.get(f"/sessions?session_id={session_id}")
+        self.assertEqual(sessions_response.status_code, 200)
+        self.assertIn("Belief updates", sessions_response.text)
+        self.assertIn("Current belief state", sessions_response.text)
 
     def test_discovery_page_surfaces_prior_workspace_feedback_memory(self):
         current_session_id = "session_current"

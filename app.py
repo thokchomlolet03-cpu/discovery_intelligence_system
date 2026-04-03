@@ -61,15 +61,19 @@ from system.upload_parser import (
 )
 from system.services.ingestion import normalize_input_type, normalize_semantic_mapping
 from system.services.active_session_comparison_service import build_active_session_comparison_context
+from system.services.belief_update_service import create_belief_update
+from system.services.experiment_result_service import ingest_experiment_result
+from system.services.scientific_session_truth_service import build_scientific_session_truth, persist_scientific_session_truth
 from system.services.session_identity_service import build_session_identity
 from system.services.status_semantics_service import build_status_semantics, persisted_status_snapshot
-from system.services.workspace_feedback_service import annotate_candidates_with_workspace_memory
+from system.services.workspace_feedback_service import annotate_candidates_with_workspace_memory, build_session_workspace_memory
 from system.session_history import build_session_history_context
 from system.session_artifacts import (
     load_analysis_report_payload,
     load_decision_artifact_payload,
     load_evaluation_summary_payload,
     load_result_payload,
+    load_scientific_session_truth_payload,
 )
 
 
@@ -1126,6 +1130,28 @@ async def discovery_page(
         allow_global_fallback=False,
     )
     workbench_decision_output = {**decision_output, "top_experiments": candidates}
+    scientific_session_truth = load_scientific_session_truth_payload(
+        session_id=effective_session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    if str(scientific_session_truth.get("artifact_state") or "") != "ok":
+        workspace_memory = build_session_workspace_memory(
+            candidates,
+            session_id=effective_session_id,
+            workspace_id=auth.workspace_id,
+        )
+        scientific_session_truth = build_scientific_session_truth(
+            session_id=effective_session_id,
+            workspace_id=auth.workspace_id,
+            source_name=str((session_view.get("session_record") or {}).get("source_name") or ""),
+            session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+            upload_metadata=(session_view.get("session_record") or {}).get("upload_metadata") if isinstance((session_view.get("session_record") or {}).get("upload_metadata"), dict) else {},
+            analysis_report=analysis_report,
+            decision_payload=workbench_decision_output,
+            review_queue=review_queue,
+            workspace_memory=workspace_memory,
+        )
     workbench = build_discovery_workbench(
         decision_output=workbench_decision_output,
         analysis_report=analysis_report,
@@ -1133,6 +1159,7 @@ async def discovery_page(
         session_id=effective_session_id,
         evaluation_summary=evaluation_summary,
         system_version=app.version,
+        scientific_session_truth=scientific_session_truth,
     )
     session_identity = build_session_identity(
         session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
@@ -1232,6 +1259,40 @@ async def create_review(request: Request, payload: dict[str, Any] = Body(...)) -
             workspace_id=auth.workspace_id,
             created_by_user_id=auth.user_id,
         )
+        analysis_report = load_analysis_report(
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+            allow_global_fallback=False,
+        )
+        session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+        annotated_candidates = annotate_candidates_with_workspace_memory(
+            candidates,
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+        )
+        workspace_memory = build_session_workspace_memory(
+            candidates,
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+        )
+        updated_truth = build_scientific_session_truth(
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+            source_name=str(session_record.get("source_name") or ""),
+            session_record=session_record,
+            upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+            analysis_report=analysis_report,
+            decision_payload={**decision_output, "top_experiments": annotated_candidates},
+            review_queue=review_queue,
+            workspace_memory=workspace_memory,
+        )
+        persist_scientific_session_truth(
+            updated_truth,
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+            created_by_user_id=auth.user_id,
+            register_artifact=True,
+        )
         return JSONResponse({"reviews": records, "review_queue": review_queue})
 
     smiles = payload.get("smiles")
@@ -1270,7 +1331,219 @@ async def create_review(request: Request, payload: dict[str, Any] = Body(...)) -
         workspace_id=auth.workspace_id,
         created_by_user_id=auth.user_id,
     )
+    analysis_report = load_analysis_report(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    updated_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    persist_scientific_session_truth(
+        updated_truth,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+        register_artifact=True,
+    )
     return JSONResponse({"review": record, "review_queue": review_queue})
+
+
+@app.post("/experiment-results")
+async def create_experiment_result_action(
+    request: Request,
+    session_id: str = Form(...),
+    csrf_token: str = Form(...),
+    source_experiment_request_id: str | None = Form(None),
+    source_claim_id: str | None = Form(None),
+    candidate_id: str | None = Form(None),
+    observed_value: str | None = Form(None),
+    observed_label: str | None = Form(None),
+    measurement_unit: str | None = Form(None),
+    assay_context: str | None = Form(None),
+    result_quality: str = Form("provisional"),
+    notes: str | None = Form(None),
+    next: str = Form("/discovery"),
+) -> RedirectResponse:
+    auth = require_auth_context(request)
+    require_csrf(request, csrf_token)
+    if not str(observed_value or "").strip() and not str(observed_label or "").strip():
+        raise HTTPException(status_code=400, detail="An observed value or observed label is required to record a result.")
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, session_id)
+
+    ingested_by = str(auth.user.get("display_name") or auth.user.get("email") or "scientist").strip() or "scientist"
+    try:
+        ingest_experiment_result(
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+            source_experiment_request_id=str(source_experiment_request_id or "").strip(),
+            source_claim_id=str(source_claim_id or "").strip(),
+            candidate_id=str(candidate_id or "").strip(),
+            observed_value=observed_value,
+            observed_label=str(observed_label or "").strip(),
+            measurement_unit=str(measurement_unit or "").strip(),
+            assay_context=str(assay_context or "").strip(),
+            result_quality=str(result_quality or "provisional").strip(),
+            ingested_by=ingested_by,
+            ingested_by_user_id=auth.user_id,
+            notes=str(notes or "").strip(),
+        )
+    except (ContractValidationError, FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    decision_output = load_decision_output(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    candidates = annotate_candidates_with_reviews(
+        decision_output.get("top_experiments", []),
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    review_queue = persist_review_queue(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+    )
+    analysis_report = load_analysis_report(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    updated_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    persist_scientific_session_truth(
+        updated_truth,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+        register_artifact=True,
+    )
+    target = str(next or "").strip() or f"/discovery?session_id={session_id}"
+    return RedirectResponse(url=target, status_code=303)
+
+
+@app.post("/belief-updates")
+async def create_belief_update_action(
+    request: Request,
+    session_id: str = Form(...),
+    csrf_token: str = Form(...),
+    claim_id: str | None = Form(None),
+    experiment_result_id: str | None = Form(None),
+    next: str = Form("/discovery"),
+) -> RedirectResponse:
+    auth = require_auth_context(request)
+    require_csrf(request, csrf_token)
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, session_id)
+
+    created_by = str(auth.user.get("display_name") or auth.user.get("email") or "scientist").strip() or "scientist"
+    try:
+        create_belief_update(
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+            claim_id=str(claim_id or "").strip(),
+            experiment_result_id=str(experiment_result_id or "").strip(),
+            created_by=created_by,
+            created_by_user_id=auth.user_id,
+        )
+    except (ContractValidationError, FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    decision_output = load_decision_output(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    candidates = annotate_candidates_with_reviews(
+        decision_output.get("top_experiments", []),
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    review_queue = persist_review_queue(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+    )
+    analysis_report = load_analysis_report(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    updated_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    persist_scientific_session_truth(
+        updated_truth,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+        register_artifact=True,
+    )
+    target = str(next or "").strip() or f"/discovery?session_id={session_id}"
+    return RedirectResponse(url=target, status_code=303)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

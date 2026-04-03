@@ -249,6 +249,27 @@
     };
   }
 
+  function candidateControlledReuse(candidate) {
+    const reuse = candidate.controlled_reuse && typeof candidate.controlled_reuse === "object" ? candidate.controlled_reuse : {};
+    const parts = [
+      reuse.recommendation_reuse_summary,
+      reuse.ranking_context_reuse_summary,
+      reuse.interpretation_support_summary,
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    if (!parts.length) {
+      return null;
+    }
+    return {
+      title: "Controlled reuse context",
+      summary: parts[0],
+      bullets: parts.slice(1).concat(
+        reuse.inactive_boundary_summary
+          ? [String(reuse.inactive_boundary_summary).trim()]
+          : []
+      ),
+    };
+  }
+
   function bulletListHtml(items) {
     const lines = nonEmptyLines(items);
     if (!lines.length) {
@@ -264,6 +285,10 @@
       { label: "Support signals", ...candidateDomainAndNovelty(candidate) },
       { label: "Policy output and recommendation", ...candidateDecisionPolicy(candidate) },
     ];
+    const reuseBlock = candidateControlledReuse(candidate);
+    if (reuseBlock) {
+      blocks.push({ label: "Controlled reuse", ...reuseBlock });
+    }
     return `
       <section class="candidate-context-grid">
         ${blocks
@@ -288,6 +313,10 @@
       { label: "Applicability and novelty signals", ...candidateDomainAndNovelty(candidate) },
       { label: "Decision policy and recommendation", ...candidateDecisionPolicy(candidate) },
     ];
+    const reuseBlock = candidateControlledReuse(candidate);
+    if (reuseBlock) {
+      blocks.push({ label: "Controlled reuse", ...reuseBlock });
+    }
     return `
       <section class="detail-section">
         <span class="panel-label">Scientific structure</span>

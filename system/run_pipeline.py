@@ -18,8 +18,15 @@ from system.services.artifact_service import (
     write_json_log,
 )
 from system.services.candidate_service import out_of_domain_ratio
+from system.services.claim_service import attach_claims_to_scientific_session_truth, create_session_claims
 from system.services.data_service import labeled_subset, prepare_analysis_dataframe
+from system.services.experiment_request_service import (
+    attach_experiment_requests_to_scientific_session_truth,
+    create_session_experiment_requests,
+)
 from system.services.run_metadata_service import build_comparison_anchors, build_run_contract
+from system.services.scientific_session_truth_service import build_scientific_session_truth
+from system.services.workspace_feedback_service import build_session_workspace_memory
 from system.services.target_definition_service import (
     default_contract_versions,
     infer_modeling_mode,
@@ -395,6 +402,71 @@ def run_pipeline(
         workspace_id=str(options.get("workspace_id") or "") or None,
         created_by_user_id=str(options.get("created_by_user_id") or "") or None,
     )
+    workspace_memory = build_session_workspace_memory(
+        result.get("top_candidates", []),
+        session_id=session_id,
+        workspace_id=str(options.get("workspace_id") or "") or None,
+    )
+    result["scientific_session_truth"] = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=str(options.get("workspace_id") or "") or None,
+        source_name=source_name,
+        session_record={
+            "session_id": session_id,
+            "workspace_id": str(options.get("workspace_id") or ""),
+            "source_name": source_name,
+            "input_type": input_type,
+            "summary_metadata": {
+                "target_definition": target_definition,
+                "decision_intent": decision_intent,
+                "modeling_mode": modeling_mode,
+                "run_contract": run_contract,
+                "comparison_anchors": comparison_anchors,
+                "contract_versions": contract_versions,
+            },
+        },
+        upload_metadata={
+            "session_id": session_id,
+            "filename": source_name,
+            "input_type": input_type,
+            "target_definition": target_definition,
+            "validation_summary": summary,
+            "decision_intent": decision_intent,
+            "comparison_anchors": comparison_anchors,
+            "contract_versions": contract_versions,
+        },
+        analysis_report=analysis_report,
+        decision_payload=result.get("decision_output") or {},
+        review_queue=result.get("review_queue") or {},
+        workspace_memory=workspace_memory,
+        feedback_store=result.get("feedback_store") or {},
+    )
+    workspace_id = str(options.get("workspace_id") or "").strip()
+    if workspace_id:
+        result["claims"] = create_session_claims(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            decision_payload=result.get("decision_output") or {},
+            scientific_truth=result.get("scientific_session_truth") or {},
+            created_by_user_id=str(options.get("created_by_user_id") or "") or None,
+            created_by="system",
+        )
+        result["scientific_session_truth"] = attach_claims_to_scientific_session_truth(
+            result.get("scientific_session_truth") or {},
+            result.get("claims") or [],
+        )
+        result["experiment_requests"] = create_session_experiment_requests(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            claims=result.get("claims") or [],
+            decision_payload=result.get("decision_output") or {},
+            requested_by_user_id=str(options.get("created_by_user_id") or "") or None,
+            requested_by="system",
+        )
+        result["scientific_session_truth"] = attach_experiment_requests_to_scientific_session_truth(
+            result.get("scientific_session_truth") or {},
+            result.get("experiment_requests") or [],
+        )
     _emit_progress(
         progress_callback,
         stage="persisting_artifacts",

@@ -201,6 +201,34 @@ class BeliefStateModel(Base):
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
+class GovernedReviewRecordModel(Base):
+    __tablename__ = "governed_review_records"
+
+    review_record_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.workspace_id"), nullable=False, index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.session_id"), nullable=True, index=True)
+    subject_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    subject_id: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    target_key: Mapped[str] = mapped_column(String(512), nullable=False, default="", index=True)
+    candidate_id: Mapped[str] = mapped_column(String(256), nullable=False, default="", index=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
+    source_class_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    provenance_confidence_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    trust_tier_label: Mapped[str] = mapped_column(String(128), nullable=False, default="", index=True)
+    review_status_label: Mapped[str] = mapped_column(String(128), nullable=False, default="", index=True)
+    review_reason_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    review_reason_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    promotion_gate_status_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    promotion_block_reason_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    decision_outcome: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    decision_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    supersedes_review_record_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, index=True)
+    recorded_by: Mapped[str] = mapped_column(String(256), nullable=False, default="system")
+    actor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"), nullable=True, index=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+
 class ArtifactRecordModel(Base):
     __tablename__ = "artifact_records"
     __table_args__ = (UniqueConstraint("path", name="uq_artifact_records_path"),)

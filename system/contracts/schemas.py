@@ -819,8 +819,34 @@ class EvidenceRecord(ContractBaseModel):
     future_use: EvidenceFutureUse = EvidenceFutureUse.none
     active_in_live_pipeline: bool = False
     summary: str = ""
+    source_class_label: str = ""
+    source_class_summary: str = ""
+    provenance_confidence_label: str = ""
+    provenance_confidence_summary: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary: str = ""
 
-    @validator("name", "source", "summary", pre=True, always=True)
+    @validator(
+        "name",
+        "source",
+        "summary",
+        "source_class_label",
+        "source_class_summary",
+        "provenance_confidence_label",
+        "provenance_confidence_summary",
+        "trust_tier_label",
+        "trust_tier_summary",
+        "governed_review_status_label",
+        "governed_review_status_summary",
+        "governed_review_reason_label",
+        "governed_review_reason_summary",
+        pre=True,
+        always=True,
+    )
     def _clean_evidence_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -879,12 +905,35 @@ class EvidenceActivationRule(ContractBaseModel):
     ineligibility_reason: str = ""
     activation_summary: str = ""
     eligibility_summary: str = ""
+    source_class_label: str = ""
+    provenance_confidence_label: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary: str = ""
 
     @validator("evidence_type", pre=True)
     def _clean_activation_evidence_type(cls, value: Any) -> str:
         return _clean_text(value).lower()
 
-    @validator("name", "ineligibility_reason", "activation_summary", "eligibility_summary", pre=True, always=True)
+    @validator(
+        "name",
+        "ineligibility_reason",
+        "activation_summary",
+        "eligibility_summary",
+        "source_class_label",
+        "provenance_confidence_label",
+        "trust_tier_label",
+        "trust_tier_summary",
+        "governed_review_status_label",
+        "governed_review_status_summary",
+        "governed_review_reason_label",
+        "governed_review_reason_summary",
+        pre=True,
+        always=True,
+    )
     def _clean_activation_rule_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -900,6 +949,18 @@ class EvidenceActivationPolicy(ContractBaseModel):
     future_learning_eligibility_summary: str = ""
     stored_only_summary: str = ""
     permanently_non_active_summary: str = ""
+    source_class_label: str = ""
+    source_class_summary: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary: str = ""
+    provenance_confidence_label: str = ""
+    provenance_confidence_summary: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary: str = ""
+    local_only_default_summary: str = ""
+    anti_poisoning_summary: str = ""
     rules: list[EvidenceActivationRule] = Field(default_factory=list)
 
     @validator(
@@ -912,6 +973,18 @@ class EvidenceActivationPolicy(ContractBaseModel):
         "future_learning_eligibility_summary",
         "stored_only_summary",
         "permanently_non_active_summary",
+        "source_class_label",
+        "source_class_summary",
+        "trust_tier_label",
+        "trust_tier_summary",
+        "provenance_confidence_label",
+        "provenance_confidence_summary",
+        "governed_review_status_label",
+        "governed_review_status_summary",
+        "governed_review_reason_label",
+        "governed_review_reason_summary",
+        "local_only_default_summary",
+        "anti_poisoning_summary",
         pre=True,
         always=True,
     )
@@ -1025,9 +1098,131 @@ class ClaimReference(ContractBaseModel):
     support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
     status: ClaimStatus = ClaimStatus.proposed
     source_recommendation_rank: int = Field(default=0, ge=0)
+    claim_support_role_label: str = ""
+    current_support_count: int = Field(default=0, ge=0)
+    historical_support_count: int = Field(default=0, ge=0)
+    rejected_support_count: int = Field(default=0, ge=0)
+    claim_chronology_summary_text: str = ""
+    claim_support_basis_mix_label: str = ""
+    claim_support_basis_mix_summary: str = ""
+    claim_observed_label_support_count: int = Field(default=0, ge=0)
+    claim_numeric_rule_based_support_count: int = Field(default=0, ge=0)
+    claim_unresolved_basis_count: int = Field(default=0, ge=0)
+    claim_weak_basis_count: int = Field(default=0, ge=0)
+    claim_support_quality_label: str = ""
+    claim_support_quality_summary: str = ""
+    claim_governed_support_posture_label: str = ""
+    claim_governed_support_posture_summary: str = ""
+    claim_support_coherence_label: str = ""
+    claim_support_coherence_summary: str = ""
+    claim_support_reuse_label: str = ""
+    claim_support_reuse_summary: str = ""
+    claim_current_support_contested_flag: bool = False
+    claim_current_posture_degraded_flag: bool = False
+    claim_historical_support_stronger_than_current_flag: bool = False
+    claim_broader_reuse_label: str = ""
+    claim_broader_reuse_summary: str = ""
+    claim_future_reuse_candidacy_label: str = ""
+    claim_future_reuse_candidacy_summary: str = ""
+    claim_continuity_cluster_posture_label: str = ""
+    claim_continuity_cluster_posture_summary: str = ""
+    claim_promotion_candidate_posture_label: str = ""
+    claim_promotion_candidate_posture_summary: str = ""
+    claim_promotion_stability_label: str = ""
+    claim_promotion_stability_summary: str = ""
+    claim_promotion_gate_status_label: str = ""
+    claim_promotion_gate_status_summary: str = ""
+    claim_promotion_block_reason_label: str = ""
+    claim_promotion_block_reason_summary: str = ""
+    claim_source_class_label: str = ""
+    claim_source_class_summary: str = ""
+    claim_trust_tier_label: str = ""
+    claim_trust_tier_summary: str = ""
+    claim_provenance_confidence_label: str = ""
+    claim_provenance_confidence_summary: str = ""
+    claim_governed_review_status_label: str = ""
+    claim_governed_review_status_summary: str = ""
+    claim_governed_review_reason_label: str = ""
+    claim_governed_review_reason_summary: str = ""
+    claim_governed_review_record_count: int = Field(default=0, ge=0)
+    claim_governed_review_history_summary: str = ""
+    claim_promotion_audit_summary: str = ""
+    claim_read_across_label: str = ""
+    claim_read_across_summary: str = ""
+    claim_prior_context_count: int = Field(default=0, ge=0)
+    claim_prior_support_quality_label: str = ""
+    claim_prior_support_quality_summary: str = ""
+    claim_prior_active_support_count: int = Field(default=0, ge=0)
+    claim_prior_historical_support_count: int = Field(default=0, ge=0)
+    claim_actionability_label: str = ""
+    claim_actionability_summary: str = ""
+    claim_actionability_basis_label: str = ""
+    claim_actionability_basis_summary: str = ""
+    claim_active_support_actionability_label: str = ""
+    claim_historical_support_actionability_label: str = ""
+    claim_historical_interest_only_flag: bool = False
+    claim_next_step_label: str = ""
+    claim_next_step_summary: str = ""
     created_at: datetime | None = None
 
-    @validator("claim_id", "candidate_id", "candidate_label", "claim_text", pre=True, always=True)
+    @validator(
+        "claim_id",
+        "candidate_id",
+        "candidate_label",
+        "claim_text",
+        "claim_support_role_label",
+        "claim_chronology_summary_text",
+        "claim_support_basis_mix_label",
+        "claim_support_basis_mix_summary",
+        "claim_support_quality_label",
+        "claim_support_quality_summary",
+        "claim_governed_support_posture_label",
+        "claim_governed_support_posture_summary",
+        "claim_support_coherence_label",
+        "claim_support_coherence_summary",
+        "claim_support_reuse_label",
+        "claim_support_reuse_summary",
+        "claim_broader_reuse_label",
+        "claim_broader_reuse_summary",
+        "claim_future_reuse_candidacy_label",
+        "claim_future_reuse_candidacy_summary",
+        "claim_continuity_cluster_posture_label",
+        "claim_continuity_cluster_posture_summary",
+        "claim_promotion_candidate_posture_label",
+        "claim_promotion_candidate_posture_summary",
+        "claim_promotion_stability_label",
+        "claim_promotion_stability_summary",
+        "claim_promotion_gate_status_label",
+        "claim_promotion_gate_status_summary",
+        "claim_promotion_block_reason_label",
+        "claim_promotion_block_reason_summary",
+        "claim_source_class_label",
+        "claim_source_class_summary",
+        "claim_trust_tier_label",
+        "claim_trust_tier_summary",
+        "claim_provenance_confidence_label",
+        "claim_provenance_confidence_summary",
+        "claim_governed_review_status_label",
+        "claim_governed_review_status_summary",
+        "claim_governed_review_reason_label",
+        "claim_governed_review_reason_summary",
+        "claim_governed_review_history_summary",
+        "claim_promotion_audit_summary",
+        "claim_read_across_label",
+        "claim_read_across_summary",
+        "claim_prior_support_quality_label",
+        "claim_prior_support_quality_summary",
+        "claim_actionability_label",
+        "claim_actionability_summary",
+        "claim_actionability_basis_label",
+        "claim_actionability_basis_summary",
+        "claim_active_support_actionability_label",
+        "claim_historical_support_actionability_label",
+        "claim_next_step_label",
+        "claim_next_step_summary",
+        pre=True,
+        always=True,
+    )
     def _clean_claim_ref_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -1056,10 +1251,121 @@ class ClaimsSummary(ContractBaseModel):
     accepted_count: int = Field(default=0, ge=0)
     rejected_count: int = Field(default=0, ge=0)
     superseded_count: int = Field(default=0, ge=0)
+    claims_with_active_support_count: int = Field(default=0, ge=0)
+    claims_with_historical_support_only_count: int = Field(default=0, ge=0)
+    claims_with_rejected_support_only_count: int = Field(default=0, ge=0)
+    claims_with_no_governed_support_count: int = Field(default=0, ge=0)
+    continuity_aligned_claim_count: int = Field(default=0, ge=0)
+    new_claim_context_count: int = Field(default=0, ge=0)
+    weak_prior_alignment_count: int = Field(default=0, ge=0)
+    no_prior_claim_context_count: int = Field(default=0, ge=0)
+    claims_with_active_governed_continuity_count: int = Field(default=0, ge=0)
+    claims_with_historical_continuity_only_count: int = Field(default=0, ge=0)
+    claims_with_sparse_prior_context_count: int = Field(default=0, ge=0)
+    claims_with_no_useful_prior_context_count: int = Field(default=0, ge=0)
+    claims_mostly_observed_label_grounded_count: int = Field(default=0, ge=0)
+    claims_with_numeric_rule_based_support_count: int = Field(default=0, ge=0)
+    claims_with_weak_basis_support_count: int = Field(default=0, ge=0)
+    claims_with_mixed_support_basis_count: int = Field(default=0, ge=0)
+    claims_with_decision_useful_active_support_count: int = Field(default=0, ge=0)
+    claims_with_limited_active_support_quality_count: int = Field(default=0, ge=0)
+    claims_with_context_limited_active_support_count: int = Field(default=0, ge=0)
+    claims_with_weak_or_unresolved_active_support_count: int = Field(default=0, ge=0)
+    claims_with_posture_governing_support_count: int = Field(default=0, ge=0)
+    claims_with_tentative_current_support_count: int = Field(default=0, ge=0)
+    claims_with_accepted_limited_support_count: int = Field(default=0, ge=0)
+    claims_with_historical_non_governing_support_count: int = Field(default=0, ge=0)
+    claims_with_tentative_active_continuity_count: int = Field(default=0, ge=0)
+    claims_with_contested_current_support_count: int = Field(default=0, ge=0)
+    claims_with_degraded_current_posture_count: int = Field(default=0, ge=0)
+    claims_with_historical_stronger_than_current_count: int = Field(default=0, ge=0)
+    claims_with_contradiction_limited_reuse_count: int = Field(default=0, ge=0)
+    claims_with_weakly_reusable_support_count: int = Field(default=0, ge=0)
+    claims_action_ready_follow_up_count: int = Field(default=0, ge=0)
+    claims_promising_but_need_stronger_evidence_count: int = Field(default=0, ge=0)
+    claims_need_clarifying_experiment_count: int = Field(default=0, ge=0)
+    claims_do_not_prioritize_yet_count: int = Field(default=0, ge=0)
+    claims_with_insufficient_governed_basis_count: int = Field(default=0, ge=0)
+    claims_action_ready_from_active_support_count: int = Field(default=0, ge=0)
+    claims_with_active_but_limited_actionability_count: int = Field(default=0, ge=0)
+    claims_historically_interesting_count: int = Field(default=0, ge=0)
+    claims_with_mixed_current_historical_actionability_count: int = Field(default=0, ge=0)
+    claims_with_no_active_governed_support_actionability_count: int = Field(default=0, ge=0)
     summary_text: str = ""
+    chronology_summary_text: str = ""
+    claim_support_basis_summary_text: str = ""
+    claim_actionability_summary_text: str = ""
+    claim_actionability_basis_summary_text: str = ""
+    read_across_summary_text: str = ""
+    broader_reuse_label: str = ""
+    broader_reuse_summary_text: str = ""
+    broader_continuity_label: str = ""
+    broader_continuity_summary_text: str = ""
+    future_reuse_candidacy_label: str = ""
+    future_reuse_candidacy_summary_text: str = ""
+    continuity_cluster_posture_label: str = ""
+    continuity_cluster_posture_summary_text: str = ""
+    promotion_candidate_posture_label: str = ""
+    promotion_candidate_posture_summary_text: str = ""
+    promotion_stability_label: str = ""
+    promotion_stability_summary_text: str = ""
+    promotion_gate_status_label: str = ""
+    promotion_gate_status_summary_text: str = ""
+    promotion_block_reason_label: str = ""
+    promotion_block_reason_summary_text: str = ""
+    source_class_label: str = ""
+    source_class_summary_text: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary_text: str = ""
+    provenance_confidence_label: str = ""
+    provenance_confidence_summary_text: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary_text: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary_text: str = ""
+    governed_review_record_count: int = Field(default=0, ge=0)
+    governed_review_history_summary_text: str = ""
+    promotion_audit_summary_text: str = ""
     top_claims: list[ClaimReference] = Field(default_factory=list)
 
-    @validator("summary_text", pre=True, always=True)
+    @validator(
+        "summary_text",
+        "chronology_summary_text",
+        "claim_support_basis_summary_text",
+        "claim_actionability_summary_text",
+        "claim_actionability_basis_summary_text",
+        "read_across_summary_text",
+        "broader_reuse_label",
+        "broader_reuse_summary_text",
+        "broader_continuity_label",
+        "broader_continuity_summary_text",
+        "future_reuse_candidacy_label",
+        "future_reuse_candidacy_summary_text",
+        "continuity_cluster_posture_label",
+        "continuity_cluster_posture_summary_text",
+        "promotion_candidate_posture_label",
+        "promotion_candidate_posture_summary_text",
+        "promotion_stability_label",
+        "promotion_stability_summary_text",
+        "promotion_gate_status_label",
+        "promotion_gate_status_summary_text",
+        "promotion_block_reason_label",
+        "promotion_block_reason_summary_text",
+        "source_class_label",
+        "source_class_summary_text",
+        "trust_tier_label",
+        "trust_tier_summary_text",
+        "provenance_confidence_label",
+        "provenance_confidence_summary_text",
+        "governed_review_status_label",
+        "governed_review_status_summary_text",
+        "governed_review_reason_label",
+        "governed_review_reason_summary_text",
+        "governed_review_history_summary_text",
+        "promotion_audit_summary_text",
+        pre=True,
+        always=True,
+    )
     def _clean_claim_summary_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -1130,6 +1436,9 @@ class ExperimentRequestReference(ContractBaseModel):
     candidate_label: str = ""
     requested_measurement: str = ""
     requested_direction: str = ""
+    request_basis_label: str = ""
+    request_intent_label: str = ""
+    request_guidance_summary: str = ""
     priority_tier: PriorityTier = PriorityTier.medium
     status: ExperimentRequestStatus = ExperimentRequestStatus.proposed
     requested_at: datetime | None = None
@@ -1141,6 +1450,9 @@ class ExperimentRequestReference(ContractBaseModel):
         "candidate_label",
         "requested_measurement",
         "requested_direction",
+        "request_basis_label",
+        "request_intent_label",
+        "request_guidance_summary",
         pre=True,
         always=True,
     )
@@ -1169,6 +1481,10 @@ class ExperimentRequestSummary(ContractBaseModel):
     rejected_count: int = Field(default=0, ge=0)
     completed_count: int = Field(default=0, ge=0)
     superseded_count: int = Field(default=0, ge=0)
+    confirmatory_request_count: int = Field(default=0, ge=0)
+    clarifying_request_count: int = Field(default=0, ge=0)
+    fresh_evidence_request_count: int = Field(default=0, ge=0)
+    exploratory_request_count: int = Field(default=0, ge=0)
     summary_text: str = ""
     top_requests: list[ExperimentRequestReference] = Field(default_factory=list)
 
@@ -1259,6 +1575,12 @@ class ExperimentResultReference(ContractBaseModel):
     measurement_unit: str = ""
     result_quality: ExperimentResultQuality = ExperimentResultQuality.provisional
     result_source: ExperimentResultSource = ExperimentResultSource.manual_entry
+    result_interpretation_label: str = ""
+    result_interpretation_summary: str = ""
+    result_support_quality_label: str = ""
+    result_support_quality_summary: str = ""
+    result_decision_usefulness_label: str = ""
+    result_context_limitation_label: str = ""
     ingested_at: datetime | None = None
 
     @validator(
@@ -1269,6 +1591,12 @@ class ExperimentResultReference(ContractBaseModel):
         "candidate_label",
         "observed_label",
         "measurement_unit",
+        "result_interpretation_label",
+        "result_interpretation_summary",
+        "result_support_quality_label",
+        "result_support_quality_summary",
+        "result_decision_usefulness_label",
+        "result_context_limitation_label",
         pre=True,
         always=True,
     )
@@ -1304,6 +1632,14 @@ class ExperimentResultSummary(ContractBaseModel):
     recorded_count: int = Field(default=0, ge=0)
     with_numeric_value_count: int = Field(default=0, ge=0)
     with_label_count: int = Field(default=0, ge=0)
+    bounded_numeric_interpretation_count: int = Field(default=0, ge=0)
+    unresolved_numeric_interpretation_count: int = Field(default=0, ge=0)
+    cautious_result_quality_count: int = Field(default=0, ge=0)
+    assay_context_recorded_count: int = Field(default=0, ge=0)
+    decision_useful_result_count: int = Field(default=0, ge=0)
+    limited_result_support_count: int = Field(default=0, ge=0)
+    context_limited_result_count: int = Field(default=0, ge=0)
+    unresolved_result_support_count: int = Field(default=0, ge=0)
     summary_text: str = ""
     top_results: list[ExperimentResultReference] = Field(default_factory=list)
 
@@ -1329,7 +1665,25 @@ class BeliefUpdateRecord(ContractBaseModel):
     updated_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
     update_direction: BeliefUpdateDirection = BeliefUpdateDirection.unresolved
     update_reason: str = ""
+    support_input_quality_label: str = ""
+    support_input_quality_summary: str = ""
+    assay_context_alignment_label: str = ""
+    result_interpretation_basis: str = ""
+    numeric_result_basis_label: str = ""
+    numeric_result_basis_summary: str = ""
+    numeric_result_resolution_label: str = ""
+    numeric_result_interpretation_label: str = ""
+    target_rule_alignment_label: str = ""
+    support_quality_label: str = ""
+    support_quality_summary: str = ""
+    support_decision_usefulness_label: str = ""
+    governed_support_posture_label: str = ""
+    governed_support_posture_summary: str = ""
+    contradiction_role_label: str = ""
+    contradiction_role_summary: str = ""
     governance_status: BeliefUpdateGovernanceStatus = BeliefUpdateGovernanceStatus.proposed
+    chronology_label: str = ""
+    active_for_belief_state: bool = False
     created_at: datetime
     created_by: str = ""
     created_by_user_id: str = ""
@@ -1346,6 +1700,23 @@ class BeliefUpdateRecord(ContractBaseModel):
         "candidate_id",
         "candidate_label",
         "update_reason",
+        "support_input_quality_label",
+        "support_input_quality_summary",
+        "assay_context_alignment_label",
+        "result_interpretation_basis",
+        "numeric_result_basis_label",
+        "numeric_result_basis_summary",
+        "numeric_result_resolution_label",
+        "numeric_result_interpretation_label",
+        "target_rule_alignment_label",
+        "support_quality_label",
+        "support_quality_summary",
+        "support_decision_usefulness_label",
+        "governed_support_posture_label",
+        "governed_support_posture_summary",
+        "contradiction_role_label",
+        "contradiction_role_summary",
+        "chronology_label",
         "created_by",
         "created_by_user_id",
         "reviewed_by",
@@ -1387,7 +1758,25 @@ class BeliefUpdateReference(ContractBaseModel):
     previous_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
     updated_support_level: EvidenceSupportLevel = EvidenceSupportLevel.limited
     update_direction: BeliefUpdateDirection = BeliefUpdateDirection.unresolved
+    support_input_quality_label: str = ""
+    support_input_quality_summary: str = ""
+    assay_context_alignment_label: str = ""
+    result_interpretation_basis: str = ""
+    numeric_result_basis_label: str = ""
+    numeric_result_basis_summary: str = ""
+    numeric_result_resolution_label: str = ""
+    numeric_result_interpretation_label: str = ""
+    target_rule_alignment_label: str = ""
+    support_quality_label: str = ""
+    support_quality_summary: str = ""
+    support_decision_usefulness_label: str = ""
+    governed_support_posture_label: str = ""
+    governed_support_posture_summary: str = ""
+    contradiction_role_label: str = ""
+    contradiction_role_summary: str = ""
     governance_status: BeliefUpdateGovernanceStatus = BeliefUpdateGovernanceStatus.proposed
+    chronology_label: str = ""
+    active_for_belief_state: bool = False
     created_at: datetime | None = None
 
     @validator(
@@ -1396,6 +1785,23 @@ class BeliefUpdateReference(ContractBaseModel):
         "experiment_result_id",
         "candidate_id",
         "candidate_label",
+        "support_input_quality_label",
+        "support_input_quality_summary",
+        "assay_context_alignment_label",
+        "result_interpretation_basis",
+        "numeric_result_basis_label",
+        "numeric_result_basis_summary",
+        "numeric_result_resolution_label",
+        "numeric_result_interpretation_label",
+        "target_rule_alignment_label",
+        "support_quality_label",
+        "support_quality_summary",
+        "support_decision_usefulness_label",
+        "governed_support_posture_label",
+        "governed_support_posture_summary",
+        "contradiction_role_label",
+        "contradiction_role_summary",
+        "chronology_label",
         pre=True,
         always=True,
     )
@@ -1423,6 +1829,8 @@ class BeliefUpdateReference(ContractBaseModel):
 
 class BeliefUpdateSummary(ContractBaseModel):
     update_count: int = Field(default=0, ge=0)
+    active_count: int = Field(default=0, ge=0)
+    historical_count: int = Field(default=0, ge=0)
     proposed_count: int = Field(default=0, ge=0)
     accepted_count: int = Field(default=0, ge=0)
     rejected_count: int = Field(default=0, ge=0)
@@ -1430,10 +1838,59 @@ class BeliefUpdateSummary(ContractBaseModel):
     strengthened_count: int = Field(default=0, ge=0)
     weakened_count: int = Field(default=0, ge=0)
     unresolved_count: int = Field(default=0, ge=0)
+    numeric_interpreted_count: int = Field(default=0, ge=0)
+    numeric_unresolved_count: int = Field(default=0, ge=0)
+    observed_label_support_count: int = Field(default=0, ge=0)
+    numeric_rule_based_support_count: int = Field(default=0, ge=0)
+    unresolved_basis_count: int = Field(default=0, ge=0)
+    weak_basis_count: int = Field(default=0, ge=0)
+    support_basis_mix_label: str = ""
+    support_basis_mix_summary: str = ""
+    support_quality_label: str = ""
+    support_quality_summary: str = ""
+    decision_useful_active_support_count: int = Field(default=0, ge=0)
+    active_but_limited_support_count: int = Field(default=0, ge=0)
+    context_limited_active_support_count: int = Field(default=0, ge=0)
+    weak_or_unresolved_active_support_count: int = Field(default=0, ge=0)
+    governed_support_posture_label: str = ""
+    governed_support_posture_summary: str = ""
+    posture_governing_support_count: int = Field(default=0, ge=0)
+    tentative_active_support_count: int = Field(default=0, ge=0)
+    accepted_limited_weight_support_count: int = Field(default=0, ge=0)
+    historical_non_governing_support_count: int = Field(default=0, ge=0)
+    support_coherence_label: str = ""
+    support_coherence_summary: str = ""
+    support_reuse_label: str = ""
+    support_reuse_summary: str = ""
+    contradiction_pressure_count: int = Field(default=0, ge=0)
+    weakly_reusable_support_count: int = Field(default=0, ge=0)
+    current_support_contested_flag: bool = False
+    current_posture_degraded_flag: bool = False
+    historical_support_stronger_than_current_flag: bool = False
+    chronology_mix_label: str = ""
+    chronology_summary_text: str = ""
+    numeric_interpretation_summary_text: str = ""
     summary_text: str = ""
     top_updates: list[BeliefUpdateReference] = Field(default_factory=list)
 
-    @validator("summary_text", pre=True, always=True)
+    @validator(
+        "summary_text",
+        "chronology_mix_label",
+        "chronology_summary_text",
+        "numeric_interpretation_summary_text",
+        "support_basis_mix_label",
+        "support_basis_mix_summary",
+        "support_quality_label",
+        "support_quality_summary",
+        "governed_support_posture_label",
+        "governed_support_posture_summary",
+        "support_coherence_label",
+        "support_coherence_summary",
+        "support_reuse_label",
+        "support_reuse_summary",
+        pre=True,
+        always=True,
+    )
     def _clean_belief_update_summary_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -1459,6 +1916,61 @@ class BeliefStateRecord(ContractBaseModel):
     latest_belief_update_refs: list[BeliefUpdateReference] = Field(default_factory=list)
     support_distribution_summary: str = ""
     governance_scope_summary: str = ""
+    chronology_summary_text: str = ""
+    support_basis_mix_label: str = ""
+    support_basis_mix_summary: str = ""
+    observed_label_support_count: int = Field(default=0, ge=0)
+    numeric_rule_based_support_count: int = Field(default=0, ge=0)
+    unresolved_basis_count: int = Field(default=0, ge=0)
+    weak_basis_count: int = Field(default=0, ge=0)
+    support_quality_label: str = ""
+    support_quality_summary: str = ""
+    decision_useful_active_support_count: int = Field(default=0, ge=0)
+    active_but_limited_support_count: int = Field(default=0, ge=0)
+    context_limited_support_count: int = Field(default=0, ge=0)
+    weak_or_unresolved_support_count: int = Field(default=0, ge=0)
+    governed_support_posture_label: str = ""
+    governed_support_posture_summary: str = ""
+    posture_governing_support_count: int = Field(default=0, ge=0)
+    tentative_current_support_count: int = Field(default=0, ge=0)
+    accepted_limited_support_count: int = Field(default=0, ge=0)
+    historical_non_governing_support_count: int = Field(default=0, ge=0)
+    support_coherence_label: str = ""
+    support_coherence_summary: str = ""
+    support_reuse_label: str = ""
+    support_reuse_summary: str = ""
+    broader_target_reuse_label: str = ""
+    broader_target_reuse_summary: str = ""
+    broader_target_continuity_label: str = ""
+    broader_target_continuity_summary: str = ""
+    future_reuse_candidacy_label: str = ""
+    future_reuse_candidacy_summary: str = ""
+    continuity_cluster_posture_label: str = ""
+    continuity_cluster_posture_summary: str = ""
+    promotion_candidate_posture_label: str = ""
+    promotion_candidate_posture_summary: str = ""
+    promotion_stability_label: str = ""
+    promotion_stability_summary: str = ""
+    promotion_gate_status_label: str = ""
+    promotion_gate_status_summary: str = ""
+    promotion_block_reason_label: str = ""
+    promotion_block_reason_summary: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary: str = ""
+    provenance_confidence_label: str = ""
+    provenance_confidence_summary: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary: str = ""
+    contradiction_pressure_count: int = Field(default=0, ge=0)
+    weakly_reusable_support_count: int = Field(default=0, ge=0)
+    current_support_contested_flag: bool = False
+    current_posture_degraded_flag: bool = False
+    historical_support_stronger_than_current_flag: bool = False
+    belief_state_strength_summary: str = ""
+    belief_state_readiness_summary: str = ""
+    governance_mix_label: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator(
@@ -1469,6 +1981,44 @@ class BeliefStateRecord(ContractBaseModel):
         "last_update_source",
         "support_distribution_summary",
         "governance_scope_summary",
+        "chronology_summary_text",
+        "support_basis_mix_label",
+        "support_basis_mix_summary",
+        "support_quality_label",
+        "support_quality_summary",
+        "governed_support_posture_label",
+        "governed_support_posture_summary",
+        "support_coherence_label",
+        "support_coherence_summary",
+        "support_reuse_label",
+        "support_reuse_summary",
+        "broader_target_reuse_label",
+        "broader_target_reuse_summary",
+        "broader_target_continuity_label",
+        "broader_target_continuity_summary",
+        "future_reuse_candidacy_label",
+        "future_reuse_candidacy_summary",
+        "continuity_cluster_posture_label",
+        "continuity_cluster_posture_summary",
+        "promotion_candidate_posture_label",
+        "promotion_candidate_posture_summary",
+        "promotion_stability_label",
+        "promotion_stability_summary",
+        "promotion_gate_status_label",
+        "promotion_gate_status_summary",
+        "promotion_block_reason_label",
+        "promotion_block_reason_summary",
+        "trust_tier_label",
+        "trust_tier_summary",
+        "provenance_confidence_label",
+        "provenance_confidence_summary",
+        "governed_review_status_label",
+        "governed_review_status_summary",
+        "governed_review_reason_label",
+        "governed_review_reason_summary",
+        "belief_state_strength_summary",
+        "belief_state_readiness_summary",
+        "governance_mix_label",
         pre=True,
         always=True,
     )
@@ -1522,10 +2072,80 @@ class BeliefStateSummary(ContractBaseModel):
     summary_text: str = ""
     support_distribution_summary: str = ""
     governance_scope_summary: str = ""
+    chronology_summary_text: str = ""
+    support_basis_mix_label: str = ""
+    support_basis_mix_summary: str = ""
+    belief_state_strength_summary: str = ""
+    belief_state_readiness_summary: str = ""
+    governance_mix_label: str = ""
     active_claim_count: int = Field(default=0, ge=0)
     supported_claim_count: int = Field(default=0, ge=0)
     weakened_claim_count: int = Field(default=0, ge=0)
     unresolved_claim_count: int = Field(default=0, ge=0)
+    accepted_update_count: int = Field(default=0, ge=0)
+    proposed_update_count: int = Field(default=0, ge=0)
+    rejected_update_count: int = Field(default=0, ge=0)
+    superseded_update_count: int = Field(default=0, ge=0)
+    observed_label_support_count: int = Field(default=0, ge=0)
+    numeric_rule_based_support_count: int = Field(default=0, ge=0)
+    unresolved_basis_count: int = Field(default=0, ge=0)
+    weak_basis_count: int = Field(default=0, ge=0)
+    support_quality_label: str = ""
+    support_quality_summary: str = ""
+    decision_useful_active_support_count: int = Field(default=0, ge=0)
+    active_but_limited_support_count: int = Field(default=0, ge=0)
+    context_limited_support_count: int = Field(default=0, ge=0)
+    weak_or_unresolved_support_count: int = Field(default=0, ge=0)
+    governed_support_posture_label: str = ""
+    governed_support_posture_summary: str = ""
+    posture_governing_support_count: int = Field(default=0, ge=0)
+    tentative_current_support_count: int = Field(default=0, ge=0)
+    accepted_limited_support_count: int = Field(default=0, ge=0)
+    historical_non_governing_support_count: int = Field(default=0, ge=0)
+    support_coherence_label: str = ""
+    support_coherence_summary: str = ""
+    support_reuse_label: str = ""
+    support_reuse_summary: str = ""
+    broader_target_reuse_label: str = ""
+    broader_target_reuse_summary: str = ""
+    broader_target_continuity_label: str = ""
+    broader_target_continuity_summary: str = ""
+    future_reuse_candidacy_label: str = ""
+    future_reuse_candidacy_summary: str = ""
+    continuity_cluster_posture_label: str = ""
+    continuity_cluster_posture_summary: str = ""
+    promotion_candidate_posture_label: str = ""
+    promotion_candidate_posture_summary: str = ""
+    promotion_stability_label: str = ""
+    promotion_stability_summary: str = ""
+    promotion_gate_status_label: str = ""
+    promotion_gate_status_summary: str = ""
+    promotion_block_reason_label: str = ""
+    promotion_block_reason_summary: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary: str = ""
+    provenance_confidence_label: str = ""
+    provenance_confidence_summary: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary: str = ""
+    governed_review_record_count: int = Field(default=0, ge=0)
+    governed_review_history_summary: str = ""
+    promotion_audit_summary: str = ""
+    continuity_cluster_review_status_label: str = ""
+    continuity_cluster_review_status_summary: str = ""
+    continuity_cluster_review_reason_label: str = ""
+    continuity_cluster_review_reason_summary: str = ""
+    continuity_cluster_review_record_count: int = Field(default=0, ge=0)
+    continuity_cluster_review_history_summary: str = ""
+    continuity_cluster_promotion_audit_summary: str = ""
+    carryover_guardrail_summary: str = ""
+    contradiction_pressure_count: int = Field(default=0, ge=0)
+    weakly_reusable_support_count: int = Field(default=0, ge=0)
+    current_support_contested_flag: bool = False
+    current_posture_degraded_flag: bool = False
+    historical_support_stronger_than_current_flag: bool = False
     last_updated_at: datetime | None = None
     last_update_source: str = ""
 
@@ -1533,6 +2153,53 @@ class BeliefStateSummary(ContractBaseModel):
         "summary_text",
         "support_distribution_summary",
         "governance_scope_summary",
+        "chronology_summary_text",
+        "support_basis_mix_label",
+        "support_basis_mix_summary",
+        "support_quality_label",
+        "support_quality_summary",
+        "governed_support_posture_label",
+        "governed_support_posture_summary",
+        "support_coherence_label",
+        "support_coherence_summary",
+        "support_reuse_label",
+        "support_reuse_summary",
+        "broader_target_reuse_label",
+        "broader_target_reuse_summary",
+        "broader_target_continuity_label",
+        "broader_target_continuity_summary",
+        "future_reuse_candidacy_label",
+        "future_reuse_candidacy_summary",
+        "continuity_cluster_posture_label",
+        "continuity_cluster_posture_summary",
+        "promotion_candidate_posture_label",
+        "promotion_candidate_posture_summary",
+        "promotion_stability_label",
+        "promotion_stability_summary",
+        "promotion_gate_status_label",
+        "promotion_gate_status_summary",
+        "promotion_block_reason_label",
+        "promotion_block_reason_summary",
+        "trust_tier_label",
+        "trust_tier_summary",
+        "provenance_confidence_label",
+        "provenance_confidence_summary",
+        "governed_review_status_label",
+        "governed_review_status_summary",
+        "governed_review_reason_label",
+        "governed_review_reason_summary",
+        "governed_review_history_summary",
+        "promotion_audit_summary",
+        "continuity_cluster_review_status_label",
+        "continuity_cluster_review_status_summary",
+        "continuity_cluster_review_reason_label",
+        "continuity_cluster_review_reason_summary",
+        "continuity_cluster_review_history_summary",
+        "continuity_cluster_promotion_audit_summary",
+        "carryover_guardrail_summary",
+        "belief_state_strength_summary",
+        "belief_state_readiness_summary",
+        "governance_mix_label",
         "last_update_source",
         pre=True,
         always=True,
@@ -1545,6 +2212,110 @@ class BeliefStateSummary(ContractBaseModel):
         if value in (None, ""):
             return None
         return _coerce_datetime(value)
+
+
+class ScientificDecisionSummary(ContractBaseModel):
+    decision_status_label: str = ""
+    decision_status_summary: str = ""
+    current_support_quality_label: str = ""
+    current_support_quality_summary: str = ""
+    current_governed_support_posture_label: str = ""
+    current_governed_support_posture_summary: str = ""
+    current_support_coherence_label: str = ""
+    current_support_coherence_summary: str = ""
+    current_support_reuse_label: str = ""
+    current_support_reuse_summary: str = ""
+    broader_governed_reuse_label: str = ""
+    broader_governed_reuse_summary: str = ""
+    broader_continuity_label: str = ""
+    broader_continuity_summary: str = ""
+    future_reuse_candidacy_label: str = ""
+    future_reuse_candidacy_summary: str = ""
+    continuity_cluster_posture_label: str = ""
+    continuity_cluster_posture_summary: str = ""
+    promotion_candidate_posture_label: str = ""
+    promotion_candidate_posture_summary: str = ""
+    promotion_stability_label: str = ""
+    promotion_stability_summary: str = ""
+    promotion_gate_status_label: str = ""
+    promotion_gate_status_summary: str = ""
+    promotion_block_reason_label: str = ""
+    promotion_block_reason_summary: str = ""
+    trust_tier_label: str = ""
+    trust_tier_summary: str = ""
+    provenance_confidence_label: str = ""
+    provenance_confidence_summary: str = ""
+    governed_review_status_label: str = ""
+    governed_review_status_summary: str = ""
+    governed_review_reason_label: str = ""
+    governed_review_reason_summary: str = ""
+    session_family_review_status_label: str = ""
+    session_family_review_status_summary: str = ""
+    session_family_review_reason_label: str = ""
+    session_family_review_reason_summary: str = ""
+    session_family_review_record_count: int = Field(default=0, ge=0)
+    session_family_review_history_summary: str = ""
+    session_family_promotion_audit_summary: str = ""
+    carryover_guardrail_summary: str = ""
+    current_support_contested_flag: bool = False
+    current_posture_degraded_flag: bool = False
+    historical_support_stronger_than_current_flag: bool = False
+    next_step_label: str = ""
+    next_step_summary: str = ""
+    result_state_label: str = ""
+    result_state_summary: str = ""
+
+    @validator(
+        "decision_status_label",
+        "decision_status_summary",
+        "current_support_quality_label",
+        "current_support_quality_summary",
+        "current_governed_support_posture_label",
+        "current_governed_support_posture_summary",
+        "current_support_coherence_label",
+        "current_support_coherence_summary",
+        "current_support_reuse_label",
+        "current_support_reuse_summary",
+        "broader_governed_reuse_label",
+        "broader_governed_reuse_summary",
+        "broader_continuity_label",
+        "broader_continuity_summary",
+        "future_reuse_candidacy_label",
+        "future_reuse_candidacy_summary",
+        "continuity_cluster_posture_label",
+        "continuity_cluster_posture_summary",
+        "promotion_candidate_posture_label",
+        "promotion_candidate_posture_summary",
+        "promotion_stability_label",
+        "promotion_stability_summary",
+        "promotion_gate_status_label",
+        "promotion_gate_status_summary",
+        "promotion_block_reason_label",
+        "promotion_block_reason_summary",
+        "trust_tier_label",
+        "trust_tier_summary",
+        "provenance_confidence_label",
+        "provenance_confidence_summary",
+        "governed_review_status_label",
+        "governed_review_status_summary",
+        "governed_review_reason_label",
+        "governed_review_reason_summary",
+        "session_family_review_status_label",
+        "session_family_review_status_summary",
+        "session_family_review_reason_label",
+        "session_family_review_reason_summary",
+        "session_family_review_history_summary",
+        "session_family_promotion_audit_summary",
+        "carryover_guardrail_summary",
+        "next_step_label",
+        "next_step_summary",
+        "result_state_label",
+        "result_state_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_scientific_decision_summary_text(cls, value: Any) -> str:
+        return _clean_text(value)
 
 
 class ScientificSessionTruth(ContractBaseModel):
@@ -1573,6 +2344,9 @@ class ScientificSessionTruth(ContractBaseModel):
     belief_update_summary: BeliefUpdateSummary | None = None
     belief_state_ref: BeliefStateReference | None = None
     belief_state_summary: BeliefStateSummary | None = None
+    scientific_decision_summary: ScientificDecisionSummary | None = None
+    belief_state_alignment_label: str = ""
+    belief_state_alignment_summary: str = ""
     bridge_state_notes: list[str] = Field(default_factory=list)
     core_outputs: dict[str, Any] = Field(default_factory=dict)
     decision_policy_summary: dict[str, Any] = Field(default_factory=dict)
@@ -1580,7 +2354,15 @@ class ScientificSessionTruth(ContractBaseModel):
     comparison_ready: bool = False
     contract_versions: dict[str, str] = Field(default_factory=dict)
 
-    @validator("session_id", "workspace_id", "source_name", pre=True, always=True)
+    @validator(
+        "session_id",
+        "workspace_id",
+        "source_name",
+        "belief_state_alignment_label",
+        "belief_state_alignment_summary",
+        pre=True,
+        always=True,
+    )
     def _clean_scientific_truth_text(cls, value: Any) -> str:
         return _clean_text(value)
 
@@ -2241,6 +3023,70 @@ class ReviewEventRecord(ContractBaseModel):
         return values
 
 
+class GovernedReviewRecord(ContractBaseModel):
+    review_record_id: str
+    workspace_id: str = ""
+    session_id: str = ""
+    subject_type: str
+    subject_id: str
+    target_key: str = ""
+    candidate_id: str = ""
+    active: bool = True
+    source_class_label: str = ""
+    provenance_confidence_label: str = ""
+    trust_tier_label: str = ""
+    review_status_label: str = ""
+    review_reason_label: str = ""
+    review_reason_summary: str = ""
+    promotion_gate_status_label: str = ""
+    promotion_block_reason_label: str = ""
+    decision_outcome: str = ""
+    decision_summary: str = ""
+    supersedes_review_record_id: str = ""
+    recorded_at: datetime
+    recorded_by: str = "system"
+    actor_user_id: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "review_record_id",
+        "workspace_id",
+        "session_id",
+        "subject_type",
+        "subject_id",
+        "target_key",
+        "candidate_id",
+        "source_class_label",
+        "provenance_confidence_label",
+        "trust_tier_label",
+        "review_status_label",
+        "review_reason_label",
+        "review_reason_summary",
+        "promotion_gate_status_label",
+        "promotion_block_reason_label",
+        "decision_outcome",
+        "decision_summary",
+        "supersedes_review_record_id",
+        "actor_user_id",
+        pre=True,
+        always=True,
+    )
+    def _clean_governed_review_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("recorded_by", pre=True, always=True)
+    def _clean_governed_review_actor(cls, value: Any) -> str:
+        return _clean_text(value, default="system")
+
+    @validator("recorded_at", pre=True)
+    def _coerce_governed_review_datetime(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("metadata", pre=True)
+    def _clean_governed_review_metadata(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
 class CandidateReviewSummary(ContractBaseModel):
     status: ReviewStatus
     note: str = ""
@@ -2697,6 +3543,10 @@ def validate_experiment_result_summary(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(ExperimentResultSummary, payload))
 
 
+def validate_scientific_decision_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(ScientificDecisionSummary, payload))
+
+
 def validate_belief_update_record(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(BeliefUpdateRecord, payload))
 
@@ -2795,6 +3645,10 @@ def validate_decision_artifact(payload: Any) -> dict[str, Any]:
 
 def validate_review_event_record(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(ReviewEventRecord, payload))
+
+
+def validate_governed_review_record(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(GovernedReviewRecord, payload))
 
 
 def validate_review_event_records(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:

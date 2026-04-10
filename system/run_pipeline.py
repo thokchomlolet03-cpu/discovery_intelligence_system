@@ -8,6 +8,7 @@ import pandas as pd
 from core.config import default_system_config
 from core.constants import DECISION_OUTPUT_PATH
 from system.contracts import validate_decision_artifact, validate_normalized_dataset_summary
+from system.db.repositories import BeliefUpdateRepository, ClaimRepository
 from system.review_manager import persist_review_queue
 from system.services.analysis_service import build_discovery_result, build_prediction_result
 from system.services.artifact_service import (
@@ -51,6 +52,10 @@ DEFAULT_ANALYSIS_OPTIONS = {
     "column_mapping": None,
     "label_builder": {"enabled": False},
 }
+
+
+claim_repository = ClaimRepository()
+belief_update_repository = BeliefUpdateRepository()
 
 
 ProgressCallback = Callable[[str, str, int], None]
@@ -443,6 +448,16 @@ def run_pipeline(
     )
     workspace_id = str(options.get("workspace_id") or "").strip()
     if workspace_id:
+        prior_workspace_claims = [
+            claim
+            for claim in claim_repository.list_claims(workspace_id=workspace_id)
+            if str(claim.get("session_id") or "").strip() != session_id
+        ]
+        prior_workspace_belief_updates = [
+            update
+            for update in belief_update_repository.list_belief_updates(workspace_id=workspace_id)
+            if str(update.get("session_id") or "").strip() != session_id
+        ]
         result["claims"] = create_session_claims(
             session_id=session_id,
             workspace_id=workspace_id,
@@ -454,6 +469,8 @@ def run_pipeline(
         result["scientific_session_truth"] = attach_claims_to_scientific_session_truth(
             result.get("scientific_session_truth") or {},
             result.get("claims") or [],
+            prior_claims=prior_workspace_claims,
+            prior_belief_updates=prior_workspace_belief_updates,
         )
         result["experiment_requests"] = create_session_experiment_requests(
             session_id=session_id,

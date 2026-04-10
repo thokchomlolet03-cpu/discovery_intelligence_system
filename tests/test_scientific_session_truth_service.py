@@ -1,9 +1,11 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from system.db import ensure_database_ready, reset_database_state
+from system.db.repositories import BeliefUpdateRepository, ClaimRepository
 from system.session_artifacts import load_scientific_session_truth_payload
 from system.services.scientific_session_truth_service import (
     build_scientific_session_truth,
@@ -22,6 +24,43 @@ class ScientificSessionTruthServiceTest(unittest.TestCase):
         reset_database_state()
         os.environ.pop("DISCOVERY_ALLOWED_ARTIFACT_ROOTS", None)
         self.tmpdir.cleanup()
+
+    def _claim_payload(self, *, session_id: str, candidate_id: str, smiles: str) -> dict[str, object]:
+        timestamp = datetime(2026, 4, 3, 10, 0, tzinfo=timezone.utc)
+        return {
+            "claim_id": "",
+            "workspace_id": "workspace_1",
+            "session_id": session_id,
+            "candidate_id": candidate_id,
+            "candidate_reference": {
+                "candidate_id": candidate_id,
+                "candidate_label": f"{candidate_id} ({smiles})",
+                "canonical_smiles": smiles,
+                "smiles": smiles,
+                "rank": 1,
+            },
+            "target_definition_snapshot": {
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+            },
+            "claim_type": "recommendation_assertion",
+            "claim_text": f"Under the current session evidence, {candidate_id} ({smiles}) is a plausible follow-up candidate to test for higher pIC50.",
+            "bounded_scope": "Bounded scope.",
+            "support_level": "limited",
+            "evidence_basis_summary": "Derived from current session evidence.",
+            "source_recommendation_rank": 1,
+            "status": "proposed",
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "created_by": "system",
+            "created_by_user_id": "",
+            "reviewed_at": None,
+            "reviewed_by": "",
+            "metadata": {},
+        }
 
     def test_build_scientific_session_truth_distinguishes_evidence_roles(self):
         truth = build_scientific_session_truth(
@@ -152,17 +191,35 @@ class ScientificSessionTruthServiceTest(unittest.TestCase):
         observed_rule = next(
             item for item in truth["evidence_activation_policy"]["rules"] if item["evidence_type"] == "experimental_value"
         )
+        self.assertEqual(observed_rule["support_level"], "limited")
         self.assertTrue(observed_rule["eligible_for_recommendation_reuse"])
         self.assertTrue(observed_rule["eligible_for_ranking_context"])
         self.assertTrue(observed_rule["eligible_for_future_learning"])
         queue_rule = next(
             item for item in truth["evidence_activation_policy"]["rules"] if item["evidence_type"] == "learning_queue"
         )
+        workspace_rule = next(
+            item for item in truth["evidence_activation_policy"]["rules"] if item["evidence_type"] == "workspace_memory"
+        )
+        human_review_rule = next(
+            item for item in truth["evidence_activation_policy"]["rules"] if item["evidence_type"] == "human_review"
+        )
+        self.assertEqual(workspace_rule["support_level"], "contextual")
+        self.assertEqual(human_review_rule["support_level"], "contextual")
+        self.assertEqual(queue_rule["support_level"], "limited")
         self.assertTrue(queue_rule["eligible_for_future_learning"])
+        self.assertEqual(
+            truth["evidence_activation_policy"]["source_class_label"],
+            "User-uploaded uncontrolled source",
+        )
         self.assertIn("recommendation reuse", truth["evidence_activation_policy"]["summary"].lower())
         self.assertIn(
             "future learning consideration",
             truth["evidence_activation_policy"]["future_learning_eligibility_summary"].lower(),
+        )
+        self.assertIn(
+            "do not earn broader influence by volume",
+            truth["evidence_activation_policy"]["anti_poisoning_summary"].lower(),
         )
         self.assertTrue(truth["controlled_reuse"]["recommendation_reuse_active"])
         self.assertTrue(truth["controlled_reuse"]["ranking_context_reuse_active"])
@@ -170,6 +227,82 @@ class ScientificSessionTruthServiceTest(unittest.TestCase):
         self.assertIn("does not change model outputs", truth["controlled_reuse"]["ranking_context_reuse_summary"].lower())
         self.assertIn("without retraining the model", truth["controlled_reuse"]["recommendation_reuse_summary"].lower())
         self.assertTrue(truth["comparison_ready"])
+
+    def test_build_scientific_session_truth_adds_claim_read_across_from_prior_workspace_claims(self):
+        repository = ClaimRepository()
+        belief_update_repository = BeliefUpdateRepository()
+        prior_claim_1 = repository.upsert_claim(
+            self._claim_payload(session_id="session_prior", candidate_id="cand_1", smiles="CCO")
+        )
+        repository.upsert_claim(self._claim_payload(session_id="session_prior", candidate_id="cand_3", smiles="CCC"))
+        repository.upsert_claim(self._claim_payload(session_id="session_prior", candidate_id="cand_4", smiles="CCCC"))
+        repository.upsert_claim(self._claim_payload(session_id="session_current", candidate_id="cand_1", smiles="CCO"))
+        repository.upsert_claim(self._claim_payload(session_id="session_current", candidate_id="cand_2", smiles="CCN"))
+        belief_update_repository.upsert_belief_update(
+            {
+                "belief_update_id": "",
+                "workspace_id": "workspace_1",
+                "session_id": "session_prior",
+                "claim_id": prior_claim_1["claim_id"],
+                "experiment_result_id": "",
+                "candidate_id": "cand_1",
+                "candidate_label": "cand_1 (CCO)",
+                "previous_support_level": "limited",
+                "updated_support_level": "moderate",
+                "update_direction": "strengthened",
+                "update_reason": "Observed result linked to prior claim context.",
+                "governance_status": "accepted",
+                "created_at": datetime(2026, 4, 3, 11, 0, tzinfo=timezone.utc),
+                "created_by": "system",
+                "created_by_user_id": "",
+                "metadata": {},
+            }
+        )
+
+        truth = build_scientific_session_truth(
+            session_id="session_current",
+            workspace_id="workspace_1",
+            source_name="upload.csv",
+            session_record={
+                "session_id": "session_current",
+                "workspace_id": "workspace_1",
+                "source_name": "upload.csv",
+                "summary_metadata": {"last_job_status": "succeeded"},
+            },
+            analysis_report={
+                "modeling_mode": "regression",
+                "decision_intent": "prioritize_experiments",
+                "target_definition": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "dataset_type": "measurement_dataset",
+                    "mapping_confidence": "medium",
+                },
+                "ranking_policy": {"primary_score": "confidence", "primary_score_label": "Ranking compatibility"},
+                "run_contract": {"training_scope": "session_trained"},
+                "comparison_anchors": {"comparison_ready": True},
+            },
+            decision_payload={"summary": {"candidate_count": 2}},
+            review_queue={"summary": {"counts": {}}},
+        )
+
+        self.assertEqual(len(truth["claim_refs"]), 2)
+        claim_refs = {item["candidate_id"]: item for item in truth["claim_refs"]}
+        self.assertEqual(claim_refs["cand_1"]["claim_read_across_label"], "Continuity-aligned claim")
+        self.assertEqual(claim_refs["cand_1"]["claim_prior_support_quality_label"], "Posture-governing continuity")
+        self.assertEqual(claim_refs["cand_1"]["claim_prior_active_support_count"], 1)
+        self.assertEqual(claim_refs["cand_1"]["claim_support_basis_mix_label"], "No governed support yet")
+        self.assertEqual(claim_refs["cand_1"]["claim_actionability_label"], "No governed support yet")
+        self.assertEqual(claim_refs["cand_2"]["claim_read_across_label"], "New claim context")
+        self.assertEqual(truth["claims_summary"]["continuity_aligned_claim_count"], 1)
+        self.assertEqual(truth["claims_summary"]["new_claim_context_count"], 1)
+        self.assertEqual(truth["claims_summary"]["claims_with_active_governed_continuity_count"], 1)
+        self.assertEqual(truth["claims_summary"]["claims_with_no_governed_support_count"], 2)
+        self.assertIn("no governed support yet", truth["claims_summary"]["claim_support_basis_summary_text"].lower())
+        self.assertEqual(truth["claims_summary"]["claims_with_insufficient_governed_basis_count"], 2)
+        self.assertIn("claim actionability remains bounded", truth["claims_summary"]["claim_actionability_summary_text"].lower())
+        self.assertIn("active-governed continuity", truth["claims_summary"]["read_across_summary_text"].lower())
 
     def test_persisted_scientific_truth_can_be_loaded_from_artifact_or_session_metadata(self):
         truth = build_scientific_session_truth(
@@ -224,6 +357,7 @@ class ScientificSessionTruthServiceTest(unittest.TestCase):
         self.assertEqual(loaded["artifact_state"], "ok")
         self.assertEqual(loaded["session_id"], "session_truth_2")
         self.assertIn("Current recommendations use", loaded["evidence_loop"]["summary"])
+        self.assertIn("belief_state_alignment_summary", loaded)
 
 
 if __name__ == "__main__":

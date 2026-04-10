@@ -7,6 +7,8 @@ from system.db import ensure_database_ready, reset_database_state
 from system.services.claim_service import create_session_claims
 from system.services.experiment_request_service import create_session_experiment_requests
 from system.services.experiment_result_service import (
+    experiment_result_refs_from_records,
+    experiment_result_summary_from_records,
     ingest_experiment_result,
     list_session_experiment_results,
 )
@@ -155,6 +157,64 @@ class ExperimentResultServiceTest(unittest.TestCase):
         self.assertIn("observed result", truth["linked_result_summary"]["summary_text"].lower())
         self.assertEqual(truth["experiment_result_refs"][0]["candidate_id"], "cand_1")
         self.assertEqual(truth["experiment_result_refs"][0]["result_quality"], "confirmatory")
+
+    def test_experiment_result_refs_capture_numeric_interpretation_and_quality_caution(self):
+        results = [
+            {
+                "experiment_result_id": "result_1",
+                "source_claim_id": "claim_1",
+                "candidate_id": "cand_1",
+                "candidate_reference": {"candidate_label": "cand_1 (CCO)"},
+                "target_definition_snapshot": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "measurement_unit": "log units",
+                    "derived_label_rule": {"operator": ">=", "threshold": 6.0},
+                },
+                "observed_value": 6.8,
+                "measurement_unit": "log units",
+                "result_quality": "confirmatory",
+                "result_source": "manual_entry",
+                "ingested_at": "2026-04-08T10:00:00+00:00",
+            },
+            {
+                "experiment_result_id": "result_2",
+                "source_claim_id": "claim_2",
+                "candidate_id": "cand_2",
+                "candidate_reference": {"candidate_label": "cand_2 (CCN)"},
+                "target_definition_snapshot": {
+                    "target_name": "pIC50",
+                    "target_kind": "regression",
+                    "optimization_direction": "maximize",
+                    "measurement_unit": "log units",
+                },
+                "observed_value": 5.2,
+                "measurement_unit": "wrong units",
+                "assay_context": "screen_a",
+                "result_quality": "screening",
+                "result_source": "manual_entry",
+                "ingested_at": "2026-04-08T10:05:00+00:00",
+            },
+        ]
+
+        refs = experiment_result_refs_from_records(results)
+        summary = experiment_result_summary_from_records(results)
+
+        self.assertEqual(refs[0]["result_interpretation_label"], "Bounded numeric interpretation available")
+        self.assertIn("current target rule", refs[0]["result_interpretation_summary"].lower())
+        self.assertEqual(refs[0]["result_support_quality_label"], "Numeric-rule-based but limited")
+        self.assertEqual(refs[0]["result_decision_usefulness_label"], "Useful for clarification, still limited")
+        self.assertEqual(refs[1]["result_interpretation_label"], "Numeric result recorded, unresolved under current basis")
+        self.assertIn("unresolved", refs[1]["result_interpretation_summary"].lower())
+        self.assertIn("screening-quality caution", refs[1]["result_interpretation_summary"].lower())
+        self.assertEqual(refs[1]["result_support_quality_label"], "Unresolved under current basis")
+        self.assertEqual(summary["bounded_numeric_interpretation_count"], 1)
+        self.assertEqual(summary["unresolved_numeric_interpretation_count"], 1)
+        self.assertEqual(summary["cautious_result_quality_count"], 1)
+        self.assertEqual(summary["assay_context_recorded_count"], 1)
+        self.assertEqual(summary["limited_result_support_count"], 1)
+        self.assertEqual(summary["unresolved_result_support_count"], 1)
 
 
 if __name__ == "__main__":

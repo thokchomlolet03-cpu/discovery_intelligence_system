@@ -12,6 +12,14 @@ from system.contracts import (
     validate_scientific_session_truth,
 )
 from system.db.repositories import ClaimRepository, ExperimentRequestRepository, ExperimentResultRepository
+from system.services.support_quality_service import (
+    assess_governed_evidence_posture,
+    assess_provenance_confidence,
+    classify_evidence_source_class,
+    classify_result_context_limitation,
+    classify_result_support_quality,
+    rollup_quality_labels,
+)
 
 
 experiment_result_repository = ExperimentResultRepository()
@@ -53,6 +61,116 @@ def _result_source(value: Any) -> str:
     if token in {item.value for item in ExperimentResultSource}:
         return token
     return ExperimentResultSource.manual_entry.value
+
+
+def _normalized_unit(value: Any) -> str:
+    return _clean_text(value).lower().replace("μ", "u").replace("µ", "u").replace(" ", "")
+
+
+def _numeric_interpretation_context(result: dict[str, Any]) -> dict[str, Any]:
+    result = result if isinstance(result, dict) else {}
+    target_definition = (
+        result.get("target_definition_snapshot") if isinstance(result.get("target_definition_snapshot"), dict) else {}
+    )
+    observed_value = _safe_float(result.get("observed_value"))
+    if observed_value is None:
+        return {
+            "bounded_numeric_interpretation": False,
+            "unresolved_numeric_interpretation": False,
+            "reason": "",
+        }
+
+    target_kind = _clean_text(target_definition.get("target_kind")).lower()
+    rule = target_definition.get("derived_label_rule") if isinstance(target_definition.get("derived_label_rule"), dict) else {}
+    operator = _clean_text(rule.get("operator"))
+    threshold = _safe_float(rule.get("threshold"))
+    if target_kind != "regression" or not operator or threshold is None:
+        return {
+            "bounded_numeric_interpretation": False,
+            "unresolved_numeric_interpretation": True,
+            "reason": "the current target definition does not provide a clean numeric interpretation rule",
+        }
+
+    target_unit = _normalized_unit(target_definition.get("measurement_unit"))
+    observed_unit = _normalized_unit(result.get("measurement_unit"))
+    if target_unit and observed_unit and target_unit != observed_unit and target_unit not in observed_unit and observed_unit not in target_unit:
+        return {
+            "bounded_numeric_interpretation": False,
+            "unresolved_numeric_interpretation": True,
+            "reason": "the recorded unit does not align cleanly with the current target definition",
+        }
+    if target_unit and not observed_unit:
+        return {
+            "bounded_numeric_interpretation": False,
+            "unresolved_numeric_interpretation": True,
+            "reason": "the recorded numeric value does not include a matching measurement unit",
+        }
+    return {
+        "bounded_numeric_interpretation": True,
+        "unresolved_numeric_interpretation": False,
+        "reason": f"the current target definition provides a bounded numeric rule ({operator} {threshold:g})",
+    }
+
+
+def _result_interpretation_fields(result: dict[str, Any]) -> dict[str, str | bool]:
+    result = result if isinstance(result, dict) else {}
+    quality = _result_quality(result.get("result_quality"))
+    assay_context = _clean_text(result.get("assay_context"))
+    observed_label = _clean_text(result.get("observed_label"))
+    numeric_context = _numeric_interpretation_context(result)
+    context_limitation = classify_result_context_limitation(
+        result,
+        bounded_numeric_interpretation=bool(numeric_context["bounded_numeric_interpretation"]),
+    )
+
+    quality_caution = quality in {
+        ExperimentResultQuality.provisional.value,
+        ExperimentResultQuality.screening.value,
+    }
+    if numeric_context["bounded_numeric_interpretation"]:
+        label = "Bounded numeric interpretation available"
+        summary = "A numeric result is recorded and can be interpreted under the current target rule."
+    elif numeric_context["unresolved_numeric_interpretation"]:
+        label = "Numeric result recorded, unresolved under current basis"
+        summary = (
+            "A numeric result is recorded, but bounded interpretation remains unresolved because "
+            f"{numeric_context['reason']}."
+        )
+    elif observed_label:
+        label = "Observed label can inform support revision"
+        summary = "A direct observed label is recorded for this result and can contribute to bounded support revision."
+    else:
+        label = "Observed result recorded"
+        summary = "An observed result is recorded for this session."
+
+    if quality_caution:
+        summary += f" Result quality is {quality.replace('_', ' ')}, so interpretation should remain cautious."
+    elif quality == ExperimentResultQuality.confirmatory.value:
+        summary += " Result quality is confirmatory, which makes the observed outcome more useful for bounded follow-up interpretation."
+    if assay_context:
+        summary += " Assay context is recorded for review against the current target context."
+
+    support_quality = classify_result_support_quality(
+        result_quality=quality,
+        has_observed_label=bool(observed_label),
+        bounded_numeric_interpretation=bool(numeric_context["bounded_numeric_interpretation"]),
+        unresolved_numeric_interpretation=bool(numeric_context["unresolved_numeric_interpretation"]),
+        context_limitation_label=context_limitation["result_context_limitation_label"],
+        context_limitation_summary=context_limitation["result_context_limitation_summary"],
+    )
+
+    return {
+        "result_interpretation_label": label,
+        "result_interpretation_summary": summary,
+        "result_support_quality_label": support_quality["result_support_quality_label"],
+        "result_support_quality_summary": support_quality["result_support_quality_summary"],
+        "result_decision_usefulness_label": support_quality["result_decision_usefulness_label"],
+        "result_context_limitation_label": context_limitation["result_context_limitation_label"],
+        "bounded_numeric_interpretation": bool(numeric_context["bounded_numeric_interpretation"]),
+        "unresolved_numeric_interpretation": bool(numeric_context["unresolved_numeric_interpretation"]),
+        "quality_caution": quality_caution,
+        "assay_context_recorded": bool(assay_context),
+    }
 
 
 def _load_link_context(
@@ -148,6 +266,32 @@ def build_experiment_result_record(
         raise ValueError("ExperimentResult requires a candidate reference or a linked experiment request/claim.")
     if effective_observed_value is None and not effective_observed_label:
         raise ValueError("ExperimentResult requires an observed value or observed label.")
+    source_class = classify_evidence_source_class(
+        evidence_type="experimental_value",
+        source="uploaded_dataset" if _result_source(result_source) == ExperimentResultSource.uploaded_result.value else _result_source(result_source),
+        truth_status="observed",
+        result_source=_result_source(result_source),
+        linked_claim_id=_clean_text(source_claim_id or claim_payload.get("claim_id") or request_payload.get("claim_id")),
+        linked_request_id=_clean_text(source_experiment_request_id or request_payload.get("experiment_request_id")),
+        created_by=ingested_by,
+    )
+    provenance = assess_provenance_confidence(
+        source_class_label=source_class["source_class_label"],
+        source=_result_source(result_source),
+        truth_status="observed",
+        ingested_by=ingested_by,
+        linked_claim_id=_clean_text(source_claim_id or claim_payload.get("claim_id") or request_payload.get("claim_id")),
+        linked_request_id=_clean_text(source_experiment_request_id or request_payload.get("experiment_request_id")),
+    )
+    trust_posture = assess_governed_evidence_posture(
+        source_class_label=source_class["source_class_label"],
+        provenance_confidence_label=provenance["provenance_confidence_label"],
+        candidate_context=bool(
+            _clean_text(source_claim_id or claim_payload.get("claim_id") or request_payload.get("claim_id"))
+            or _clean_text(source_experiment_request_id or request_payload.get("experiment_request_id"))
+        ),
+        local_only_default=True,
+    )
     return validate_experiment_result_record(
         {
             "experiment_result_id": "",
@@ -172,6 +316,16 @@ def build_experiment_result_record(
                 "linked_claim_id": _clean_text(source_claim_id or claim_payload.get("claim_id") or request_payload.get("claim_id")),
                 "linked_experiment_request_id": _clean_text(source_experiment_request_id or request_payload.get("experiment_request_id")),
                 "target_name": _clean_text((effective_target_definition or {}).get("target_name")),
+                "source_class_label": source_class["source_class_label"],
+                "source_class_summary": source_class["source_class_summary"],
+                "provenance_confidence_label": provenance["provenance_confidence_label"],
+                "provenance_confidence_summary": provenance["provenance_confidence_summary"],
+                "trust_tier_label": trust_posture["trust_tier_label"],
+                "trust_tier_summary": trust_posture["trust_tier_summary"],
+                "governed_review_status_label": trust_posture["governed_review_status_label"],
+                "governed_review_status_summary": trust_posture["governed_review_status_summary"],
+                "governed_review_reason_label": trust_posture["governed_review_reason_label"],
+                "governed_review_reason_summary": trust_posture["governed_review_reason_summary"],
             },
         }
     )
@@ -238,6 +392,7 @@ def experiment_result_refs_from_records(results: list[dict[str, Any]]) -> list[d
         if not isinstance(result, dict):
             continue
         candidate_reference = result.get("candidate_reference") if isinstance(result.get("candidate_reference"), dict) else {}
+        interpretation = _result_interpretation_fields(result)
         refs.append(
             validate_experiment_result_reference(
                 {
@@ -251,6 +406,12 @@ def experiment_result_refs_from_records(results: list[dict[str, Any]]) -> list[d
                     "measurement_unit": result.get("measurement_unit"),
                     "result_quality": result.get("result_quality"),
                     "result_source": result.get("result_source"),
+                    "result_interpretation_label": interpretation["result_interpretation_label"],
+                    "result_interpretation_summary": interpretation["result_interpretation_summary"],
+                    "result_support_quality_label": interpretation["result_support_quality_label"],
+                    "result_support_quality_summary": interpretation["result_support_quality_summary"],
+                    "result_decision_usefulness_label": interpretation["result_decision_usefulness_label"],
+                    "result_context_limitation_label": interpretation["result_context_limitation_label"],
                     "ingested_at": result.get("ingested_at"),
                 }
             )
@@ -262,11 +423,40 @@ def experiment_result_summary_from_records(results: list[dict[str, Any]]) -> dic
     total = len(results)
     with_numeric_value = sum(1 for result in results if result.get("observed_value") is not None)
     with_label = sum(1 for result in results if _clean_text(result.get("observed_label")))
+    interpreted = [_result_interpretation_fields(result) for result in results if isinstance(result, dict)]
+    bounded_numeric = sum(1 for item in interpreted if item["bounded_numeric_interpretation"])
+    unresolved_numeric = sum(1 for item in interpreted if item["unresolved_numeric_interpretation"])
+    cautious_quality = sum(1 for item in interpreted if item["quality_caution"])
+    assay_context_recorded = sum(1 for item in interpreted if item["assay_context_recorded"])
+    support_quality_counts = rollup_quality_labels(
+        [item.get("result_support_quality_label") for item in interpreted]
+    )
     if total:
-        summary_text = (
-            f"{total} observed result{'' if total == 1 else 's'} {'has' if total == 1 else 'have'} been recorded for this session. "
-            "Observed results are stored outcome records, not belief updates or causal proof."
-        )
+        parts = [
+            f"{total} observed result{'' if total == 1 else 's'} {'has' if total == 1 else 'have'} been recorded for this session.",
+            "Observed results are stored outcome records, not belief updates or causal proof.",
+        ]
+        if bounded_numeric or unresolved_numeric:
+            parts.append(
+                f"Numeric interpretation remains bounded: {bounded_numeric} result{'s are' if bounded_numeric != 1 else ' is'} interpretable under the current target rule and {unresolved_numeric} remain unresolved under the current numeric basis."
+            )
+        if cautious_quality:
+            parts.append(
+                f"{cautious_quality} result{'s carry' if cautious_quality != 1 else ' carries'} provisional or screening-quality caution."
+            )
+        if assay_context_recorded:
+            parts.append(
+                f"{assay_context_recorded} result{'s include' if assay_context_recorded != 1 else ' includes'} recorded assay context."
+            )
+        if any(support_quality_counts.values()):
+            parts.append(
+                "Current result usefulness remains bounded: "
+                f"{support_quality_counts['decision_useful_count']} more decision-useful, "
+                f"{support_quality_counts['limited_count']} limited, "
+                f"{support_quality_counts['context_limited_count']} context-limited, and "
+                f"{support_quality_counts['weak_count']} unresolved under the current basis."
+            )
+        summary_text = " ".join(parts)
     else:
         summary_text = "No observed results have been recorded for this session."
     return validate_experiment_result_summary(
@@ -275,6 +465,14 @@ def experiment_result_summary_from_records(results: list[dict[str, Any]]) -> dic
             "recorded_count": total,
             "with_numeric_value_count": with_numeric_value,
             "with_label_count": with_label,
+            "bounded_numeric_interpretation_count": bounded_numeric,
+            "unresolved_numeric_interpretation_count": unresolved_numeric,
+            "cautious_result_quality_count": cautious_quality,
+            "assay_context_recorded_count": assay_context_recorded,
+            "decision_useful_result_count": support_quality_counts["decision_useful_count"],
+            "limited_result_support_count": support_quality_counts["limited_count"],
+            "context_limited_result_count": support_quality_counts["context_limited_count"],
+            "unresolved_result_support_count": support_quality_counts["weak_count"],
             "summary_text": summary_text,
             "top_results": experiment_result_refs_from_records(results[:3]),
         }

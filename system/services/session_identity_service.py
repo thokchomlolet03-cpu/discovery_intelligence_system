@@ -377,6 +377,18 @@ def build_trust_context(
     )
     activation_policy_summary = _clean_text(evidence_activation_policy.get("summary"))
     activation_policy_label = ""
+    source_class_label = _clean_text(evidence_activation_policy.get("source_class_label"))
+    source_class_summary = _clean_text(evidence_activation_policy.get("source_class_summary"))
+    trust_tier_label = _clean_text(evidence_activation_policy.get("trust_tier_label"))
+    trust_tier_summary = _clean_text(evidence_activation_policy.get("trust_tier_summary"))
+    provenance_confidence_label = _clean_text(evidence_activation_policy.get("provenance_confidence_label"))
+    provenance_confidence_summary = _clean_text(evidence_activation_policy.get("provenance_confidence_summary"))
+    governed_review_status_label = _clean_text(evidence_activation_policy.get("governed_review_status_label"))
+    governed_review_status_summary = _clean_text(evidence_activation_policy.get("governed_review_status_summary"))
+    governed_review_reason_label = _clean_text(evidence_activation_policy.get("governed_review_reason_label"))
+    governed_review_reason_summary = _clean_text(evidence_activation_policy.get("governed_review_reason_summary"))
+    local_only_default_summary = _clean_text(evidence_activation_policy.get("local_only_default_summary"))
+    anti_poisoning_summary = _clean_text(evidence_activation_policy.get("anti_poisoning_summary"))
     future_eligibility_summary = ""
     future_eligibility_label = ""
     controlled_reuse = (
@@ -386,6 +398,15 @@ def build_trust_context(
     )
     controlled_reuse_label = ""
     controlled_reuse_summary = ""
+    belief_state_summary = (
+        scientific_truth.get("belief_state_summary")
+        if isinstance(scientific_truth.get("belief_state_summary"), dict)
+        else {}
+    )
+    belief_alignment_label = _clean_text(scientific_truth.get("belief_state_alignment_label"))
+    belief_alignment_summary = _clean_text(scientific_truth.get("belief_state_alignment_summary"))
+    belief_state_label = ""
+    belief_state_summary_text = ""
     if activation_policy_summary:
         activation_policy_label = "Selective evidence use"
         ranking_summary = _clean_text(evidence_activation_policy.get("ranking_context_summary"))
@@ -426,6 +447,22 @@ def build_trust_context(
         ]
         controlled_reuse_summary = " ".join(bit for bit in reuse_bits if bit)
 
+    if belief_state_summary.get("active_claim_count"):
+        belief_state_label = "Current belief state"
+        belief_state_summary_text = " ".join(
+            bit
+            for bit in (
+                _clean_text(belief_state_summary.get("belief_state_strength_summary")),
+                _clean_text(belief_state_summary.get("belief_state_readiness_summary")),
+                _clean_text(belief_state_summary.get("support_basis_mix_summary")),
+                _clean_text(belief_state_summary.get("chronology_summary_text")),
+                belief_alignment_summary,
+            )
+            if bit
+        )
+        if not belief_state_summary_text:
+            belief_state_summary_text = _clean_text(belief_state_summary.get("summary_text"))
+
     return {
         "evidence_basis_label": evidence_basis_label,
         "evidence_basis_summary": evidence_basis_summary,
@@ -435,8 +472,24 @@ def build_trust_context(
         "policy_basis_summary": policy_basis_summary,
         "activation_policy_label": activation_policy_label,
         "activation_policy_summary": activation_policy_summary,
+        "source_class_label": source_class_label,
+        "source_class_summary": source_class_summary,
+        "trust_tier_label": trust_tier_label,
+        "trust_tier_summary": trust_tier_summary,
+        "provenance_confidence_label": provenance_confidence_label,
+        "provenance_confidence_summary": provenance_confidence_summary,
+        "governed_review_status_label": governed_review_status_label,
+        "governed_review_status_summary": governed_review_status_summary,
+        "governed_review_reason_label": governed_review_reason_label,
+        "governed_review_reason_summary": governed_review_reason_summary,
+        "local_only_default_summary": local_only_default_summary,
+        "anti_poisoning_summary": anti_poisoning_summary,
         "controlled_reuse_label": controlled_reuse_label,
         "controlled_reuse_summary": controlled_reuse_summary,
+        "belief_state_label": belief_state_label,
+        "belief_state_summary": belief_state_summary_text,
+        "belief_alignment_label": belief_alignment_label,
+        "belief_alignment_summary": belief_alignment_summary,
         "future_eligibility_label": future_eligibility_label,
         "future_eligibility_summary": future_eligibility_summary,
         "bridge_state_summary": bridge_state_summary,

@@ -103,6 +103,22 @@ class BeliefStateServiceTest(unittest.TestCase):
         self.assertEqual(belief_state["weakened_claim_count"], 0)
         self.assertEqual(belief_state["unresolved_claim_count"], 0)
         self.assertIn("bounded support summary", belief_state["summary_text"].lower())
+        self.assertEqual(belief_state["metadata"]["proposed_update_count"], 1)
+        self.assertEqual(belief_state["metadata"]["accepted_update_count"], 0)
+        self.assertEqual(belief_state["support_quality_label"], "Current support includes decision-useful grounding")
+        self.assertEqual(belief_state["decision_useful_active_support_count"], 1)
+        self.assertEqual(belief_state["governed_support_posture_label"], "Current support remains tentative")
+        self.assertEqual(belief_state["support_coherence_label"], "Mixed active support")
+        self.assertEqual(belief_state["support_reuse_label"], "Weakly reusable current support")
+        self.assertIn("tentative", belief_state["belief_state_strength_summary"].lower())
+        self.assertIn("tentative", belief_state["belief_state_readiness_summary"].lower())
+        self.assertEqual(belief_state["governance_mix_label"], "Mostly proposed")
+        self.assertIn("current support picture relies on 1 active", belief_state["chronology_summary_text"].lower())
+        self.assertEqual(belief_state["support_basis_mix_label"], "Grounded mostly in observed labels")
+        self.assertEqual(belief_state["observed_label_support_count"], 1)
+        self.assertEqual(belief_state["numeric_rule_based_support_count"], 0)
+        self.assertEqual(belief_state["unresolved_basis_count"], 0)
+        self.assertIn("observed labels", belief_state["support_basis_mix_summary"].lower())
 
     def test_scientific_session_truth_carries_belief_state_summary_when_available(self):
         claim, result, _ = self._seed_claim_request_result("session_state_2", observed_label="negative")
@@ -149,6 +165,46 @@ class BeliefStateServiceTest(unittest.TestCase):
         self.assertEqual(truth["belief_state_summary"]["weakened_claim_count"], 1)
         self.assertIn("current belief state", truth["belief_state_summary"]["summary_text"].lower())
         self.assertTrue(truth["belief_state_ref"]["target_key"])
+        self.assertEqual(truth["belief_state_alignment_label"], "Partial alignment")
+        self.assertIn("weakens part of the current support picture", truth["belief_state_alignment_summary"].lower())
+        self.assertEqual(truth["belief_state_summary"]["proposed_update_count"], 1)
+        self.assertIn("current support picture relies on 1 active", truth["belief_state_summary"]["chronology_summary_text"].lower())
+        self.assertEqual(truth["belief_state_summary"]["support_basis_mix_label"], "Grounded mostly in observed labels")
+        self.assertEqual(truth["belief_state_summary"]["support_quality_label"], "Current support includes decision-useful grounding")
+        self.assertEqual(truth["belief_state_summary"]["governed_support_posture_label"], "Current support remains tentative")
+        self.assertEqual(truth["belief_state_summary"]["support_coherence_label"], "Contested and degraded current support")
+        self.assertEqual(truth["belief_state_summary"]["support_reuse_label"], "Reuse with contradiction caution")
+        self.assertEqual(truth["belief_state_summary"]["broader_target_reuse_label"], "Support is locally meaningful, not broadly governing")
+        self.assertEqual(truth["belief_state_summary"]["broader_target_continuity_label"], "No broader continuity cluster")
+        self.assertEqual(truth["belief_state_summary"]["future_reuse_candidacy_label"], "Local-only future reuse context")
+        self.assertEqual(truth["belief_state_summary"]["continuity_cluster_posture_label"], "Local-only continuity cluster")
+        self.assertEqual(
+            truth["belief_state_summary"]["promotion_candidate_posture_label"],
+            "Context-only continuity, not a promotion candidate",
+        )
+        self.assertEqual(truth["belief_state_summary"]["promotion_stability_label"], "Insufficient continuity stability")
+        self.assertEqual(truth["belief_state_summary"]["promotion_gate_status_label"], "Not a governed promotion candidate")
+        self.assertEqual(truth["belief_state_summary"]["promotion_block_reason_label"], "Local-only meaning")
+        self.assertEqual(truth["belief_state_summary"]["governed_review_record_count"], 1)
+        self.assertIn("belief-state posture has 1 governed review record", truth["belief_state_summary"]["governed_review_history_summary"].lower())
+        self.assertEqual(
+            truth["belief_state_summary"]["continuity_cluster_review_status_label"],
+            "Not reviewed for broader influence",
+        )
+        self.assertIn(
+            "local-only",
+            truth["belief_state_summary"]["continuity_cluster_review_status_summary"].lower(),
+        )
+        self.assertEqual(
+            truth["scientific_decision_summary"]["session_family_review_status_label"],
+            "Not reviewed for broader influence",
+        )
+        self.assertIn(
+            "local-only by default",
+            truth["scientific_decision_summary"]["session_family_review_reason_summary"].lower(),
+        )
+        self.assertEqual(truth["belief_state_summary"]["observed_label_support_count"], 1)
+        self.assertIn("observed labels", truth["belief_state_summary"]["support_basis_mix_summary"].lower())
 
 
 if __name__ == "__main__":

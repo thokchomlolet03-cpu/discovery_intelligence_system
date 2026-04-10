@@ -88,6 +88,218 @@
                 {% if row.controlled_reuse_summary %}
                   <div class="helper-copy">{{ row.controlled_reuse_summary }}</div>
                 {% endif %}
+                {% if row.belief_state_strength_summary %}
+                  <div class="helper-copy">{{ row.belief_state_strength_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_readiness_summary %}
+                  <div class="helper-copy">{{ row.belief_state_readiness_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_governance_label and row.belief_state_governance_label != "Not recorded" %}
+                  <div class="helper-copy">Belief governance: {{ row.belief_state_governance_label }}. Accepted {{ row.belief_state_accepted_updates }}, proposed {{ row.belief_state_proposed_updates }}, superseded {{ row.belief_state_superseded_updates }}.</div>
+                {% endif %}
+                {% if row.session_support_role_label %}
+                  <div class="helper-copy">{{ row.session_support_role_label }}: {{ row.session_support_role_summary }}</div>
+                {% endif %}
+                {% if row.belief_update_chronology_summary %}
+                  <div class="helper-copy">{{ row.belief_update_chronology_summary }}</div>
+                {% endif %}
+                {% if row.belief_update_support_basis_summary %}
+                  <div class="helper-copy">{{ row.belief_update_support_basis_label }}: {{ row.belief_update_support_basis_summary }}</div>
+                  <div class="helper-copy">Session support basis: observed-label {{ row.belief_update_observed_label_support_count }}, numeric-rule {{ row.belief_update_numeric_rule_based_support_count }}, unresolved {{ row.belief_update_unresolved_basis_count }}, weak-basis {{ row.belief_update_weak_basis_count }}.</div>
+                {% endif %}
+                {% if row.belief_update_support_quality_summary %}
+                  <div class="helper-copy">{{ row.belief_update_support_quality_label }}: {{ row.belief_update_support_quality_summary }}</div>
+                {% endif %}
+                {% if row.belief_update_governed_support_posture_summary %}
+                  <div class="helper-copy">{{ row.belief_update_governed_support_posture_label }}: {{ row.belief_update_governed_support_posture_summary }}</div>
+                {% endif %}
+                {% if row.belief_update_support_coherence_summary %}
+                  <div class="helper-copy">{{ row.belief_update_support_coherence_label }}: {{ row.belief_update_support_coherence_summary }}</div>
+                {% endif %}
+                {% if row.belief_update_support_reuse_summary %}
+                  <div class="helper-copy">{{ row.belief_update_support_reuse_label }}: {{ row.belief_update_support_reuse_summary }}</div>
+                {% endif %}
+                {% if row.claims_chronology_summary %}
+                  <div class="helper-copy">{{ row.claims_chronology_summary }}</div>
+                  <div class="helper-copy">Claim chronology: active {{ row.claims_with_active_support_count }}, historical-only {{ row.claims_with_historical_support_only_count }}, no governed support {{ row.claims_with_no_governed_support_count }}.</div>
+                {% endif %}
+                {% if row.claims_support_basis_summary %}
+                  <div class="helper-copy">{{ row.claims_support_basis_summary }}</div>
+                  <div class="helper-copy">Claim support basis: observed-label-grounded {{ row.claims_observed_label_grounded_count }}, numeric-rule {{ row.claims_numeric_rule_based_support_count }}, weak-basis {{ row.claims_weak_basis_support_count }}, mixed-basis {{ row.claims_mixed_support_basis_count }}.</div>
+                  <div class="helper-copy">Claim support quality: decision-useful {{ row.claims_decision_useful_active_support_count }}, limited {{ row.claims_limited_active_support_quality_count }}, context-limited {{ row.claims_context_limited_active_support_count }}, weak or provisional {{ row.claims_weak_or_unresolved_active_support_count }}.</div>
+                  <div class="helper-copy">Claim governed posture: posture-governing {{ row.claims_posture_governing_support_count }}, tentative {{ row.claims_tentative_current_support_count }}, accepted but limited-weight {{ row.claims_accepted_limited_support_count }}, historical non-governing {{ row.claims_historical_non_governing_support_count }}.</div>
+                  <div class="helper-copy">Claim coherence: contested {{ row.claims_contested_current_support_count }}, degraded {{ row.claims_degraded_current_posture_count }}, historical stronger than current {{ row.claims_historical_stronger_than_current_count }}, contradiction-limited reuse {{ row.claims_contradiction_limited_reuse_count }}, weakly reusable {{ row.claims_weakly_reusable_support_count }}.</div>
+                {% endif %}
+                {% if row.claims_actionability_summary %}
+                  <div class="helper-copy">{{ row.claims_actionability_summary }}</div>
+                  <div class="helper-copy">Claim actionability: action-ready {{ row.claims_action_ready_follow_up_count }}, needs stronger evidence {{ row.claims_need_stronger_evidence_count }}, needs clarifying experiment {{ row.claims_need_clarifying_experiment_count }}, do not prioritize yet {{ row.claims_do_not_prioritize_yet_count }}, insufficient governed basis {{ row.claims_insufficient_governed_basis_count }}.</div>
+                {% endif %}
+                {% if row.claims_actionability_basis_summary %}
+                  <div class="helper-copy">{{ row.claims_actionability_basis_summary }}</div>
+                  <div class="helper-copy">Actionability basis: action-ready from active support {{ row.claims_action_ready_from_active_support_count }}, active support still limited {{ row.claims_active_but_limited_actionability_count }}, historically interesting {{ row.claims_historically_interesting_count }}, mixed current/historical basis {{ row.claims_mixed_current_historical_actionability_count }}, no active governed support {{ row.claims_no_active_governed_support_actionability_count }}.</div>
+                {% endif %}
+                {% if row.scientific_decision_status_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_status_label }}: {{ row.scientific_decision_status_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_current_support_quality_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_current_support_quality_label }}: {{ row.scientific_decision_current_support_quality_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_current_governed_support_posture_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_current_governed_support_posture_label }}: {{ row.scientific_decision_current_governed_support_posture_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_current_support_coherence_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_current_support_coherence_label }}: {{ row.scientific_decision_current_support_coherence_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_current_support_reuse_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_current_support_reuse_label }}: {{ row.scientific_decision_current_support_reuse_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_next_step_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_next_step_label }}: {{ row.scientific_decision_next_step_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_result_state_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_result_state_label }}: {{ row.scientific_decision_result_state_summary }}</div>
+                {% endif %}
+                {% if row.claims_read_across_summary %}
+                  <div class="helper-copy">{{ row.claims_read_across_summary }}</div>
+                  <div class="helper-copy">Claim read-across: continuity-aligned {{ row.claims_continuity_aligned_count }}, new context {{ row.claims_new_context_count }}, weak prior alignment {{ row.claims_weak_prior_alignment_count }}, no prior context {{ row.claims_no_prior_context_count }}.</div>
+                  <div class="helper-copy">Prior support quality: posture-governing continuity {{ row.claims_active_governed_continuity_count }}, tentative active continuity {{ row.claims_tentative_active_continuity_count }}, historical continuity only {{ row.claims_historical_continuity_only_count }}, sparse prior context {{ row.claims_sparse_prior_context_count }}, no useful prior context {{ row.claims_no_useful_prior_context_count }}.</div>
+                {% endif %}
+                {% if row.claims_broader_reuse_summary %}
+                  <div class="helper-copy">{{ row.claims_broader_reuse_label }}: {{ row.claims_broader_reuse_summary }}</div>
+                {% endif %}
+                {% if row.claims_broader_continuity_summary %}
+                  <div class="helper-copy">{{ row.claims_broader_continuity_label }}: {{ row.claims_broader_continuity_summary }}</div>
+                {% endif %}
+                {% if row.claims_future_reuse_candidacy_summary %}
+                  <div class="helper-copy">{{ row.claims_future_reuse_candidacy_label }}: {{ row.claims_future_reuse_candidacy_summary }}</div>
+                {% endif %}
+                {% if row.claims_continuity_cluster_posture_summary %}
+                  <div class="helper-copy">{{ row.claims_continuity_cluster_posture_label }}: {{ row.claims_continuity_cluster_posture_summary }}</div>
+                {% endif %}
+                {% if row.claims_promotion_candidate_posture_summary %}
+                  <div class="helper-copy">{{ row.claims_promotion_candidate_posture_label }}: {{ row.claims_promotion_candidate_posture_summary }}</div>
+                {% endif %}
+                {% if row.claims_promotion_stability_summary %}
+                  <div class="helper-copy">{{ row.claims_promotion_stability_label }}: {{ row.claims_promotion_stability_summary }}</div>
+                {% endif %}
+                {% if row.claims_promotion_gate_status_summary %}
+                  <div class="helper-copy">{{ row.claims_promotion_gate_status_label }}: {{ row.claims_promotion_gate_status_summary }}</div>
+                {% endif %}
+                {% if row.claims_promotion_block_reason_summary %}
+                  <div class="helper-copy">{{ row.claims_promotion_block_reason_label }}: {{ row.claims_promotion_block_reason_summary }}</div>
+                {% endif %}
+                {% if row.claims_source_class_summary %}
+                  <div class="helper-copy">{{ row.claims_source_class_label }}: {{ row.claims_source_class_summary }}</div>
+                {% endif %}
+                {% if row.claims_governed_review_history_summary %}
+                  <div class="helper-copy">{{ row.claims_governed_review_history_summary }}</div>
+                {% endif %}
+                {% if row.claims_promotion_audit_summary %}
+                  <div class="helper-copy">{{ row.claims_promotion_audit_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_alignment_summary %}
+                  <div class="helper-copy">{{ row.belief_state_alignment_label or "Read-across" }}: {{ row.belief_state_alignment_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_support_basis_summary %}
+                  <div class="helper-copy">{{ row.belief_state_support_basis_label }}: {{ row.belief_state_support_basis_summary }}</div>
+                  <div class="helper-copy">Current support basis: observed-label {{ row.belief_state_observed_label_support_count }}, numeric-rule {{ row.belief_state_numeric_rule_based_support_count }}, unresolved {{ row.belief_state_unresolved_basis_count }}, weak-basis {{ row.belief_state_weak_basis_count }}.</div>
+                {% endif %}
+                {% if row.belief_state_support_quality_summary %}
+                  <div class="helper-copy">{{ row.belief_state_support_quality_label }}: {{ row.belief_state_support_quality_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_governed_support_posture_summary %}
+                  <div class="helper-copy">{{ row.belief_state_governed_support_posture_label }}: {{ row.belief_state_governed_support_posture_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_support_coherence_summary %}
+                  <div class="helper-copy">{{ row.belief_state_support_coherence_label }}: {{ row.belief_state_support_coherence_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_support_reuse_summary %}
+                  <div class="helper-copy">{{ row.belief_state_support_reuse_label }}: {{ row.belief_state_support_reuse_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_broader_target_reuse_summary %}
+                  <div class="helper-copy">{{ row.belief_state_broader_target_reuse_label }}: {{ row.belief_state_broader_target_reuse_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_broader_target_continuity_summary %}
+                  <div class="helper-copy">{{ row.belief_state_broader_target_continuity_label }}: {{ row.belief_state_broader_target_continuity_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_future_reuse_candidacy_summary %}
+                  <div class="helper-copy">{{ row.belief_state_future_reuse_candidacy_label }}: {{ row.belief_state_future_reuse_candidacy_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_posture_summary %}
+                  <div class="helper-copy">{{ row.belief_state_continuity_cluster_posture_label }}: {{ row.belief_state_continuity_cluster_posture_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_promotion_candidate_posture_summary %}
+                  <div class="helper-copy">{{ row.belief_state_promotion_candidate_posture_label }}: {{ row.belief_state_promotion_candidate_posture_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_promotion_stability_summary %}
+                  <div class="helper-copy">{{ row.belief_state_promotion_stability_label }}: {{ row.belief_state_promotion_stability_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_promotion_gate_status_summary %}
+                  <div class="helper-copy">{{ row.belief_state_promotion_gate_status_label }}: {{ row.belief_state_promotion_gate_status_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_promotion_block_reason_summary %}
+                  <div class="helper-copy">{{ row.belief_state_promotion_block_reason_label }}: {{ row.belief_state_promotion_block_reason_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_governed_review_history_summary %}
+                  <div class="helper-copy">{{ row.belief_state_governed_review_history_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_promotion_audit_summary %}
+                  <div class="helper-copy">{{ row.belief_state_promotion_audit_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_review_status_summary %}
+                  <div class="helper-copy">{{ row.belief_state_continuity_cluster_review_status_label }}: {{ row.belief_state_continuity_cluster_review_status_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_review_reason_summary %}
+                  <div class="helper-copy">{{ row.belief_state_continuity_cluster_review_reason_label }}: {{ row.belief_state_continuity_cluster_review_reason_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_review_history_summary %}
+                  <div class="helper-copy">{{ row.belief_state_continuity_cluster_review_history_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_promotion_audit_summary %}
+                  <div class="helper-copy">{{ row.belief_state_continuity_cluster_promotion_audit_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_carryover_guardrail_summary %}
+                  <div class="helper-copy">{{ row.belief_state_carryover_guardrail_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_broader_governed_reuse_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_broader_governed_reuse_label }}: {{ row.scientific_decision_broader_governed_reuse_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_broader_continuity_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_broader_continuity_label }}: {{ row.scientific_decision_broader_continuity_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_future_reuse_candidacy_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_future_reuse_candidacy_label }}: {{ row.scientific_decision_future_reuse_candidacy_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_continuity_cluster_posture_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_continuity_cluster_posture_label }}: {{ row.scientific_decision_continuity_cluster_posture_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_promotion_candidate_posture_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_promotion_candidate_posture_label }}: {{ row.scientific_decision_promotion_candidate_posture_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_promotion_stability_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_promotion_stability_label }}: {{ row.scientific_decision_promotion_stability_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_promotion_gate_status_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_promotion_gate_status_label }}: {{ row.scientific_decision_promotion_gate_status_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_promotion_block_reason_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_promotion_block_reason_label }}: {{ row.scientific_decision_promotion_block_reason_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_session_family_review_status_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_session_family_review_status_label }}: {{ row.scientific_decision_session_family_review_status_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_session_family_review_reason_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_session_family_review_reason_label }}: {{ row.scientific_decision_session_family_review_reason_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_session_family_review_history_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_session_family_review_history_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_session_family_promotion_audit_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_session_family_promotion_audit_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_carryover_guardrail_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_carryover_guardrail_summary }}</div>
+                {% endif %}
                 {% if row.future_ranking_context_summary %}
                   <div class="helper-copy">{{ row.future_ranking_context_summary }}</div>
                 {% endif %}

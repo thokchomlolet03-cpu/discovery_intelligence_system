@@ -61,7 +61,12 @@ from system.upload_parser import (
 )
 from system.services.ingestion import normalize_input_type, normalize_semantic_mapping
 from system.services.active_session_comparison_service import build_active_session_comparison_context
-from system.services.belief_update_service import create_belief_update
+from system.services.belief_update_service import (
+    accept_belief_update,
+    create_belief_update,
+    reject_belief_update,
+    supersede_belief_update,
+)
 from system.services.experiment_result_service import ingest_experiment_result
 from system.services.scientific_session_truth_service import build_scientific_session_truth, persist_scientific_session_truth
 from system.services.session_identity_service import build_session_identity
@@ -1514,6 +1519,249 @@ async def create_belief_update_action(
         allow_global_fallback=False,
     )
     session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    updated_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    persist_scientific_session_truth(
+        updated_truth,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+        register_artifact=True,
+    )
+    target = str(next or "").strip() or f"/discovery?session_id={session_id}"
+    return RedirectResponse(url=target, status_code=303)
+
+
+@app.post("/belief-updates/{belief_update_id}/accept")
+async def accept_belief_update_action(
+    request: Request,
+    belief_update_id: str,
+    session_id: str = Form(...),
+    csrf_token: str = Form(...),
+    governance_note: str | None = Form(None),
+    next: str = Form("/discovery"),
+) -> RedirectResponse:
+    auth = require_auth_context(request)
+    require_csrf(request, csrf_token)
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, session_id)
+
+    reviewed_by = str(auth.user.get("display_name") or auth.user.get("email") or "scientist").strip() or "scientist"
+    try:
+        accept_belief_update(
+            belief_update_id=belief_update_id,
+            workspace_id=auth.workspace_id,
+            session_id=session_id,
+            reviewed_by=reviewed_by,
+            reviewed_by_user_id=auth.user_id,
+            governance_note=str(governance_note or "").strip(),
+        )
+    except (ContractValidationError, FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    decision_output = load_decision_output(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    candidates = annotate_candidates_with_reviews(
+        decision_output.get("top_experiments", []),
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    review_queue = persist_review_queue(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+    )
+    analysis_report = load_analysis_report(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    updated_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    persist_scientific_session_truth(
+        updated_truth,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+        register_artifact=True,
+    )
+    target = str(next or "").strip() or f"/discovery?session_id={session_id}"
+    return RedirectResponse(url=target, status_code=303)
+
+
+@app.post("/belief-updates/{belief_update_id}/reject")
+async def reject_belief_update_action(
+    request: Request,
+    belief_update_id: str,
+    session_id: str = Form(...),
+    csrf_token: str = Form(...),
+    governance_note: str | None = Form(None),
+    next: str = Form("/discovery"),
+) -> RedirectResponse:
+    auth = require_auth_context(request)
+    require_csrf(request, csrf_token)
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, session_id)
+
+    reviewed_by = str(auth.user.get("display_name") or auth.user.get("email") or "scientist").strip() or "scientist"
+    try:
+        reject_belief_update(
+            belief_update_id=belief_update_id,
+            workspace_id=auth.workspace_id,
+            session_id=session_id,
+            reviewed_by=reviewed_by,
+            reviewed_by_user_id=auth.user_id,
+            governance_note=str(governance_note or "").strip(),
+        )
+    except (ContractValidationError, FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    decision_output = load_decision_output(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    candidates = annotate_candidates_with_reviews(
+        decision_output.get("top_experiments", []),
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    review_queue = persist_review_queue(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+    )
+    analysis_report = load_analysis_report(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    updated_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    persist_scientific_session_truth(
+        updated_truth,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+        register_artifact=True,
+    )
+    target = str(next or "").strip() or f"/discovery?session_id={session_id}"
+    return RedirectResponse(url=target, status_code=303)
+
+
+@app.post("/belief-updates/{belief_update_id}/supersede")
+async def supersede_belief_update_action(
+    request: Request,
+    belief_update_id: str,
+    session_id: str = Form(...),
+    csrf_token: str = Form(...),
+    supersede_reason: str | None = Form(None),
+    next: str = Form("/discovery"),
+) -> RedirectResponse:
+    auth = require_auth_context(request)
+    require_csrf(request, csrf_token)
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, session_id)
+
+    reviewed_by = str(auth.user.get("display_name") or auth.user.get("email") or "scientist").strip() or "scientist"
+    try:
+        supersede_belief_update(
+            belief_update_id=belief_update_id,
+            workspace_id=auth.workspace_id,
+            session_id=session_id,
+            reviewed_by=reviewed_by,
+            reviewed_by_user_id=auth.user_id,
+            supersede_reason=str(supersede_reason or "").strip(),
+        )
+    except (ContractValidationError, FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    session_record = session_repository.get_session(session_id, workspace_id=auth.workspace_id)
+    decision_output = load_decision_output(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
+    candidates = annotate_candidates_with_reviews(
+        decision_output.get("top_experiments", []),
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+    )
+    review_queue = persist_review_queue(
+        candidates,
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        created_by_user_id=auth.user_id,
+    )
+    analysis_report = load_analysis_report(
+        session_id=session_id,
+        workspace_id=auth.workspace_id,
+        allow_global_fallback=False,
+    )
     annotated_candidates = annotate_candidates_with_workspace_memory(
         candidates,
         session_id=session_id,

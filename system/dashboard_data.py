@@ -13,8 +13,10 @@ from system.db.repositories import SessionRepository
 from system.review_manager import build_review_queue
 from system.services.run_metadata_service import build_run_provenance
 from system.services.scientific_session_truth_service import build_scientific_session_truth
+from system.services.scientific_decision_service import build_scientific_decision_summary
 from system.services.data_service import canonical_label_column
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context, domain_chip_label
+from system.services.belief_update_service import support_role_from_belief_update_summary
 from system.services.workspace_feedback_service import build_session_workspace_memory
 from system.session_artifacts import (
     load_analysis_report_payload,
@@ -530,14 +532,30 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     if scientific_truth and isinstance(scientific_truth.get("evidence_records"), list):
         cards.append({"label": "Evidence records", "value": len(scientific_truth.get("evidence_records") or [])})
     linked_result_summary = scientific_truth.get("linked_result_summary") if isinstance(scientific_truth.get("linked_result_summary"), dict) else {}
+    claims_summary = scientific_truth.get("claims_summary") if isinstance(scientific_truth.get("claims_summary"), dict) else {}
+    claim_refs = list(scientific_truth.get("claim_refs") or []) if isinstance(scientific_truth.get("claim_refs"), list) else []
+    if claims_summary.get("claim_count"):
+        cards.append({"label": "Claims", "value": int(claims_summary.get("claim_count") or 0)})
+    if claims_summary.get("claims_with_active_support_count"):
+        cards.append({"label": "Claims with active support", "value": int(claims_summary.get("claims_with_active_support_count") or 0)})
     if linked_result_summary.get("result_count"):
         cards.append({"label": "Observed results", "value": int(linked_result_summary.get("result_count") or 0)})
     belief_update_summary = scientific_truth.get("belief_update_summary") if isinstance(scientific_truth.get("belief_update_summary"), dict) else {}
     if belief_update_summary.get("update_count"):
         cards.append({"label": "Belief updates", "value": int(belief_update_summary.get("update_count") or 0)})
     belief_state_summary = scientific_truth.get("belief_state_summary") if isinstance(scientific_truth.get("belief_state_summary"), dict) else {}
+    scientific_decision_summary = (
+        scientific_truth.get("scientific_decision_summary")
+        if isinstance(scientific_truth.get("scientific_decision_summary"), dict)
+        else {}
+    )
+    if not scientific_decision_summary and scientific_truth:
+        scientific_decision_summary = build_scientific_decision_summary(scientific_truth)
+    session_support_role_label, session_support_role_summary = support_role_from_belief_update_summary(belief_update_summary)
     if belief_state_summary.get("active_claim_count"):
         cards.append({"label": "Belief state claims", "value": int(belief_state_summary.get("active_claim_count") or 0)})
+    alignment_summary = str(scientific_truth.get("belief_state_alignment_summary") or "").strip()
+    alignment_label = str(scientific_truth.get("belief_state_alignment_label") or "").strip()
     if ranking_diagnostics.get("out_of_domain_rate") is not None:
         cards.append(
             {
@@ -699,12 +717,28 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},
         "evaluation_summary": evaluation_summary if isinstance(evaluation_summary, dict) else {},
         "scientific_session_truth": scientific_truth,
+        "claims_summary": claims_summary,
+        "claim_refs": claim_refs,
+        "experiment_request_summary": scientific_truth.get("experiment_request_summary")
+        if isinstance(scientific_truth.get("experiment_request_summary"), dict)
+        else {},
+        "experiment_request_refs": list(scientific_truth.get("experiment_request_refs") or [])
+        if isinstance(scientific_truth.get("experiment_request_refs"), list)
+        else [],
         "linked_result_summary": linked_result_summary,
+        "experiment_result_refs": list(scientific_truth.get("experiment_result_refs") or [])
+        if isinstance(scientific_truth.get("experiment_result_refs"), list)
+        else [],
         "belief_update_summary": belief_update_summary,
+        "session_support_role_label": session_support_role_label,
+        "session_support_role_summary": session_support_role_summary,
         "belief_state_ref": scientific_truth.get("belief_state_ref")
         if isinstance(scientific_truth.get("belief_state_ref"), dict)
         else {},
         "belief_state_summary": belief_state_summary,
+        "scientific_decision_summary": scientific_decision_summary,
+        "belief_state_alignment_label": alignment_label,
+        "belief_state_alignment_summary": alignment_summary,
         "target_definition": target_definition,
         "run_contract": run_contract,
         "comparison_anchors": comparison_anchors,

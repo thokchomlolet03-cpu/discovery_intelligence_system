@@ -380,7 +380,36 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
                 "accepted_count": 0,
                 "rejected_count": 0,
                 "superseded_count": 0,
+                "claims_with_active_support_count": 1,
+                "claims_with_historical_support_only_count": 0,
+                "claims_with_rejected_support_only_count": 0,
+                "claims_with_no_governed_support_count": 0,
+                "continuity_aligned_claim_count": 1,
+                "new_claim_context_count": 0,
+                "weak_prior_alignment_count": 0,
+                "no_prior_claim_context_count": 0,
+                "claims_with_active_governed_continuity_count": 1,
+                "claims_with_historical_continuity_only_count": 0,
+                "claims_with_sparse_prior_context_count": 0,
+                "claims_with_no_useful_prior_context_count": 0,
+                "claims_mostly_observed_label_grounded_count": 1,
+                "claims_with_numeric_rule_based_support_count": 0,
+                "claims_with_weak_basis_support_count": 0,
+                "claims_with_mixed_support_basis_count": 0,
+                "claims_action_ready_follow_up_count": 1,
+                "claims_promising_but_need_stronger_evidence_count": 0,
+                "claims_need_clarifying_experiment_count": 0,
+                "claims_do_not_prioritize_yet_count": 0,
+                "claims_with_insufficient_governed_basis_count": 0,
+                "claims_action_ready_from_active_support_count": 1,
+                "claims_historically_interesting_count": 0,
+                "claims_with_mixed_current_historical_actionability_count": 0,
                 "summary_text": "1 proposed claim was derived from the current shortlist. Claims remain bounded recommendation-derived assertions, not experimental confirmation.",
+                "chronology_summary_text": "Claim-level support chronology remains bounded: 1 claim with active governed support.",
+                "claim_support_basis_summary_text": "Claim support-basis composition remains bounded: 1 grounded mostly in observed labels.",
+                "claim_actionability_summary_text": "Claim actionability remains bounded: 1 action-ready from current active support.",
+                "claim_actionability_basis_summary_text": "Claim actionability basis remains bounded: 1 action-ready from current active support.",
+                "read_across_summary_text": "This session mostly reinforces prior target-scoped claim context with active governed continuity. Claim read-across remains bounded.",
                 "top_claims": [],
             },
             "claim_refs": [
@@ -393,6 +422,31 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
                     "support_level": "strong",
                     "status": "proposed",
                     "source_recommendation_rank": 1,
+                    "claim_support_role_label": "Active governed support",
+                    "current_support_count": 1,
+                    "historical_support_count": 0,
+                    "rejected_support_count": 0,
+                    "claim_chronology_summary_text": "This claim currently has 1 active governed support change.",
+                    "claim_support_basis_mix_label": "Grounded mostly in observed labels",
+                    "claim_support_basis_mix_summary": "This claim's current governed support is grounded mostly in observed labels (1) and remains bounded rather than final.",
+                    "claim_observed_label_support_count": 1,
+                    "claim_numeric_rule_based_support_count": 0,
+                    "claim_unresolved_basis_count": 0,
+                    "claim_weak_basis_count": 0,
+                    "claim_read_across_label": "Continuity-aligned claim",
+                    "claim_read_across_summary": "This claim aligns with 2 prior target-scoped claim records for the same candidate context. Read-across remains bounded and does not confirm claim identity.",
+                    "claim_prior_context_count": 2,
+                    "claim_prior_support_quality_label": "Posture-governing continuity",
+                    "claim_prior_support_quality_summary": "Prior continuity for this claim context includes 1 claim record backed by accepted posture-governing support.",
+                    "claim_prior_active_support_count": 1,
+                    "claim_prior_historical_support_count": 0,
+                    "claim_actionability_label": "Action-ready from current active support",
+                    "claim_actionability_summary": "cand_1 (CCO) has active governed support grounded mostly in observed labels, including 1 accepted support change, so bounded follow-up is reasonable without implying proof.",
+                    "claim_actionability_basis_label": "Current active support basis",
+                    "claim_actionability_basis_summary": "cand_1 (CCO)'s present actionability is grounded in current active governed support rather than historical context.",
+                    "claim_historical_interest_only_flag": False,
+                    "claim_next_step_label": "Follow-up experiment is reasonable now",
+                    "claim_next_step_summary": "A bounded follow-up experiment is reasonable now, while keeping the claim explicitly separate from validated truth.",
                     "created_at": "2026-04-02T10:00:00+00:00",
                 }
             ],
@@ -443,6 +497,8 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
             ],
             "belief_update_summary": {
                 "update_count": 1,
+                "active_count": 1,
+                "historical_count": 0,
                 "proposed_count": 1,
                 "accepted_count": 0,
                 "rejected_count": 0,
@@ -450,7 +506,18 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
                 "strengthened_count": 1,
                 "weakened_count": 0,
                 "unresolved_count": 0,
+                "numeric_interpreted_count": 0,
+                "numeric_unresolved_count": 0,
+                "observed_label_support_count": 1,
+                "numeric_rule_based_support_count": 0,
+                "unresolved_basis_count": 0,
+                "weak_basis_count": 0,
+                "support_basis_mix_label": "Grounded mostly in observed labels",
+                "support_basis_mix_summary": "Session support changes are grounded mostly in observed labels (1), with 0 bounded numeric interpretation records and 0 unresolved support basis records.",
                 "summary_text": "1 belief update has been recorded for this session. These updates track bounded support changes only; they do not prove claims, imply causality, or change the model.",
+                "chronology_mix_label": "Current support only",
+                "chronology_summary_text": "This session currently contributes 1 active support change and no historical support records.",
+                "numeric_interpretation_summary_text": "",
                 "top_updates": [],
             },
             "belief_update_refs": [
@@ -463,7 +530,18 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
                     "previous_support_level": "strong",
                     "updated_support_level": "strong",
                     "update_direction": "strengthened",
+                    "support_input_quality_label": "Cautious interpretation basis",
+                    "support_input_quality_summary": "Result quality and context support a cautious bounded interpretation under the current observed label path.",
+                    "assay_context_alignment_label": "No specific assay context expected",
+                    "result_interpretation_basis": "Observed label",
+                    "numeric_result_basis_label": "",
+                    "numeric_result_basis_summary": "",
+                    "numeric_result_resolution_label": "",
+                    "numeric_result_interpretation_label": "",
+                    "target_rule_alignment_label": "",
                     "governance_status": "proposed",
+                    "chronology_label": "Current proposed support change",
+                    "active_for_belief_state": True,
                     "created_at": "2026-04-02T12:00:00+00:00",
                 }
             ],
@@ -483,13 +561,29 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
                 "summary_text": "Current belief state for pIC50 tracks 1 active claim: 1 strengthened, 0 weakened, and 0 unresolved. This is a bounded support summary, not final scientific truth or live learning state.",
                 "support_distribution_summary": "Supported 1, weakened 0, unresolved 0 across 1 currently tracked claim.",
                 "governance_scope_summary": "Current picture includes 0 accepted and 1 proposed belief update; rejected and superseded updates are excluded.",
+                "support_basis_mix_label": "Grounded mostly in observed labels",
+                "support_basis_mix_summary": "The current support picture is grounded mostly in observed labels (1) and remains bounded rather than final.",
+                "belief_state_strength_summary": "The current support picture is tentative because it is built entirely from proposed support-change records.",
+                "belief_state_readiness_summary": "Read-across remains weak because the current support picture is entirely proposed.",
+                "governance_mix_label": "Mostly proposed",
+                "chronology_summary_text": "Current support picture relies on 1 active claim-linked support change and keeps 0 superseded plus 0 rejected historical records visible for context.",
                 "active_claim_count": 1,
                 "supported_claim_count": 1,
                 "weakened_claim_count": 0,
                 "unresolved_claim_count": 0,
+                "accepted_update_count": 0,
+                "proposed_update_count": 1,
+                "superseded_update_count": 0,
+                "rejected_update_count": 0,
+                "observed_label_support_count": 1,
+                "numeric_rule_based_support_count": 0,
+                "unresolved_basis_count": 0,
+                "weak_basis_count": 0,
                 "last_updated_at": "2026-04-02T12:05:00+00:00",
                 "last_update_source": "latest belief update linked to an observed result",
             },
+            "belief_state_alignment_label": "Partial alignment",
+            "belief_state_alignment_summary": "This session aligns with the current support picture, but the added support remains mostly proposed or otherwise limited.",
         }
 
         workbench = build_discovery_workbench(
@@ -504,7 +598,33 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
 
         self.assertEqual(workbench["claims_summary"]["claim_count"], 1)
         self.assertEqual(workbench["claim_refs"][0]["claim_id"], "claim_1")
+        self.assertEqual(workbench["belief_update_summary"]["support_basis_mix_label"], "Grounded mostly in observed labels")
+        self.assertEqual(workbench["belief_state_summary"]["support_basis_mix_label"], "Grounded mostly in observed labels")
+        self.assertEqual(workbench["belief_state_summary"]["observed_label_support_count"], 1)
         self.assertIn("plausible follow-up candidate", workbench["claim_refs"][0]["claim_text"].lower())
+        self.assertEqual(workbench["claim_refs"][0]["claim_support_role_label"], "Active governed support")
+        self.assertEqual(workbench["claim_refs"][0]["claim_support_basis_mix_label"], "Grounded mostly in observed labels")
+        self.assertEqual(workbench["claim_refs"][0]["claim_observed_label_support_count"], 1)
+        self.assertIn("observed labels", workbench["claim_refs"][0]["claim_support_basis_mix_summary"].lower())
+        self.assertIn("active governed support change", workbench["claim_refs"][0]["claim_chronology_summary_text"].lower())
+        self.assertEqual(workbench["claim_refs"][0]["claim_actionability_label"], "Action-ready from current active support")
+        self.assertEqual(workbench["claim_refs"][0]["claim_actionability_basis_label"], "Current active support basis")
+        self.assertEqual(workbench["claim_refs"][0]["claim_next_step_label"], "Follow-up experiment is reasonable now")
+        self.assertEqual(workbench["claim_refs"][0]["claim_read_across_label"], "Continuity-aligned claim")
+        self.assertEqual(workbench["claim_refs"][0]["claim_prior_support_quality_label"], "Posture-governing continuity")
+        self.assertIn("posture-governing support", workbench["claim_refs"][0]["claim_prior_support_quality_summary"].lower())
+        self.assertIn("same candidate context", workbench["claim_refs"][0]["claim_read_across_summary"].lower())
+        self.assertEqual(workbench["claims_summary"]["claims_with_active_support_count"], 1)
+        self.assertIn("claim-level support chronology remains bounded", workbench["claims_summary"]["chronology_summary_text"].lower())
+        self.assertEqual(workbench["claims_summary"]["claims_mostly_observed_label_grounded_count"], 1)
+        self.assertIn("claim support-basis composition remains bounded", workbench["claims_summary"]["claim_support_basis_summary_text"].lower())
+        self.assertEqual(workbench["claims_summary"]["claims_action_ready_follow_up_count"], 1)
+        self.assertEqual(workbench["claims_summary"]["claims_action_ready_from_active_support_count"], 1)
+        self.assertIn("claim actionability remains bounded", workbench["claims_summary"]["claim_actionability_summary_text"].lower())
+        self.assertIn("claim actionability basis remains bounded", workbench["claims_summary"]["claim_actionability_basis_summary_text"].lower())
+        self.assertEqual(workbench["claims_summary"]["continuity_aligned_claim_count"], 1)
+        self.assertEqual(workbench["claims_summary"]["claims_with_active_governed_continuity_count"], 1)
+        self.assertIn("active governed continuity", workbench["claims_summary"]["read_across_summary_text"].lower())
         self.assertEqual(workbench["experiment_request_summary"]["request_count"], 1)
         self.assertEqual(workbench["experiment_request_refs"][0]["experiment_request_id"], "expreq_1")
         self.assertEqual(workbench["experiment_request_refs"][0]["requested_measurement"], "pIC50")
@@ -512,10 +632,22 @@ class DiscoveryWorkbenchTest(unittest.TestCase):
         self.assertEqual(workbench["experiment_result_refs"][0]["experiment_result_id"], "expres_1")
         self.assertEqual(workbench["experiment_result_refs"][0]["result_quality"], "confirmatory")
         self.assertEqual(workbench["belief_update_summary"]["update_count"], 1)
+        self.assertEqual(workbench["belief_update_summary"]["active_count"], 1)
         self.assertEqual(workbench["belief_update_refs"][0]["belief_update_id"], "belief_1")
         self.assertEqual(workbench["belief_update_refs"][0]["update_direction"], "strengthened")
+        self.assertEqual(workbench["belief_update_refs"][0]["chronology_label"], "Current proposed support change")
+        self.assertEqual(workbench["belief_update_refs"][0]["support_input_quality_label"], "Cautious interpretation basis")
+        self.assertEqual(workbench["session_support_role_label"], "Contributed current support")
+        self.assertIn("active target-scoped picture", workbench["session_support_role_summary"].lower())
+        self.assertEqual(workbench["belief_update_summary"]["chronology_mix_label"], "Current support only")
         self.assertEqual(workbench["belief_state_summary"]["active_claim_count"], 1)
+        self.assertIn("active claim-linked support change", workbench["belief_state_summary"]["chronology_summary_text"].lower())
         self.assertEqual(workbench["belief_state_ref"]["belief_state_id"], "beliefstate_1")
+        self.assertEqual(workbench["belief_state_alignment_label"], "Partial alignment")
+        self.assertIn("mostly proposed", workbench["belief_state_alignment_summary"])
+        self.assertEqual(workbench["scientific_decision_summary"]["decision_status_label"], "Active governed follow-up basis")
+        self.assertEqual(workbench["scientific_decision_summary"]["next_step_label"], "Bounded follow-up is reasonable now")
+        self.assertEqual(workbench["scientific_decision_summary"]["result_state_label"], "Observed results recorded")
 
     def test_build_discovery_workbench_reports_contract_error_for_missing_required_fields(self):
         invalid_decision_output = {

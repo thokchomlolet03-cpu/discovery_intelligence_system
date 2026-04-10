@@ -7,6 +7,8 @@ from system.db import ensure_database_ready, reset_database_state
 from system.services.claim_service import create_session_claims
 from system.services.experiment_request_service import (
     create_session_experiment_requests,
+    experiment_request_refs_from_records,
+    experiment_request_summary_from_records,
     list_session_experiment_requests,
 )
 from system.services.scientific_session_truth_service import build_scientific_session_truth
@@ -163,6 +165,57 @@ class ExperimentRequestServiceTest(unittest.TestCase):
         self.assertEqual(truth["experiment_request_summary"]["request_count"], 1)
         self.assertIn("recommend next experiments", truth["experiment_request_summary"]["summary_text"].lower())
         self.assertEqual(truth["experiment_request_refs"][0]["candidate_id"], "cand_1")
+
+    def test_experiment_request_refs_capture_confirmatory_vs_historical_follow_up_intent(self):
+        requests = [
+            {
+                "experiment_request_id": "req_1",
+                "claim_id": "claim_1",
+                "candidate_id": "cand_1",
+                "candidate_reference": {"candidate_label": "cand_1 (CCO)"},
+                "requested_measurement": "pIC50",
+                "requested_direction": "measure for higher values",
+                "priority_tier": "high",
+                "status": "proposed",
+                "requested_at": "2026-04-08T10:00:00+00:00",
+            },
+            {
+                "experiment_request_id": "req_2",
+                "claim_id": "claim_2",
+                "candidate_id": "cand_2",
+                "candidate_reference": {"candidate_label": "cand_2 (CCN)"},
+                "requested_measurement": "pIC50",
+                "requested_direction": "measure for higher values",
+                "priority_tier": "medium",
+                "status": "proposed",
+                "requested_at": "2026-04-08T10:00:00+00:00",
+            },
+        ]
+        claim_refs = {
+            "claim_1": {
+                "claim_actionability_label": "Action-ready from current active support",
+                "claim_next_step_label": "Follow-up experiment is reasonable now",
+            },
+            "claim_2": {
+                "claim_actionability_label": "Historically interesting, not currently action-ready",
+                "claim_historical_interest_only_flag": True,
+                "claim_next_step_label": "Historically interesting, gather fresh evidence first",
+            },
+        }
+
+        refs = experiment_request_refs_from_records(requests, claim_refs_by_id=claim_refs)
+        summary = experiment_request_summary_from_records(requests, claim_refs_by_id=claim_refs)
+
+        self.assertEqual(refs[0]["request_intent_label"], "Confirmatory follow-up")
+        self.assertEqual(refs[0]["request_basis_label"], "Current active support")
+        self.assertIn("current active governed support", refs[0]["request_guidance_summary"].lower())
+        self.assertEqual(refs[1]["request_intent_label"], "Fresh-evidence follow-up")
+        self.assertEqual(refs[1]["request_basis_label"], "Historical interest only")
+        self.assertIn("historically interesting claim", refs[1]["request_guidance_summary"].lower())
+        self.assertEqual(summary["confirmatory_request_count"], 1)
+        self.assertEqual(summary["fresh_evidence_request_count"], 1)
+        self.assertIn("confirmatory", summary["summary_text"].lower())
+        self.assertIn("fresh-evidence", summary["summary_text"].lower())
 
 
 if __name__ == "__main__":

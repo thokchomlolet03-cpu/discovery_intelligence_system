@@ -16,6 +16,7 @@ from system.db import ensure_database_ready, reset_database_state
 from system.db.repositories import ArtifactRepository, SessionRepository, UserRepository, WorkspaceRepository
 from system.job_manager import DatabaseJobStore, JobManager
 from system.review_manager import latest_review_map, record_review_action, review_history_map
+from system.services.belief_update_service import list_session_belief_updates
 from system.services.claim_service import create_session_claims
 from system.services.experiment_result_service import list_session_experiment_results
 from system.services.experiment_request_service import create_session_experiment_requests, list_session_experiment_requests
@@ -961,16 +962,139 @@ class JobRouteTest(DatabaseBackedTestCase):
         self.assertIn("Belief Updates", discovery_response.text)
         self.assertIn("Current Belief State", discovery_response.text)
         self.assertIn("support unresolved", discovery_response.text.lower())
+        self.assertIn("Active governed support", discovery_response.text)
+        self.assertIn("No prior claim context", discovery_response.text)
 
         dashboard_response = self.client.get(f"/dashboard?session_id={session_id}")
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertIn("Belief updates", dashboard_response.text)
         self.assertIn("Current belief state", dashboard_response.text)
+        self.assertIn("Contributed current support", dashboard_response.text)
+        self.assertIn("Claim chronology", dashboard_response.text)
+        self.assertIn("No strong prior target-scoped claim context", dashboard_response.text)
 
         sessions_response = self.client.get(f"/sessions?session_id={session_id}")
         self.assertEqual(sessions_response.status_code, 200)
         self.assertIn("Belief updates", sessions_response.text)
         self.assertIn("Current belief state", sessions_response.text)
+        self.assertIn("Contributed current support", sessions_response.text)
+        self.assertIn("Active governed support", sessions_response.text)
+
+    def test_belief_update_governance_routes_refresh_current_support_picture(self):
+        session_id = "session_belief_governance"
+        SessionRepository().upsert_session(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            created_by_user_id=self.user["user_id"],
+            source_name="belief_governance.csv",
+            input_type="measurement_dataset",
+            summary_metadata={"last_job_status": "succeeded"},
+        )
+        self._store_ready_session_artifacts(session_id)
+        decision_payload = json.loads((Path(self.tmpdir.name) / session_id / "decision_output.json").read_text())
+        scientific_truth_seed = {
+            "session_id": session_id,
+            "target_definition": {
+                "target_name": "pIC50",
+                "target_kind": "regression",
+                "optimization_direction": "maximize",
+                "measurement_column": "pic50",
+                "measurement_unit": "log units",
+                "dataset_type": "measurement_dataset",
+                "mapping_confidence": "medium",
+            },
+            "evidence_loop": {
+                "active_modeling_evidence": ["Observed experimental values"],
+                "active_ranking_evidence": ["Model predictions"],
+            },
+        }
+        claims = create_session_claims(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            decision_payload=decision_payload,
+            scientific_truth=scientific_truth_seed,
+            created_by_user_id=self.user["user_id"],
+        )
+        create_session_experiment_requests(
+            session_id=session_id,
+            workspace_id=self.workspace["workspace_id"],
+            claims=claims,
+            decision_payload=decision_payload,
+            requested_by_user_id=self.user["user_id"],
+        )
+        experiment_request = list_session_experiment_requests(session_id, workspace_id=self.workspace["workspace_id"])[0]
+
+        result_response = self.client.post(
+            "/experiment-results",
+            data={
+                "session_id": session_id,
+                "csrf_token": self._authenticated_csrf(f"/discovery?session_id={session_id}"),
+                "source_experiment_request_id": experiment_request["experiment_request_id"],
+                "observed_label": "positive",
+                "measurement_unit": "log units",
+                "result_quality": "confirmatory",
+                "next": f"/discovery?session_id={session_id}",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(result_response.status_code, 303)
+        experiment_result = list_session_experiment_results(session_id, workspace_id=self.workspace["workspace_id"])[0]
+        belief_response = self.client.post(
+            "/belief-updates",
+            data={
+                "session_id": session_id,
+                "csrf_token": self._authenticated_csrf(f"/discovery?session_id={session_id}"),
+                "experiment_result_id": experiment_result["experiment_result_id"],
+                "next": f"/discovery?session_id={session_id}",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(belief_response.status_code, 303)
+        belief_update = list_session_belief_updates(session_id, workspace_id=self.workspace["workspace_id"])[0]
+        self.assertEqual(belief_update["governance_status"], "proposed")
+
+        accept_response = self.client.post(
+            f"/belief-updates/{belief_update['belief_update_id']}/accept",
+            data={
+                "session_id": session_id,
+                "csrf_token": self._authenticated_csrf(f"/discovery?session_id={session_id}"),
+                "next": f"/discovery?session_id={session_id}",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(accept_response.status_code, 303)
+        accepted = list_session_belief_updates(session_id, workspace_id=self.workspace["workspace_id"])[0]
+        self.assertEqual(accepted["governance_status"], "accepted")
+
+        discovery_response = self.client.get(f"/discovery?session_id={session_id}")
+        self.assertEqual(discovery_response.status_code, 200)
+        self.assertIn("1 active / 0 superseded / 0 rejected", discovery_response.text.lower())
+        self.assertIn("Mostly accepted", discovery_response.text)
+        self.assertIn("Contributed current support", discovery_response.text)
+        self.assertIn("Active governed support", discovery_response.text)
+        self.assertIn("No prior claim context", discovery_response.text)
+
+        supersede_response = self.client.post(
+            f"/belief-updates/{belief_update['belief_update_id']}/supersede",
+            data={
+                "session_id": session_id,
+                "csrf_token": self._authenticated_csrf(f"/discovery?session_id={session_id}"),
+                "supersede_reason": "Newer governed support change replaced this one.",
+                "next": f"/sessions?session_id={session_id}",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(supersede_response.status_code, 303)
+        superseded = list_session_belief_updates(session_id, workspace_id=self.workspace["workspace_id"])[0]
+        self.assertEqual(superseded["governance_status"], "superseded")
+
+        sessions_response = self.client.get(f"/sessions?session_id={session_id}")
+        self.assertEqual(sessions_response.status_code, 200)
+        self.assertIn("active 0, superseded 1, rejected 0", sessions_response.text.lower())
+        self.assertIn("Historical superseded support change recorded", sessions_response.text)
+        self.assertIn("Contributed historical support", sessions_response.text)
+        self.assertIn("Historical support only", sessions_response.text)
+        self.assertIn("No prior claim context", sessions_response.text)
 
     def test_discovery_page_surfaces_prior_workspace_feedback_memory(self):
         current_session_id = "session_current"

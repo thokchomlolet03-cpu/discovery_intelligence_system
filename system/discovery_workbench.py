@@ -6,7 +6,9 @@ from typing import Any
 
 from system.contracts import ContractValidationError, validate_decision_artifact, validate_review_event_record
 from system.review_manager import STATUS_ORDER, normalize_status
+from system.services.belief_update_service import support_role_from_belief_update_summary
 from system.services.run_metadata_service import build_run_provenance
+from system.services.scientific_decision_service import build_scientific_decision_summary
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context
 from system.services.workspace_feedback_service import build_candidate_controlled_reuse
 from system.session_report import ranking_policy as build_ranking_policy
@@ -1520,6 +1522,21 @@ def build_discovery_workbench(
         [candidate.get("reviewed_at") for candidate in candidates if candidate.get("reviewed_at")],
         default="",
     )
+    belief_update_summary = (
+        scientific_truth.get("belief_update_summary")
+        if isinstance(scientific_truth.get("belief_update_summary"), dict)
+        else {}
+    )
+    session_support_role_label, session_support_role_summary = support_role_from_belief_update_summary(
+        belief_update_summary
+    )
+    scientific_decision_summary = (
+        scientific_truth.get("scientific_decision_summary")
+        if isinstance(scientific_truth.get("scientific_decision_summary"), dict)
+        else {}
+    )
+    if not scientific_decision_summary and scientific_truth:
+        scientific_decision_summary = build_scientific_decision_summary(scientific_truth)
 
     return {
         "state": state,
@@ -1545,15 +1562,18 @@ def build_discovery_workbench(
         "belief_update_refs": list(scientific_truth.get("belief_update_refs") or [])
         if isinstance(scientific_truth.get("belief_update_refs"), list)
         else [],
-        "belief_update_summary": scientific_truth.get("belief_update_summary")
-        if isinstance(scientific_truth.get("belief_update_summary"), dict)
-        else {},
+        "belief_update_summary": belief_update_summary,
         "belief_state_ref": scientific_truth.get("belief_state_ref")
         if isinstance(scientific_truth.get("belief_state_ref"), dict)
         else {},
         "belief_state_summary": scientific_truth.get("belief_state_summary")
         if isinstance(scientific_truth.get("belief_state_summary"), dict)
         else {},
+        "scientific_decision_summary": scientific_decision_summary,
+        "belief_state_alignment_label": str(scientific_truth.get("belief_state_alignment_label") or "").strip(),
+        "belief_state_alignment_summary": str(scientific_truth.get("belief_state_alignment_summary") or "").strip(),
+        "session_support_role_label": session_support_role_label,
+        "session_support_role_summary": session_support_role_summary,
         "run_contract": validated_output.get("run_contract") or analysis_payload.get("run_contract") or {},
         "comparison_anchors": validated_output.get("comparison_anchors") or analysis_payload.get("comparison_anchors") or {},
         "run_provenance": build_run_provenance(

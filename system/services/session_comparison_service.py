@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from system.services.run_metadata_service import comparison_anchor_summary
+from system.services.belief_update_service import support_role_from_belief_update_summary
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -72,6 +73,17 @@ def _review_summary(session: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
+def _claims_summary(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    summary = truth.get("claims_summary") if isinstance(truth.get("claims_summary"), dict) else {}
+    return summary
+
+
+def _claims_read_across_summary(session: dict[str, Any]) -> str:
+    summary = _claims_summary(session)
+    return _clean_text(summary.get("read_across_summary_text"))
+
+
 def _evidence_activation_policy(session: dict[str, Any]) -> dict[str, Any]:
     truth = _scientific_truth(session)
     policy = truth.get("evidence_activation_policy") if isinstance(truth.get("evidence_activation_policy"), dict) else {}
@@ -90,6 +102,37 @@ def _controlled_reuse(session: dict[str, Any]) -> dict[str, Any]:
         return controlled_reuse
     reuse = session.get("controlled_reuse") if isinstance(session.get("controlled_reuse"), dict) else {}
     return reuse
+
+
+def _belief_state_summary(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    summary = truth.get("belief_state_summary") if isinstance(truth.get("belief_state_summary"), dict) else {}
+    return summary
+
+
+def _belief_update_summary(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    summary = truth.get("belief_update_summary") if isinstance(truth.get("belief_update_summary"), dict) else {}
+    return summary
+
+
+def _scientific_decision_summary(session: dict[str, Any]) -> dict[str, Any]:
+    truth = _scientific_truth(session)
+    summary = truth.get("scientific_decision_summary") if isinstance(truth.get("scientific_decision_summary"), dict) else {}
+    if summary:
+        return summary
+    fallback = session.get("scientific_decision_summary") if isinstance(session.get("scientific_decision_summary"), dict) else {}
+    return fallback
+
+
+def _belief_state_alignment_label(session: dict[str, Any]) -> str:
+    truth = _scientific_truth(session)
+    return _clean_text(truth.get("belief_state_alignment_label") or session.get("belief_state_alignment_label"))
+
+
+def _belief_state_alignment_summary(session: dict[str, Any]) -> str:
+    truth = _scientific_truth(session)
+    return _clean_text(truth.get("belief_state_alignment_summary") or session.get("belief_state_alignment_summary"))
 
 
 def _basis_source_label(session: dict[str, Any]) -> str:
@@ -205,6 +248,65 @@ def _controlled_reuse_summary(session: dict[str, Any]) -> str:
     ]
     summary = " ".join(part for part in parts if part)
     return summary or "No controlled evidence reuse is recorded."
+
+
+def _belief_state_strength_summary(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("belief_state_strength_summary"))
+
+
+def _belief_state_readiness_summary(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("belief_state_readiness_summary"))
+
+
+def _belief_state_support_quality_label(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("support_quality_label"))
+
+
+def _belief_state_support_quality_summary(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("support_quality_summary"))
+
+
+def _belief_state_governed_support_posture_label(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("governed_support_posture_label"))
+
+
+def _belief_state_governed_support_posture_summary(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("governed_support_posture_summary"))
+
+
+def _belief_state_governance_label(session: dict[str, Any]) -> str:
+    summary = _belief_state_summary(session)
+    return _clean_text(summary.get("governance_mix_label"), default="Not recorded")
+
+
+def _session_support_role(session: dict[str, Any]) -> tuple[str, str]:
+    return support_role_from_belief_update_summary(_belief_update_summary(session))
+
+
+def _belief_update_support_quality_label(session: dict[str, Any]) -> str:
+    summary = _belief_update_summary(session)
+    return _clean_text(summary.get("support_quality_label"))
+
+
+def _belief_update_support_quality_summary(session: dict[str, Any]) -> str:
+    summary = _belief_update_summary(session)
+    return _clean_text(summary.get("support_quality_summary"))
+
+
+def _belief_update_governed_support_posture_label(session: dict[str, Any]) -> str:
+    summary = _belief_update_summary(session)
+    return _clean_text(summary.get("governed_support_posture_label"))
+
+
+def _belief_update_governed_support_posture_summary(session: dict[str, Any]) -> str:
+    summary = _belief_update_summary(session)
+    return _clean_text(summary.get("governed_support_posture_summary"))
 
 
 def _comparison_rank(status: str) -> int:
@@ -413,6 +515,18 @@ def compare_session_basis(
     candidate_bridge_state = _bridge_state_notes(candidate_session)
     focus_controlled_reuse = _controlled_reuse(focus_session)
     candidate_controlled_reuse = _controlled_reuse(candidate_session)
+    focus_claims = _claims_summary(focus_session)
+    candidate_claims = _claims_summary(candidate_session)
+    focus_belief_state = _belief_state_summary(focus_session)
+    candidate_belief_state = _belief_state_summary(candidate_session)
+    focus_decision_summary = _scientific_decision_summary(focus_session)
+    candidate_decision_summary = _scientific_decision_summary(candidate_session)
+    focus_support_role_label, focus_support_role_summary = _session_support_role(focus_session)
+    candidate_support_role_label, candidate_support_role_summary = _session_support_role(candidate_session)
+    focus_belief_alignment_label = _belief_state_alignment_label(focus_session)
+    candidate_belief_alignment_label = _belief_state_alignment_label(candidate_session)
+    focus_belief_alignment_summary = _belief_state_alignment_summary(focus_session)
+    candidate_belief_alignment_summary = _belief_state_alignment_summary(candidate_session)
 
     matches: list[str] = []
     differences: list[str] = []
@@ -651,6 +765,668 @@ def compare_session_basis(
                 f"Recorded review state differs: {focus_review_total} saved review outcome(s) vs {candidate_review_total}."
             )
 
+    focus_active_claims = int(focus_belief_state.get("active_claim_count") or 0)
+    candidate_active_claims = int(candidate_belief_state.get("active_claim_count") or 0)
+    focus_accepted_updates = int(focus_belief_state.get("accepted_update_count") or 0)
+    candidate_accepted_updates = int(candidate_belief_state.get("accepted_update_count") or 0)
+    focus_proposed_updates = int(focus_belief_state.get("proposed_update_count") or 0)
+    candidate_proposed_updates = int(candidate_belief_state.get("proposed_update_count") or 0)
+    focus_superseded_updates = int(focus_belief_state.get("superseded_update_count") or 0)
+    candidate_superseded_updates = int(candidate_belief_state.get("superseded_update_count") or 0)
+    if focus_active_claims or candidate_active_claims:
+        if focus_active_claims != candidate_active_claims:
+            cautions.append(
+                f"Tracked belief-state coverage differs: {focus_active_claims} active claim(s) vs {candidate_active_claims}."
+            )
+        if focus_accepted_updates != candidate_accepted_updates or focus_proposed_updates != candidate_proposed_updates:
+            cautions.append(
+                "Belief-state governance differs: "
+                f"{focus_accepted_updates} accepted / {focus_proposed_updates} proposed vs "
+                f"{candidate_accepted_updates} accepted / {candidate_proposed_updates} proposed."
+            )
+        if focus_superseded_updates != candidate_superseded_updates:
+            cautions.append(
+                "Belief-state chronology differs: "
+                f"{focus_superseded_updates} superseded support change(s) vs {candidate_superseded_updates}."
+            )
+        focus_belief_state_basis_label = _clean_text(focus_belief_state.get("support_basis_mix_label"))
+        candidate_belief_state_basis_label = _clean_text(candidate_belief_state.get("support_basis_mix_label"))
+        if focus_belief_state_basis_label != candidate_belief_state_basis_label:
+            cautions.append(
+                "Belief-state support basis differs: "
+                f"{(focus_belief_state_basis_label or 'not recorded').lower()} vs {(candidate_belief_state_basis_label or 'not recorded').lower()}."
+            )
+
+    focus_belief_updates = _belief_update_summary(focus_session)
+    candidate_belief_updates = _belief_update_summary(candidate_session)
+    focus_active_updates = int(focus_belief_updates.get("active_count") or 0)
+    candidate_active_updates = int(candidate_belief_updates.get("active_count") or 0)
+    focus_historical_updates = int(focus_belief_updates.get("historical_count") or 0)
+    candidate_historical_updates = int(candidate_belief_updates.get("historical_count") or 0)
+    if focus_active_updates != candidate_active_updates:
+        cautions.append(
+            f"Current support-change coverage differs: {focus_active_updates} active belief update(s) vs {candidate_active_updates}."
+        )
+    if focus_historical_updates != candidate_historical_updates:
+        differences.append(
+            f"Historical support-change depth differs: {focus_historical_updates} historical record(s) vs {candidate_historical_updates}."
+        )
+    focus_update_basis_label = _clean_text(focus_belief_updates.get("support_basis_mix_label"))
+    candidate_update_basis_label = _clean_text(candidate_belief_updates.get("support_basis_mix_label"))
+    if focus_update_basis_label != candidate_update_basis_label:
+        cautions.append(
+            "Session support basis differs: "
+            f"{(focus_update_basis_label or 'not recorded').lower()} vs {(candidate_update_basis_label or 'not recorded').lower()}."
+        )
+    focus_update_support_quality_label = _clean_text(focus_belief_updates.get("support_quality_label"))
+    candidate_update_support_quality_label = _clean_text(candidate_belief_updates.get("support_quality_label"))
+    if focus_update_support_quality_label != candidate_update_support_quality_label:
+        cautions.append(
+            "Current support quality differs: "
+            f"{(focus_update_support_quality_label or 'not recorded').lower()} vs {(candidate_update_support_quality_label or 'not recorded').lower()}."
+        )
+    focus_update_governed_posture_label = _clean_text(focus_belief_updates.get("governed_support_posture_label"))
+    candidate_update_governed_posture_label = _clean_text(candidate_belief_updates.get("governed_support_posture_label"))
+    if focus_update_governed_posture_label != candidate_update_governed_posture_label:
+        differences.append(
+            "Governed support posture differs: "
+            f"{(focus_update_governed_posture_label or 'not recorded').lower()} vs {(candidate_update_governed_posture_label or 'not recorded').lower()}."
+        )
+    focus_update_support_coherence_label = _clean_text(focus_belief_updates.get("support_coherence_label"))
+    candidate_update_support_coherence_label = _clean_text(candidate_belief_updates.get("support_coherence_label"))
+    if focus_update_support_coherence_label != candidate_update_support_coherence_label:
+        cautions.append(
+            "Support coherence differs: "
+            f"{(focus_update_support_coherence_label or 'not recorded').lower()} vs {(candidate_update_support_coherence_label or 'not recorded').lower()}."
+        )
+    focus_update_support_reuse_label = _clean_text(focus_belief_updates.get("support_reuse_label"))
+    candidate_update_support_reuse_label = _clean_text(candidate_belief_updates.get("support_reuse_label"))
+    if focus_update_support_reuse_label != candidate_update_support_reuse_label:
+        cautions.append(
+            "Support reuse differs: "
+            f"{(focus_update_support_reuse_label or 'not recorded').lower()} vs {(candidate_update_support_reuse_label or 'not recorded').lower()}."
+        )
+    focus_claims_active_support = int(focus_claims.get("claims_with_active_support_count") or 0)
+    candidate_claims_active_support = int(candidate_claims.get("claims_with_active_support_count") or 0)
+    focus_claims_historical_only = int(focus_claims.get("claims_with_historical_support_only_count") or 0)
+    candidate_claims_historical_only = int(candidate_claims.get("claims_with_historical_support_only_count") or 0)
+    focus_claims_no_governed_support = int(focus_claims.get("claims_with_no_governed_support_count") or 0)
+    candidate_claims_no_governed_support = int(candidate_claims.get("claims_with_no_governed_support_count") or 0)
+    focus_claims_continuity_aligned = int(focus_claims.get("continuity_aligned_claim_count") or 0)
+    candidate_claims_continuity_aligned = int(candidate_claims.get("continuity_aligned_claim_count") or 0)
+    focus_claims_new_context = int(focus_claims.get("new_claim_context_count") or 0)
+    candidate_claims_new_context = int(candidate_claims.get("new_claim_context_count") or 0)
+    focus_claims_weak_alignment = int(focus_claims.get("weak_prior_alignment_count") or 0)
+    candidate_claims_weak_alignment = int(candidate_claims.get("weak_prior_alignment_count") or 0)
+    focus_claims_no_prior_context = int(focus_claims.get("no_prior_claim_context_count") or 0)
+    candidate_claims_no_prior_context = int(candidate_claims.get("no_prior_claim_context_count") or 0)
+    focus_claims_active_governed_continuity = int(focus_claims.get("claims_with_active_governed_continuity_count") or 0)
+    candidate_claims_active_governed_continuity = int(
+        candidate_claims.get("claims_with_active_governed_continuity_count") or 0
+    )
+    focus_claims_tentative_active_continuity = int(
+        focus_claims.get("claims_with_tentative_active_continuity_count") or 0
+    )
+    candidate_claims_tentative_active_continuity = int(
+        candidate_claims.get("claims_with_tentative_active_continuity_count") or 0
+    )
+    focus_claims_historical_continuity_only = int(
+        focus_claims.get("claims_with_historical_continuity_only_count") or 0
+    )
+    candidate_claims_historical_continuity_only = int(
+        candidate_claims.get("claims_with_historical_continuity_only_count") or 0
+    )
+    focus_claims_sparse_prior_context = int(focus_claims.get("claims_with_sparse_prior_context_count") or 0)
+    candidate_claims_sparse_prior_context = int(candidate_claims.get("claims_with_sparse_prior_context_count") or 0)
+    focus_claims_no_useful_prior_context = int(
+        focus_claims.get("claims_with_no_useful_prior_context_count") or 0
+    )
+    candidate_claims_no_useful_prior_context = int(
+        candidate_claims.get("claims_with_no_useful_prior_context_count") or 0
+    )
+    focus_claims_observed_grounded = int(focus_claims.get("claims_mostly_observed_label_grounded_count") or 0)
+    candidate_claims_observed_grounded = int(candidate_claims.get("claims_mostly_observed_label_grounded_count") or 0)
+    focus_claims_numeric_grounded = int(focus_claims.get("claims_with_numeric_rule_based_support_count") or 0)
+    candidate_claims_numeric_grounded = int(candidate_claims.get("claims_with_numeric_rule_based_support_count") or 0)
+    focus_claims_weak_basis = int(focus_claims.get("claims_with_weak_basis_support_count") or 0)
+    candidate_claims_weak_basis = int(candidate_claims.get("claims_with_weak_basis_support_count") or 0)
+    focus_claims_mixed_basis = int(focus_claims.get("claims_with_mixed_support_basis_count") or 0)
+    candidate_claims_mixed_basis = int(candidate_claims.get("claims_with_mixed_support_basis_count") or 0)
+    focus_claims_posture_governing = int(focus_claims.get("claims_with_posture_governing_support_count") or 0)
+    candidate_claims_posture_governing = int(candidate_claims.get("claims_with_posture_governing_support_count") or 0)
+    focus_claims_tentative_support = int(focus_claims.get("claims_with_tentative_current_support_count") or 0)
+    candidate_claims_tentative_support = int(candidate_claims.get("claims_with_tentative_current_support_count") or 0)
+    focus_claims_accepted_limited_support = int(focus_claims.get("claims_with_accepted_limited_support_count") or 0)
+    candidate_claims_accepted_limited_support = int(candidate_claims.get("claims_with_accepted_limited_support_count") or 0)
+    focus_claims_contested_support = int(focus_claims.get("claims_with_contested_current_support_count") or 0)
+    candidate_claims_contested_support = int(candidate_claims.get("claims_with_contested_current_support_count") or 0)
+    focus_claims_degraded_support = int(focus_claims.get("claims_with_degraded_current_posture_count") or 0)
+    candidate_claims_degraded_support = int(candidate_claims.get("claims_with_degraded_current_posture_count") or 0)
+    focus_claims_historical_stronger = int(focus_claims.get("claims_with_historical_stronger_than_current_count") or 0)
+    candidate_claims_historical_stronger = int(candidate_claims.get("claims_with_historical_stronger_than_current_count") or 0)
+    focus_claims_contradiction_limited_reuse = int(
+        focus_claims.get("claims_with_contradiction_limited_reuse_count") or 0
+    )
+    candidate_claims_contradiction_limited_reuse = int(
+        candidate_claims.get("claims_with_contradiction_limited_reuse_count") or 0
+    )
+    focus_claims_action_ready = int(focus_claims.get("claims_action_ready_follow_up_count") or 0)
+    candidate_claims_action_ready = int(candidate_claims.get("claims_action_ready_follow_up_count") or 0)
+    focus_claims_need_stronger_evidence = int(
+        focus_claims.get("claims_promising_but_need_stronger_evidence_count") or 0
+    )
+    candidate_claims_need_stronger_evidence = int(
+        candidate_claims.get("claims_promising_but_need_stronger_evidence_count") or 0
+    )
+    focus_claims_need_clarifying_experiment = int(
+        focus_claims.get("claims_need_clarifying_experiment_count") or 0
+    )
+    candidate_claims_need_clarifying_experiment = int(
+        candidate_claims.get("claims_need_clarifying_experiment_count") or 0
+    )
+    focus_claims_do_not_prioritize = int(focus_claims.get("claims_do_not_prioritize_yet_count") or 0)
+    candidate_claims_do_not_prioritize = int(candidate_claims.get("claims_do_not_prioritize_yet_count") or 0)
+    focus_claims_insufficient_basis = int(focus_claims.get("claims_with_insufficient_governed_basis_count") or 0)
+    candidate_claims_insufficient_basis = int(
+        candidate_claims.get("claims_with_insufficient_governed_basis_count") or 0
+    )
+    focus_claims_action_ready_from_active = int(
+        focus_claims.get("claims_action_ready_from_active_support_count") or 0
+    )
+    candidate_claims_action_ready_from_active = int(
+        candidate_claims.get("claims_action_ready_from_active_support_count") or 0
+    )
+    focus_claims_active_limited = int(
+        focus_claims.get("claims_with_active_but_limited_actionability_count") or 0
+    )
+    candidate_claims_active_limited = int(
+        candidate_claims.get("claims_with_active_but_limited_actionability_count") or 0
+    )
+    focus_claims_historically_interesting = int(
+        focus_claims.get("claims_historically_interesting_count") or 0
+    )
+    candidate_claims_historically_interesting = int(
+        candidate_claims.get("claims_historically_interesting_count") or 0
+    )
+    focus_claims_mixed_current_historical = int(
+        focus_claims.get("claims_with_mixed_current_historical_actionability_count") or 0
+    )
+    candidate_claims_mixed_current_historical = int(
+        candidate_claims.get("claims_with_mixed_current_historical_actionability_count") or 0
+    )
+    focus_claims_no_active_actionability = int(
+        focus_claims.get("claims_with_no_active_governed_support_actionability_count") or 0
+    )
+    candidate_claims_no_active_actionability = int(
+        candidate_claims.get("claims_with_no_active_governed_support_actionability_count") or 0
+    )
+    if focus_claims_active_support != candidate_claims_active_support:
+        cautions.append(
+            "Claim-level active support differs: "
+            f"{focus_claims_active_support} claim(s) with active governed support vs {candidate_claims_active_support}."
+        )
+    if focus_claims_historical_only != candidate_claims_historical_only:
+        differences.append(
+            "Claim-level historical support differs: "
+            f"{focus_claims_historical_only} historical-only claim(s) vs {candidate_claims_historical_only}."
+        )
+    if focus_claims_no_governed_support != candidate_claims_no_governed_support:
+        cautions.append(
+            "Claim-level unsupported context differs: "
+            f"{focus_claims_no_governed_support} claim(s) without governed support vs {candidate_claims_no_governed_support}."
+        )
+    if focus_claims_continuity_aligned != candidate_claims_continuity_aligned:
+        cautions.append(
+            "Claim continuity context differs: "
+            f"{focus_claims_continuity_aligned} continuity-aligned claim(s) vs {candidate_claims_continuity_aligned}."
+        )
+    if focus_claims_active_governed_continuity != candidate_claims_active_governed_continuity:
+        cautions.append(
+            "Claim posture-governing continuity differs: "
+            f"{focus_claims_active_governed_continuity} claim(s) vs {candidate_claims_active_governed_continuity}."
+        )
+    if focus_claims_tentative_active_continuity != candidate_claims_tentative_active_continuity:
+        cautions.append(
+            "Claim tentative-active continuity differs: "
+            f"{focus_claims_tentative_active_continuity} claim(s) vs {candidate_claims_tentative_active_continuity}."
+        )
+    if focus_claims_historical_continuity_only != candidate_claims_historical_continuity_only:
+        differences.append(
+            "Claim historical-only continuity differs: "
+            f"{focus_claims_historical_continuity_only} claim(s) vs {candidate_claims_historical_continuity_only}."
+        )
+    if focus_claims_new_context != candidate_claims_new_context:
+        differences.append(
+            "Claim new-context coverage differs: "
+            f"{focus_claims_new_context} new-context claim(s) vs {candidate_claims_new_context}."
+        )
+    if focus_claims_weak_alignment != candidate_claims_weak_alignment:
+        cautions.append(
+            "Claim weak-alignment context differs: "
+            f"{focus_claims_weak_alignment} weakly aligned claim(s) vs {candidate_claims_weak_alignment}."
+        )
+    if focus_claims_no_prior_context != candidate_claims_no_prior_context:
+        cautions.append(
+            "Claim prior-context coverage differs: "
+            f"{focus_claims_no_prior_context} claim(s) with no prior context vs {candidate_claims_no_prior_context}."
+        )
+    if focus_claims_sparse_prior_context != candidate_claims_sparse_prior_context:
+        cautions.append(
+            "Claim sparse-prior-context coverage differs: "
+            f"{focus_claims_sparse_prior_context} claim(s) vs {candidate_claims_sparse_prior_context}."
+        )
+    if focus_claims_no_useful_prior_context != candidate_claims_no_useful_prior_context:
+        cautions.append(
+            "Claim useful-prior-context coverage differs: "
+            f"{focus_claims_no_useful_prior_context} claim(s) with no useful prior context vs {candidate_claims_no_useful_prior_context}."
+        )
+    if (
+        focus_claims_observed_grounded != candidate_claims_observed_grounded
+        or focus_claims_numeric_grounded != candidate_claims_numeric_grounded
+        or focus_claims_weak_basis != candidate_claims_weak_basis
+        or focus_claims_mixed_basis != candidate_claims_mixed_basis
+        or focus_claims_posture_governing != candidate_claims_posture_governing
+        or focus_claims_tentative_support != candidate_claims_tentative_support
+        or focus_claims_accepted_limited_support != candidate_claims_accepted_limited_support
+    ):
+        cautions.append(
+            "Claim support-basis composition differs: "
+            f"{focus_claims_observed_grounded} observed-label-grounded / {focus_claims_numeric_grounded} numeric-rule / "
+            f"{focus_claims_weak_basis} weak-basis / {focus_claims_mixed_basis} mixed / "
+            f"{focus_claims_posture_governing} posture-governing / {focus_claims_tentative_support} tentative / "
+            f"{focus_claims_accepted_limited_support} accepted-limited vs "
+            f"{candidate_claims_observed_grounded} / {candidate_claims_numeric_grounded} / "
+            f"{candidate_claims_weak_basis} / {candidate_claims_mixed_basis} / "
+            f"{candidate_claims_posture_governing} / {candidate_claims_tentative_support} / "
+            f"{candidate_claims_accepted_limited_support}."
+        )
+    if (
+        focus_claims_contested_support != candidate_claims_contested_support
+        or focus_claims_degraded_support != candidate_claims_degraded_support
+        or focus_claims_historical_stronger != candidate_claims_historical_stronger
+        or focus_claims_contradiction_limited_reuse != candidate_claims_contradiction_limited_reuse
+    ):
+        cautions.append(
+            "Claim contradiction and reuse posture differs: "
+            f"{focus_claims_contested_support} contested / {focus_claims_degraded_support} degraded / "
+            f"{focus_claims_historical_stronger} historical-stronger / {focus_claims_contradiction_limited_reuse} contradiction-limited-reuse vs "
+            f"{candidate_claims_contested_support} / {candidate_claims_degraded_support} / "
+            f"{candidate_claims_historical_stronger} / {candidate_claims_contradiction_limited_reuse}."
+        )
+    if (
+        focus_claims_action_ready != candidate_claims_action_ready
+        or focus_claims_need_stronger_evidence != candidate_claims_need_stronger_evidence
+        or focus_claims_need_clarifying_experiment != candidate_claims_need_clarifying_experiment
+        or focus_claims_do_not_prioritize != candidate_claims_do_not_prioritize
+        or focus_claims_insufficient_basis != candidate_claims_insufficient_basis
+    ):
+        cautions.append(
+            "Claim actionability differs: "
+            f"{focus_claims_action_ready} action-ready / {focus_claims_need_stronger_evidence} need-stronger-evidence / "
+            f"{focus_claims_need_clarifying_experiment} need-clarification / {focus_claims_do_not_prioritize} do-not-prioritize / "
+            f"{focus_claims_insufficient_basis} insufficient-basis vs "
+            f"{candidate_claims_action_ready} / {candidate_claims_need_stronger_evidence} / "
+            f"{candidate_claims_need_clarifying_experiment} / {candidate_claims_do_not_prioritize} / "
+            f"{candidate_claims_insufficient_basis}."
+        )
+    if (
+        focus_claims_action_ready_from_active != candidate_claims_action_ready_from_active
+        or focus_claims_active_limited != candidate_claims_active_limited
+        or focus_claims_historically_interesting != candidate_claims_historically_interesting
+        or focus_claims_mixed_current_historical != candidate_claims_mixed_current_historical
+        or focus_claims_no_active_actionability != candidate_claims_no_active_actionability
+    ):
+        differences.append(
+            "Claim actionability basis differs: "
+            f"{focus_claims_action_ready_from_active} action-ready-from-active / "
+            f"{focus_claims_active_limited} active-but-limited / "
+            f"{focus_claims_historically_interesting} historical-interest / "
+            f"{focus_claims_mixed_current_historical} mixed-current-historical / "
+            f"{focus_claims_no_active_actionability} no-active-support vs "
+            f"{candidate_claims_action_ready_from_active} / "
+            f"{candidate_claims_active_limited} / "
+            f"{candidate_claims_historically_interesting} / "
+            f"{candidate_claims_mixed_current_historical} / "
+            f"{candidate_claims_no_active_actionability}."
+        )
+    if focus_support_role_label != candidate_support_role_label:
+        cautions.append(
+            "Support chronology role differs: "
+            f"{focus_support_role_label.lower()} vs {candidate_support_role_label.lower()}."
+        )
+    if focus_support_role_summary or candidate_support_role_summary:
+        if focus_support_role_summary != candidate_support_role_summary:
+            differences.append(
+                "Support chronology summary differs: "
+                f"{focus_support_role_summary or 'not recorded'} vs {candidate_support_role_summary or 'not recorded'}."
+            )
+    focus_claims_read_across_summary = _clean_text(focus_claims.get("read_across_summary_text"))
+    candidate_claims_read_across_summary = _clean_text(candidate_claims.get("read_across_summary_text"))
+    if focus_claims_read_across_summary or candidate_claims_read_across_summary:
+        if focus_claims_read_across_summary != candidate_claims_read_across_summary:
+            differences.append(
+                "Claim read-across summary differs: "
+                f"{focus_claims_read_across_summary or 'not recorded'} vs {candidate_claims_read_across_summary or 'not recorded'}."
+            )
+    focus_claims_broader_reuse_label = _clean_text(focus_claims.get("broader_reuse_label"))
+    candidate_claims_broader_reuse_label = _clean_text(candidate_claims.get("broader_reuse_label"))
+    if focus_claims_broader_reuse_label or candidate_claims_broader_reuse_label:
+        if focus_claims_broader_reuse_label != candidate_claims_broader_reuse_label:
+            cautions.append(
+                "Broader claim reuse posture differs: "
+                f"{focus_claims_broader_reuse_label or 'not recorded'} vs {candidate_claims_broader_reuse_label or 'not recorded'}."
+            )
+    focus_claims_broader_continuity_label = _clean_text(focus_claims.get("broader_continuity_label"))
+    candidate_claims_broader_continuity_label = _clean_text(candidate_claims.get("broader_continuity_label"))
+    if focus_claims_broader_continuity_label or candidate_claims_broader_continuity_label:
+        if focus_claims_broader_continuity_label != candidate_claims_broader_continuity_label:
+            cautions.append(
+                "Broader claim continuity differs: "
+                f"{focus_claims_broader_continuity_label or 'not recorded'} vs {candidate_claims_broader_continuity_label or 'not recorded'}."
+            )
+    focus_claims_future_reuse_candidacy_label = _clean_text(focus_claims.get("future_reuse_candidacy_label"))
+    candidate_claims_future_reuse_candidacy_label = _clean_text(candidate_claims.get("future_reuse_candidacy_label"))
+    if focus_claims_future_reuse_candidacy_label or candidate_claims_future_reuse_candidacy_label:
+        if focus_claims_future_reuse_candidacy_label != candidate_claims_future_reuse_candidacy_label:
+            differences.append(
+                "Future broader claim reuse candidacy differs: "
+                f"{focus_claims_future_reuse_candidacy_label or 'not recorded'} vs {candidate_claims_future_reuse_candidacy_label or 'not recorded'}."
+            )
+    focus_claims_cluster_posture_label = _clean_text(focus_claims.get("continuity_cluster_posture_label"))
+    candidate_claims_cluster_posture_label = _clean_text(candidate_claims.get("continuity_cluster_posture_label"))
+    if focus_claims_cluster_posture_label or candidate_claims_cluster_posture_label:
+        if focus_claims_cluster_posture_label != candidate_claims_cluster_posture_label:
+            cautions.append(
+                "Claim-family continuity-cluster posture differs: "
+                f"{focus_claims_cluster_posture_label or 'not recorded'} vs {candidate_claims_cluster_posture_label or 'not recorded'}."
+            )
+    focus_claims_promotion_posture_label = _clean_text(focus_claims.get("promotion_candidate_posture_label"))
+    candidate_claims_promotion_posture_label = _clean_text(candidate_claims.get("promotion_candidate_posture_label"))
+    if focus_claims_promotion_posture_label or candidate_claims_promotion_posture_label:
+        if focus_claims_promotion_posture_label != candidate_claims_promotion_posture_label:
+            differences.append(
+                "Claim-family promotion posture differs: "
+                f"{focus_claims_promotion_posture_label or 'not recorded'} vs {candidate_claims_promotion_posture_label or 'not recorded'}."
+            )
+    focus_claims_promotion_stability_label = _clean_text(focus_claims.get("promotion_stability_label"))
+    candidate_claims_promotion_stability_label = _clean_text(candidate_claims.get("promotion_stability_label"))
+    if focus_claims_promotion_stability_label or candidate_claims_promotion_stability_label:
+        if focus_claims_promotion_stability_label != candidate_claims_promotion_stability_label:
+            cautions.append(
+                "Claim-family promotion stability differs: "
+                f"{focus_claims_promotion_stability_label or 'not recorded'} vs {candidate_claims_promotion_stability_label or 'not recorded'}."
+            )
+    focus_claims_promotion_gate_status_label = _clean_text(focus_claims.get("promotion_gate_status_label"))
+    candidate_claims_promotion_gate_status_label = _clean_text(candidate_claims.get("promotion_gate_status_label"))
+    if focus_claims_promotion_gate_status_label or candidate_claims_promotion_gate_status_label:
+        if focus_claims_promotion_gate_status_label != candidate_claims_promotion_gate_status_label:
+            differences.append(
+                "Claim-family promotion gate differs: "
+                f"{focus_claims_promotion_gate_status_label or 'not recorded'} vs {candidate_claims_promotion_gate_status_label or 'not recorded'}."
+            )
+    focus_claims_promotion_block_reason_label = _clean_text(focus_claims.get("promotion_block_reason_label"))
+    candidate_claims_promotion_block_reason_label = _clean_text(candidate_claims.get("promotion_block_reason_label"))
+    if focus_claims_promotion_block_reason_label or candidate_claims_promotion_block_reason_label:
+        if focus_claims_promotion_block_reason_label != candidate_claims_promotion_block_reason_label:
+            differences.append(
+                "Claim-family promotion block reason differs: "
+                f"{focus_claims_promotion_block_reason_label or 'not recorded'} vs {candidate_claims_promotion_block_reason_label or 'not recorded'}."
+            )
+    focus_claims_actionability_summary = _clean_text(focus_claims.get("claim_actionability_summary_text"))
+    candidate_claims_actionability_summary = _clean_text(candidate_claims.get("claim_actionability_summary_text"))
+    if focus_claims_actionability_summary or candidate_claims_actionability_summary:
+        if focus_claims_actionability_summary != candidate_claims_actionability_summary:
+            differences.append(
+                "Claim actionability summary differs: "
+                f"{focus_claims_actionability_summary or 'not recorded'} vs {candidate_claims_actionability_summary or 'not recorded'}."
+            )
+    focus_claims_actionability_basis_summary = _clean_text(focus_claims.get("claim_actionability_basis_summary_text"))
+    candidate_claims_actionability_basis_summary = _clean_text(candidate_claims.get("claim_actionability_basis_summary_text"))
+    if focus_claims_actionability_basis_summary or candidate_claims_actionability_basis_summary:
+        if focus_claims_actionability_basis_summary != candidate_claims_actionability_basis_summary:
+            differences.append(
+                "Claim actionability-basis summary differs: "
+                f"{focus_claims_actionability_basis_summary or 'not recorded'} vs {candidate_claims_actionability_basis_summary or 'not recorded'}."
+            )
+    focus_decision_status_label = _clean_text(focus_decision_summary.get("decision_status_label"))
+    candidate_decision_status_label = _clean_text(candidate_decision_summary.get("decision_status_label"))
+    if focus_decision_status_label or candidate_decision_status_label:
+        if focus_decision_status_label != candidate_decision_status_label:
+            differences.append(
+                "Current scientific decision picture differs: "
+                f"{focus_decision_status_label or 'not recorded'} vs {candidate_decision_status_label or 'not recorded'}."
+            )
+    focus_decision_support_quality_label = _clean_text(focus_decision_summary.get("current_support_quality_label"))
+    candidate_decision_support_quality_label = _clean_text(candidate_decision_summary.get("current_support_quality_label"))
+    if focus_decision_support_quality_label or candidate_decision_support_quality_label:
+        if focus_decision_support_quality_label != candidate_decision_support_quality_label:
+            differences.append(
+                "Current support-quality grounding differs: "
+                f"{focus_decision_support_quality_label or 'not recorded'} vs {candidate_decision_support_quality_label or 'not recorded'}."
+            )
+    focus_decision_governed_posture_label = _clean_text(focus_decision_summary.get("current_governed_support_posture_label"))
+    candidate_decision_governed_posture_label = _clean_text(candidate_decision_summary.get("current_governed_support_posture_label"))
+    if focus_decision_governed_posture_label or candidate_decision_governed_posture_label:
+        if focus_decision_governed_posture_label != candidate_decision_governed_posture_label:
+            differences.append(
+                "Current governed-support posture differs: "
+                f"{focus_decision_governed_posture_label or 'not recorded'} vs {candidate_decision_governed_posture_label or 'not recorded'}."
+            )
+    focus_decision_support_coherence_label = _clean_text(focus_decision_summary.get("current_support_coherence_label"))
+    candidate_decision_support_coherence_label = _clean_text(candidate_decision_summary.get("current_support_coherence_label"))
+    if focus_decision_support_coherence_label or candidate_decision_support_coherence_label:
+        if focus_decision_support_coherence_label != candidate_decision_support_coherence_label:
+            cautions.append(
+                "Current support coherence differs: "
+                f"{focus_decision_support_coherence_label or 'not recorded'} vs {candidate_decision_support_coherence_label or 'not recorded'}."
+            )
+    focus_decision_support_reuse_label = _clean_text(focus_decision_summary.get("current_support_reuse_label"))
+    candidate_decision_support_reuse_label = _clean_text(candidate_decision_summary.get("current_support_reuse_label"))
+    if focus_decision_support_reuse_label or candidate_decision_support_reuse_label:
+        if focus_decision_support_reuse_label != candidate_decision_support_reuse_label:
+            cautions.append(
+                "Current support reuse differs: "
+                f"{focus_decision_support_reuse_label or 'not recorded'} vs {candidate_decision_support_reuse_label or 'not recorded'}."
+            )
+    focus_decision_broader_reuse_label = _clean_text(focus_decision_summary.get("broader_governed_reuse_label"))
+    candidate_decision_broader_reuse_label = _clean_text(candidate_decision_summary.get("broader_governed_reuse_label"))
+    if focus_decision_broader_reuse_label or candidate_decision_broader_reuse_label:
+        if focus_decision_broader_reuse_label != candidate_decision_broader_reuse_label:
+            differences.append(
+                "Broader governed reuse differs: "
+                f"{focus_decision_broader_reuse_label or 'not recorded'} vs {candidate_decision_broader_reuse_label or 'not recorded'}."
+            )
+    focus_decision_broader_continuity_label = _clean_text(focus_decision_summary.get("broader_continuity_label"))
+    candidate_decision_broader_continuity_label = _clean_text(candidate_decision_summary.get("broader_continuity_label"))
+    if focus_decision_broader_continuity_label or candidate_decision_broader_continuity_label:
+        if focus_decision_broader_continuity_label != candidate_decision_broader_continuity_label:
+            cautions.append(
+                "Broader continuity differs: "
+                f"{focus_decision_broader_continuity_label or 'not recorded'} vs {candidate_decision_broader_continuity_label or 'not recorded'}."
+            )
+    focus_decision_future_reuse_candidacy_label = _clean_text(focus_decision_summary.get("future_reuse_candidacy_label"))
+    candidate_decision_future_reuse_candidacy_label = _clean_text(candidate_decision_summary.get("future_reuse_candidacy_label"))
+    if focus_decision_future_reuse_candidacy_label or candidate_decision_future_reuse_candidacy_label:
+        if focus_decision_future_reuse_candidacy_label != candidate_decision_future_reuse_candidacy_label:
+            differences.append(
+                "Future broader governed reuse candidacy differs: "
+                f"{focus_decision_future_reuse_candidacy_label or 'not recorded'} vs {candidate_decision_future_reuse_candidacy_label or 'not recorded'}."
+            )
+    focus_decision_cluster_posture_label = _clean_text(focus_decision_summary.get("continuity_cluster_posture_label"))
+    candidate_decision_cluster_posture_label = _clean_text(candidate_decision_summary.get("continuity_cluster_posture_label"))
+    if focus_decision_cluster_posture_label or candidate_decision_cluster_posture_label:
+        if focus_decision_cluster_posture_label != candidate_decision_cluster_posture_label:
+            cautions.append(
+                "Session-family continuity-cluster posture differs: "
+                f"{focus_decision_cluster_posture_label or 'not recorded'} vs {candidate_decision_cluster_posture_label or 'not recorded'}."
+            )
+    focus_decision_promotion_posture_label = _clean_text(focus_decision_summary.get("promotion_candidate_posture_label"))
+    candidate_decision_promotion_posture_label = _clean_text(candidate_decision_summary.get("promotion_candidate_posture_label"))
+    if focus_decision_promotion_posture_label or candidate_decision_promotion_posture_label:
+        if focus_decision_promotion_posture_label != candidate_decision_promotion_posture_label:
+            differences.append(
+                "Session-family promotion posture differs: "
+                f"{focus_decision_promotion_posture_label or 'not recorded'} vs {candidate_decision_promotion_posture_label or 'not recorded'}."
+            )
+    focus_decision_promotion_stability_label = _clean_text(focus_decision_summary.get("promotion_stability_label"))
+    candidate_decision_promotion_stability_label = _clean_text(candidate_decision_summary.get("promotion_stability_label"))
+    if focus_decision_promotion_stability_label or candidate_decision_promotion_stability_label:
+        if focus_decision_promotion_stability_label != candidate_decision_promotion_stability_label:
+            cautions.append(
+                "Session-family promotion stability differs: "
+                f"{focus_decision_promotion_stability_label or 'not recorded'} vs {candidate_decision_promotion_stability_label or 'not recorded'}."
+            )
+    focus_decision_promotion_gate_status_label = _clean_text(focus_decision_summary.get("promotion_gate_status_label"))
+    candidate_decision_promotion_gate_status_label = _clean_text(candidate_decision_summary.get("promotion_gate_status_label"))
+    if focus_decision_promotion_gate_status_label or candidate_decision_promotion_gate_status_label:
+        if focus_decision_promotion_gate_status_label != candidate_decision_promotion_gate_status_label:
+            differences.append(
+                "Session-family promotion gate differs: "
+                f"{focus_decision_promotion_gate_status_label or 'not recorded'} vs {candidate_decision_promotion_gate_status_label or 'not recorded'}."
+            )
+    focus_decision_promotion_block_reason_label = _clean_text(focus_decision_summary.get("promotion_block_reason_label"))
+    candidate_decision_promotion_block_reason_label = _clean_text(candidate_decision_summary.get("promotion_block_reason_label"))
+    if focus_decision_promotion_block_reason_label or candidate_decision_promotion_block_reason_label:
+        if focus_decision_promotion_block_reason_label != candidate_decision_promotion_block_reason_label:
+            differences.append(
+                "Session-family promotion block reason differs: "
+                f"{focus_decision_promotion_block_reason_label or 'not recorded'} vs {candidate_decision_promotion_block_reason_label or 'not recorded'}."
+            )
+    focus_session_family_review_status_label = _clean_text(focus_decision_summary.get("session_family_review_status_label"))
+    candidate_session_family_review_status_label = _clean_text(candidate_decision_summary.get("session_family_review_status_label"))
+    if focus_session_family_review_status_label or candidate_session_family_review_status_label:
+        if focus_session_family_review_status_label != candidate_session_family_review_status_label:
+            differences.append(
+                "Session-family carryover review differs: "
+                f"{focus_session_family_review_status_label or 'not recorded'} vs {candidate_session_family_review_status_label or 'not recorded'}."
+            )
+    focus_next_step_label = _clean_text(focus_decision_summary.get("next_step_label"))
+    candidate_next_step_label = _clean_text(candidate_decision_summary.get("next_step_label"))
+    if focus_next_step_label or candidate_next_step_label:
+        if focus_next_step_label != candidate_next_step_label:
+            cautions.append(
+                "Bounded next-step posture differs: "
+                f"{focus_next_step_label or 'not recorded'} vs {candidate_next_step_label or 'not recorded'}."
+            )
+
+    focus_readiness = _clean_text(focus_belief_state.get("belief_state_readiness_summary"))
+    candidate_readiness = _clean_text(candidate_belief_state.get("belief_state_readiness_summary"))
+    if focus_readiness or candidate_readiness:
+        if focus_readiness != candidate_readiness:
+            cautions.append(
+                "Belief-state readiness differs: "
+                f"{focus_readiness or 'not recorded'} vs {candidate_readiness or 'not recorded'}."
+            )
+
+    if focus_belief_alignment_label or candidate_belief_alignment_label:
+        if focus_belief_alignment_label != candidate_belief_alignment_label:
+            cautions.append(
+                "Current belief-picture alignment differs: "
+                f"{focus_belief_alignment_label or 'not recorded'} vs {candidate_belief_alignment_label or 'not recorded'}."
+            )
+    if focus_belief_alignment_summary or candidate_belief_alignment_summary:
+        if focus_belief_alignment_summary != candidate_belief_alignment_summary:
+            differences.append(
+                "Belief-picture read-across differs: "
+                f"{focus_belief_alignment_summary or 'not recorded'} vs {candidate_belief_alignment_summary or 'not recorded'}."
+            )
+    focus_belief_state_governed_posture = _clean_text(focus_belief_state.get("governed_support_posture_label"))
+    candidate_belief_state_governed_posture = _clean_text(candidate_belief_state.get("governed_support_posture_label"))
+    if focus_belief_state_governed_posture or candidate_belief_state_governed_posture:
+        if focus_belief_state_governed_posture != candidate_belief_state_governed_posture:
+            cautions.append(
+                "Belief-state governed posture differs: "
+                f"{focus_belief_state_governed_posture or 'not recorded'} vs {candidate_belief_state_governed_posture or 'not recorded'}."
+            )
+    focus_belief_state_support_coherence = _clean_text(focus_belief_state.get("support_coherence_label"))
+    candidate_belief_state_support_coherence = _clean_text(candidate_belief_state.get("support_coherence_label"))
+    if focus_belief_state_support_coherence or candidate_belief_state_support_coherence:
+        if focus_belief_state_support_coherence != candidate_belief_state_support_coherence:
+            cautions.append(
+                "Belief-state support coherence differs: "
+                f"{focus_belief_state_support_coherence or 'not recorded'} vs {candidate_belief_state_support_coherence or 'not recorded'}."
+            )
+    focus_belief_state_broader_reuse_label = _clean_text(focus_belief_state.get("broader_target_reuse_label"))
+    candidate_belief_state_broader_reuse_label = _clean_text(candidate_belief_state.get("broader_target_reuse_label"))
+    if focus_belief_state_broader_reuse_label or candidate_belief_state_broader_reuse_label:
+        if focus_belief_state_broader_reuse_label != candidate_belief_state_broader_reuse_label:
+            differences.append(
+                "Broader target reuse differs: "
+                f"{focus_belief_state_broader_reuse_label or 'not recorded'} vs {candidate_belief_state_broader_reuse_label or 'not recorded'}."
+            )
+    focus_belief_state_broader_continuity_label = _clean_text(focus_belief_state.get("broader_target_continuity_label"))
+    candidate_belief_state_broader_continuity_label = _clean_text(candidate_belief_state.get("broader_target_continuity_label"))
+    if focus_belief_state_broader_continuity_label or candidate_belief_state_broader_continuity_label:
+        if focus_belief_state_broader_continuity_label != candidate_belief_state_broader_continuity_label:
+            cautions.append(
+                "Broader target continuity differs: "
+                f"{focus_belief_state_broader_continuity_label or 'not recorded'} vs {candidate_belief_state_broader_continuity_label or 'not recorded'}."
+            )
+    focus_belief_state_future_reuse_candidacy_label = _clean_text(focus_belief_state.get("future_reuse_candidacy_label"))
+    candidate_belief_state_future_reuse_candidacy_label = _clean_text(candidate_belief_state.get("future_reuse_candidacy_label"))
+    if focus_belief_state_future_reuse_candidacy_label or candidate_belief_state_future_reuse_candidacy_label:
+        if focus_belief_state_future_reuse_candidacy_label != candidate_belief_state_future_reuse_candidacy_label:
+            differences.append(
+                "Future broader target reuse candidacy differs: "
+                f"{focus_belief_state_future_reuse_candidacy_label or 'not recorded'} vs {candidate_belief_state_future_reuse_candidacy_label or 'not recorded'}."
+            )
+    focus_belief_state_cluster_posture_label = _clean_text(focus_belief_state.get("continuity_cluster_posture_label"))
+    candidate_belief_state_cluster_posture_label = _clean_text(candidate_belief_state.get("continuity_cluster_posture_label"))
+    if focus_belief_state_cluster_posture_label or candidate_belief_state_cluster_posture_label:
+        if focus_belief_state_cluster_posture_label != candidate_belief_state_cluster_posture_label:
+            cautions.append(
+                "Target-scoped continuity-cluster posture differs: "
+                f"{focus_belief_state_cluster_posture_label or 'not recorded'} vs {candidate_belief_state_cluster_posture_label or 'not recorded'}."
+            )
+    focus_belief_state_promotion_posture_label = _clean_text(focus_belief_state.get("promotion_candidate_posture_label"))
+    candidate_belief_state_promotion_posture_label = _clean_text(candidate_belief_state.get("promotion_candidate_posture_label"))
+    if focus_belief_state_promotion_posture_label or candidate_belief_state_promotion_posture_label:
+        if focus_belief_state_promotion_posture_label != candidate_belief_state_promotion_posture_label:
+            differences.append(
+                "Target-scoped promotion posture differs: "
+                f"{focus_belief_state_promotion_posture_label or 'not recorded'} vs {candidate_belief_state_promotion_posture_label or 'not recorded'}."
+            )
+    focus_belief_state_promotion_stability_label = _clean_text(focus_belief_state.get("promotion_stability_label"))
+    candidate_belief_state_promotion_stability_label = _clean_text(candidate_belief_state.get("promotion_stability_label"))
+    if focus_belief_state_promotion_stability_label or candidate_belief_state_promotion_stability_label:
+        if focus_belief_state_promotion_stability_label != candidate_belief_state_promotion_stability_label:
+            cautions.append(
+                "Target-scoped promotion stability differs: "
+                f"{focus_belief_state_promotion_stability_label or 'not recorded'} vs {candidate_belief_state_promotion_stability_label or 'not recorded'}."
+            )
+    focus_belief_state_promotion_gate_status_label = _clean_text(focus_belief_state.get("promotion_gate_status_label"))
+    candidate_belief_state_promotion_gate_status_label = _clean_text(candidate_belief_state.get("promotion_gate_status_label"))
+    if focus_belief_state_promotion_gate_status_label or candidate_belief_state_promotion_gate_status_label:
+        if focus_belief_state_promotion_gate_status_label != candidate_belief_state_promotion_gate_status_label:
+            differences.append(
+                "Target-scoped promotion gate differs: "
+                f"{focus_belief_state_promotion_gate_status_label or 'not recorded'} vs {candidate_belief_state_promotion_gate_status_label or 'not recorded'}."
+            )
+    focus_belief_state_promotion_block_reason_label = _clean_text(focus_belief_state.get("promotion_block_reason_label"))
+    candidate_belief_state_promotion_block_reason_label = _clean_text(candidate_belief_state.get("promotion_block_reason_label"))
+    if focus_belief_state_promotion_block_reason_label or candidate_belief_state_promotion_block_reason_label:
+        if focus_belief_state_promotion_block_reason_label != candidate_belief_state_promotion_block_reason_label:
+            differences.append(
+                "Target-scoped promotion block reason differs: "
+                f"{focus_belief_state_promotion_block_reason_label or 'not recorded'} vs {candidate_belief_state_promotion_block_reason_label or 'not recorded'}."
+            )
+    focus_belief_state_review_status_label = _clean_text(focus_belief_state.get("governed_review_status_label"))
+    candidate_belief_state_review_status_label = _clean_text(candidate_belief_state.get("governed_review_status_label"))
+    if focus_belief_state_review_status_label or candidate_belief_state_review_status_label:
+        if focus_belief_state_review_status_label != candidate_belief_state_review_status_label:
+            differences.append(
+                "Belief-state broader review differs: "
+                f"{focus_belief_state_review_status_label or 'not recorded'} vs {candidate_belief_state_review_status_label or 'not recorded'}."
+            )
+    focus_continuity_review_status_label = _clean_text(focus_belief_state.get("continuity_cluster_review_status_label"))
+    candidate_continuity_review_status_label = _clean_text(candidate_belief_state.get("continuity_cluster_review_status_label"))
+    if focus_continuity_review_status_label or candidate_continuity_review_status_label:
+        if focus_continuity_review_status_label != candidate_continuity_review_status_label:
+            cautions.append(
+                "Continuity-cluster review differs: "
+                f"{focus_continuity_review_status_label or 'not recorded'} vs {candidate_continuity_review_status_label or 'not recorded'}."
+            )
+
     focus_bucket = _clean_text(focus_outcome.get("leading_bucket"))
     candidate_bucket = _clean_text(candidate_outcome.get("leading_bucket"))
     if focus_bucket and candidate_bucket and focus_bucket == candidate_bucket and focus_bucket != "unassigned":
@@ -734,11 +1510,11 @@ def compare_session_basis(
             else _basis_source_label(focus_session)
         ),
         "matches": matches[:5],
-        "differences": differences[:5],
+        "differences": differences[:12],
         "outcome_differences": outcome_differences[:5],
         "candidate_comparison_summary": candidate_comparison.get("summary") or "",
         "candidate_differences": candidate_comparison.get("differences") or [],
-        "cautions": cautions[:6],
+        "cautions": cautions[:20],
         "blockers": blockers[:5],
     }
 
@@ -838,6 +1614,11 @@ def build_session_comparison_matrix(
         activation_policy = _evidence_activation_policy(item)
         bridge_state_notes = _bridge_state_notes(item)
         controlled_reuse = _controlled_reuse(item)
+        claims_summary = _claims_summary(item)
+        belief_state = _belief_state_summary(item)
+        belief_updates = _belief_update_summary(item)
+        scientific_decision_summary = _scientific_decision_summary(item)
+        session_support_role_label, session_support_role_summary = _session_support_role(item)
 
         if is_focus:
             comparison_payload = {
@@ -906,11 +1687,626 @@ def build_session_comparison_matrix(
             "interpretation_evidence_label": _interpretation_evidence_label(item),
             "activation_boundary_summary": _activation_boundary_summary(item),
             "activation_policy_summary": _clean_text(activation_policy.get("summary")),
+            "activation_policy_trust_tier_label": _clean_text(
+                activation_policy.get("trust_tier_label"),
+                default="Not recorded",
+            ),
+            "activation_policy_trust_tier_summary": _clean_text(
+                activation_policy.get("trust_tier_summary")
+            ),
+            "activation_policy_provenance_confidence_label": _clean_text(
+                activation_policy.get("provenance_confidence_label"),
+                default="Not recorded",
+            ),
+            "activation_policy_provenance_confidence_summary": _clean_text(
+                activation_policy.get("provenance_confidence_summary")
+            ),
+            "activation_policy_governed_review_status_label": _clean_text(
+                activation_policy.get("governed_review_status_label"),
+                default="Not recorded",
+            ),
+            "activation_policy_governed_review_status_summary": _clean_text(
+                activation_policy.get("governed_review_status_summary")
+            ),
+            "activation_policy_governed_review_reason_label": _clean_text(
+                activation_policy.get("governed_review_reason_label"),
+                default="Not recorded",
+            ),
+            "activation_policy_governed_review_reason_summary": _clean_text(
+                activation_policy.get("governed_review_reason_summary")
+            ),
+            "activation_policy_local_only_default_summary": _clean_text(
+                activation_policy.get("local_only_default_summary")
+            ),
+            "activation_policy_anti_poisoning_summary": _clean_text(
+                activation_policy.get("anti_poisoning_summary")
+            ),
             "recommendation_reuse_summary": _recommendation_reuse_summary(item),
             "future_ranking_context_summary": _future_ranking_context_summary(item),
             "future_learning_eligibility_summary": _future_learning_eligibility_summary(item),
             "permanently_non_active_summary": _permanently_non_active_summary(item),
             "controlled_reuse_summary": _controlled_reuse_summary(item),
+            "belief_state_strength_summary": _belief_state_strength_summary(item),
+            "belief_state_readiness_summary": _belief_state_readiness_summary(item),
+            "belief_state_governance_label": _belief_state_governance_label(item),
+            "belief_state_alignment_label": _belief_state_alignment_label(item),
+            "belief_state_alignment_summary": _belief_state_alignment_summary(item),
+            "belief_state_support_basis_label": _clean_text(
+                belief_state.get("support_basis_mix_label"),
+                default="Not recorded",
+            ),
+            "belief_state_support_basis_summary": _clean_text(
+                belief_state.get("support_basis_mix_summary")
+            ),
+            "belief_state_support_quality_label": _clean_text(
+                belief_state.get("support_quality_label"),
+                default="Not recorded",
+            ),
+            "belief_state_support_quality_summary": _clean_text(
+                belief_state.get("support_quality_summary")
+            ),
+            "belief_state_governed_support_posture_label": _clean_text(
+                belief_state.get("governed_support_posture_label"),
+                default="Not recorded",
+            ),
+            "belief_state_governed_support_posture_summary": _clean_text(
+                belief_state.get("governed_support_posture_summary")
+            ),
+            "belief_state_support_coherence_label": _clean_text(
+                belief_state.get("support_coherence_label"),
+                default="Not recorded",
+            ),
+            "belief_state_support_coherence_summary": _clean_text(
+                belief_state.get("support_coherence_summary")
+            ),
+            "belief_state_support_reuse_label": _clean_text(
+                belief_state.get("support_reuse_label"),
+                default="Not recorded",
+            ),
+            "belief_state_support_reuse_summary": _clean_text(
+                belief_state.get("support_reuse_summary")
+            ),
+            "belief_state_broader_target_reuse_label": _clean_text(
+                belief_state.get("broader_target_reuse_label"),
+                default="Not recorded",
+            ),
+            "belief_state_broader_target_reuse_summary": _clean_text(
+                belief_state.get("broader_target_reuse_summary")
+            ),
+            "belief_state_broader_target_continuity_label": _clean_text(
+                belief_state.get("broader_target_continuity_label"),
+                default="Not recorded",
+            ),
+            "belief_state_broader_target_continuity_summary": _clean_text(
+                belief_state.get("broader_target_continuity_summary")
+            ),
+            "belief_state_future_reuse_candidacy_label": _clean_text(
+                belief_state.get("future_reuse_candidacy_label"),
+                default="Not recorded",
+            ),
+            "belief_state_future_reuse_candidacy_summary": _clean_text(
+                belief_state.get("future_reuse_candidacy_summary")
+            ),
+            "belief_state_continuity_cluster_posture_label": _clean_text(
+                belief_state.get("continuity_cluster_posture_label"),
+                default="Not recorded",
+            ),
+            "belief_state_continuity_cluster_posture_summary": _clean_text(
+                belief_state.get("continuity_cluster_posture_summary")
+            ),
+            "belief_state_promotion_candidate_posture_label": _clean_text(
+                belief_state.get("promotion_candidate_posture_label"),
+                default="Not recorded",
+            ),
+            "belief_state_promotion_candidate_posture_summary": _clean_text(
+                belief_state.get("promotion_candidate_posture_summary")
+            ),
+            "belief_state_promotion_stability_label": _clean_text(
+                belief_state.get("promotion_stability_label"),
+                default="Not recorded",
+            ),
+            "belief_state_promotion_stability_summary": _clean_text(
+                belief_state.get("promotion_stability_summary")
+            ),
+            "belief_state_promotion_gate_status_label": _clean_text(
+                belief_state.get("promotion_gate_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_promotion_gate_status_summary": _clean_text(
+                belief_state.get("promotion_gate_status_summary")
+            ),
+            "belief_state_promotion_block_reason_label": _clean_text(
+                belief_state.get("promotion_block_reason_label"),
+                default="Not recorded",
+            ),
+            "belief_state_promotion_block_reason_summary": _clean_text(
+                belief_state.get("promotion_block_reason_summary")
+            ),
+            "belief_state_trust_tier_label": _clean_text(
+                belief_state.get("trust_tier_label"),
+                default="Not recorded",
+            ),
+            "belief_state_trust_tier_summary": _clean_text(
+                belief_state.get("trust_tier_summary")
+            ),
+            "belief_state_provenance_confidence_label": _clean_text(
+                belief_state.get("provenance_confidence_label"),
+                default="Not recorded",
+            ),
+            "belief_state_provenance_confidence_summary": _clean_text(
+                belief_state.get("provenance_confidence_summary")
+            ),
+            "belief_state_governed_review_status_label": _clean_text(
+                belief_state.get("governed_review_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_governed_review_status_summary": _clean_text(
+                belief_state.get("governed_review_status_summary")
+            ),
+            "belief_state_governed_review_reason_label": _clean_text(
+                belief_state.get("governed_review_reason_label"),
+                default="Not recorded",
+            ),
+            "belief_state_governed_review_reason_summary": _clean_text(
+                belief_state.get("governed_review_reason_summary")
+            ),
+            "belief_state_governed_review_record_count": int(
+                belief_state.get("governed_review_record_count") or 0
+            ),
+            "belief_state_governed_review_history_summary": _clean_text(
+                belief_state.get("governed_review_history_summary")
+            ),
+            "belief_state_promotion_audit_summary": _clean_text(
+                belief_state.get("promotion_audit_summary")
+            ),
+            "belief_state_continuity_cluster_review_status_label": _clean_text(
+                belief_state.get("continuity_cluster_review_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_continuity_cluster_review_status_summary": _clean_text(
+                belief_state.get("continuity_cluster_review_status_summary")
+            ),
+            "belief_state_continuity_cluster_review_reason_label": _clean_text(
+                belief_state.get("continuity_cluster_review_reason_label"),
+                default="Not recorded",
+            ),
+            "belief_state_continuity_cluster_review_reason_summary": _clean_text(
+                belief_state.get("continuity_cluster_review_reason_summary")
+            ),
+            "belief_state_continuity_cluster_review_record_count": int(
+                belief_state.get("continuity_cluster_review_record_count") or 0
+            ),
+            "belief_state_continuity_cluster_review_history_summary": _clean_text(
+                belief_state.get("continuity_cluster_review_history_summary")
+            ),
+            "belief_state_continuity_cluster_promotion_audit_summary": _clean_text(
+                belief_state.get("continuity_cluster_promotion_audit_summary")
+            ),
+            "belief_state_carryover_guardrail_summary": _clean_text(
+                belief_state.get("carryover_guardrail_summary")
+            ),
+            "belief_update_chronology_label": _clean_text(
+                belief_updates.get("chronology_mix_label"),
+                default="Not recorded",
+            ),
+            "belief_update_chronology_summary": _clean_text(
+                belief_updates.get("chronology_summary_text")
+            ),
+            "belief_update_support_basis_label": _clean_text(
+                belief_updates.get("support_basis_mix_label"),
+                default="Not recorded",
+            ),
+            "belief_update_support_basis_summary": _clean_text(
+                belief_updates.get("support_basis_mix_summary")
+            ),
+            "belief_update_support_quality_label": _clean_text(
+                belief_updates.get("support_quality_label"),
+                default="Not recorded",
+            ),
+            "belief_update_support_quality_summary": _clean_text(
+                belief_updates.get("support_quality_summary")
+            ),
+            "belief_update_governed_support_posture_label": _clean_text(
+                belief_updates.get("governed_support_posture_label"),
+                default="Not recorded",
+            ),
+            "belief_update_governed_support_posture_summary": _clean_text(
+                belief_updates.get("governed_support_posture_summary")
+            ),
+            "belief_update_support_coherence_label": _clean_text(
+                belief_updates.get("support_coherence_label"),
+                default="Not recorded",
+            ),
+            "belief_update_support_coherence_summary": _clean_text(
+                belief_updates.get("support_coherence_summary")
+            ),
+            "belief_update_support_reuse_label": _clean_text(
+                belief_updates.get("support_reuse_label"),
+                default="Not recorded",
+            ),
+            "belief_update_support_reuse_summary": _clean_text(
+                belief_updates.get("support_reuse_summary")
+            ),
+            "scientific_decision_status_label": _clean_text(
+                scientific_decision_summary.get("decision_status_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_status_summary": _clean_text(
+                scientific_decision_summary.get("decision_status_summary")
+            ),
+            "scientific_decision_current_support_quality_label": _clean_text(
+                scientific_decision_summary.get("current_support_quality_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_current_support_quality_summary": _clean_text(
+                scientific_decision_summary.get("current_support_quality_summary")
+            ),
+            "scientific_decision_current_governed_support_posture_label": _clean_text(
+                scientific_decision_summary.get("current_governed_support_posture_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_current_governed_support_posture_summary": _clean_text(
+                scientific_decision_summary.get("current_governed_support_posture_summary")
+            ),
+            "scientific_decision_current_support_coherence_label": _clean_text(
+                scientific_decision_summary.get("current_support_coherence_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_current_support_coherence_summary": _clean_text(
+                scientific_decision_summary.get("current_support_coherence_summary")
+            ),
+            "scientific_decision_current_support_reuse_label": _clean_text(
+                scientific_decision_summary.get("current_support_reuse_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_current_support_reuse_summary": _clean_text(
+                scientific_decision_summary.get("current_support_reuse_summary")
+            ),
+            "scientific_decision_broader_governed_reuse_label": _clean_text(
+                scientific_decision_summary.get("broader_governed_reuse_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_broader_governed_reuse_summary": _clean_text(
+                scientific_decision_summary.get("broader_governed_reuse_summary")
+            ),
+            "scientific_decision_broader_continuity_label": _clean_text(
+                scientific_decision_summary.get("broader_continuity_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_broader_continuity_summary": _clean_text(
+                scientific_decision_summary.get("broader_continuity_summary")
+            ),
+            "scientific_decision_future_reuse_candidacy_label": _clean_text(
+                scientific_decision_summary.get("future_reuse_candidacy_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_future_reuse_candidacy_summary": _clean_text(
+                scientific_decision_summary.get("future_reuse_candidacy_summary")
+            ),
+            "scientific_decision_continuity_cluster_posture_label": _clean_text(
+                scientific_decision_summary.get("continuity_cluster_posture_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_continuity_cluster_posture_summary": _clean_text(
+                scientific_decision_summary.get("continuity_cluster_posture_summary")
+            ),
+            "scientific_decision_promotion_candidate_posture_label": _clean_text(
+                scientific_decision_summary.get("promotion_candidate_posture_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_promotion_candidate_posture_summary": _clean_text(
+                scientific_decision_summary.get("promotion_candidate_posture_summary")
+            ),
+            "scientific_decision_promotion_stability_label": _clean_text(
+                scientific_decision_summary.get("promotion_stability_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_promotion_stability_summary": _clean_text(
+                scientific_decision_summary.get("promotion_stability_summary")
+            ),
+            "scientific_decision_promotion_gate_status_label": _clean_text(
+                scientific_decision_summary.get("promotion_gate_status_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_promotion_gate_status_summary": _clean_text(
+                scientific_decision_summary.get("promotion_gate_status_summary")
+            ),
+            "scientific_decision_promotion_block_reason_label": _clean_text(
+                scientific_decision_summary.get("promotion_block_reason_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_promotion_block_reason_summary": _clean_text(
+                scientific_decision_summary.get("promotion_block_reason_summary")
+            ),
+            "scientific_decision_trust_tier_label": _clean_text(
+                scientific_decision_summary.get("trust_tier_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_trust_tier_summary": _clean_text(
+                scientific_decision_summary.get("trust_tier_summary")
+            ),
+            "scientific_decision_provenance_confidence_label": _clean_text(
+                scientific_decision_summary.get("provenance_confidence_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_provenance_confidence_summary": _clean_text(
+                scientific_decision_summary.get("provenance_confidence_summary")
+            ),
+            "scientific_decision_governed_review_status_label": _clean_text(
+                scientific_decision_summary.get("governed_review_status_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_governed_review_status_summary": _clean_text(
+                scientific_decision_summary.get("governed_review_status_summary")
+            ),
+            "scientific_decision_governed_review_reason_label": _clean_text(
+                scientific_decision_summary.get("governed_review_reason_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_governed_review_reason_summary": _clean_text(
+                scientific_decision_summary.get("governed_review_reason_summary")
+            ),
+            "scientific_decision_session_family_review_status_label": _clean_text(
+                scientific_decision_summary.get("session_family_review_status_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_session_family_review_status_summary": _clean_text(
+                scientific_decision_summary.get("session_family_review_status_summary")
+            ),
+            "scientific_decision_session_family_review_reason_label": _clean_text(
+                scientific_decision_summary.get("session_family_review_reason_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_session_family_review_reason_summary": _clean_text(
+                scientific_decision_summary.get("session_family_review_reason_summary")
+            ),
+            "scientific_decision_session_family_review_record_count": int(
+                scientific_decision_summary.get("session_family_review_record_count") or 0
+            ),
+            "scientific_decision_session_family_review_history_summary": _clean_text(
+                scientific_decision_summary.get("session_family_review_history_summary")
+            ),
+            "scientific_decision_session_family_promotion_audit_summary": _clean_text(
+                scientific_decision_summary.get("session_family_promotion_audit_summary")
+            ),
+            "scientific_decision_carryover_guardrail_summary": _clean_text(
+                scientific_decision_summary.get("carryover_guardrail_summary")
+            ),
+            "scientific_decision_next_step_label": _clean_text(
+                scientific_decision_summary.get("next_step_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_next_step_summary": _clean_text(
+                scientific_decision_summary.get("next_step_summary")
+            ),
+            "scientific_decision_result_state_label": _clean_text(
+                scientific_decision_summary.get("result_state_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_result_state_summary": _clean_text(
+                scientific_decision_summary.get("result_state_summary")
+            ),
+            "session_support_role_label": session_support_role_label,
+            "session_support_role_summary": session_support_role_summary,
+            "belief_state_accepted_updates": int(belief_state.get("accepted_update_count") or 0),
+            "belief_state_proposed_updates": int(belief_state.get("proposed_update_count") or 0),
+            "belief_state_superseded_updates": int(belief_state.get("superseded_update_count") or 0),
+            "belief_state_observed_label_support_count": int(belief_state.get("observed_label_support_count") or 0),
+            "belief_state_numeric_rule_based_support_count": int(belief_state.get("numeric_rule_based_support_count") or 0),
+            "belief_state_unresolved_basis_count": int(belief_state.get("unresolved_basis_count") or 0),
+            "belief_state_weak_basis_count": int(belief_state.get("weak_basis_count") or 0),
+            "belief_update_observed_label_support_count": int(belief_updates.get("observed_label_support_count") or 0),
+            "belief_update_numeric_rule_based_support_count": int(belief_updates.get("numeric_rule_based_support_count") or 0),
+            "belief_update_unresolved_basis_count": int(belief_updates.get("unresolved_basis_count") or 0),
+            "belief_update_weak_basis_count": int(belief_updates.get("weak_basis_count") or 0),
+            "claims_with_active_support_count": int(claims_summary.get("claims_with_active_support_count") or 0),
+            "claims_with_historical_support_only_count": int(claims_summary.get("claims_with_historical_support_only_count") or 0),
+            "claims_with_no_governed_support_count": int(claims_summary.get("claims_with_no_governed_support_count") or 0),
+            "claims_continuity_aligned_count": int(claims_summary.get("continuity_aligned_claim_count") or 0),
+            "claims_new_context_count": int(claims_summary.get("new_claim_context_count") or 0),
+            "claims_weak_prior_alignment_count": int(claims_summary.get("weak_prior_alignment_count") or 0),
+            "claims_no_prior_context_count": int(claims_summary.get("no_prior_claim_context_count") or 0),
+            "claims_active_governed_continuity_count": int(
+                claims_summary.get("claims_with_active_governed_continuity_count") or 0
+            ),
+            "claims_tentative_active_continuity_count": int(
+                claims_summary.get("claims_with_tentative_active_continuity_count") or 0
+            ),
+            "claims_historical_continuity_only_count": int(
+                claims_summary.get("claims_with_historical_continuity_only_count") or 0
+            ),
+            "claims_sparse_prior_context_count": int(claims_summary.get("claims_with_sparse_prior_context_count") or 0),
+            "claims_no_useful_prior_context_count": int(
+                claims_summary.get("claims_with_no_useful_prior_context_count") or 0
+            ),
+            "claims_chronology_summary": _clean_text(claims_summary.get("chronology_summary_text")),
+            "claims_broader_reuse_label": _clean_text(
+                claims_summary.get("broader_reuse_label"),
+                default="Not recorded",
+            ),
+            "claims_broader_reuse_summary": _clean_text(
+                claims_summary.get("broader_reuse_summary_text")
+            ),
+            "claims_broader_continuity_label": _clean_text(
+                claims_summary.get("broader_continuity_label"),
+                default="Not recorded",
+            ),
+            "claims_broader_continuity_summary": _clean_text(
+                claims_summary.get("broader_continuity_summary_text")
+            ),
+            "claims_future_reuse_candidacy_label": _clean_text(
+                claims_summary.get("future_reuse_candidacy_label"),
+                default="Not recorded",
+            ),
+            "claims_future_reuse_candidacy_summary": _clean_text(
+                claims_summary.get("future_reuse_candidacy_summary_text")
+            ),
+            "claims_continuity_cluster_posture_label": _clean_text(
+                claims_summary.get("continuity_cluster_posture_label"),
+                default="Not recorded",
+            ),
+            "claims_continuity_cluster_posture_summary": _clean_text(
+                claims_summary.get("continuity_cluster_posture_summary_text")
+            ),
+            "claims_promotion_candidate_posture_label": _clean_text(
+                claims_summary.get("promotion_candidate_posture_label"),
+                default="Not recorded",
+            ),
+            "claims_promotion_candidate_posture_summary": _clean_text(
+                claims_summary.get("promotion_candidate_posture_summary_text")
+            ),
+            "claims_promotion_stability_label": _clean_text(
+                claims_summary.get("promotion_stability_label"),
+                default="Not recorded",
+            ),
+            "claims_promotion_stability_summary": _clean_text(
+                claims_summary.get("promotion_stability_summary_text")
+            ),
+            "claims_promotion_gate_status_label": _clean_text(
+                claims_summary.get("promotion_gate_status_label"),
+                default="Not recorded",
+            ),
+            "claims_promotion_gate_status_summary": _clean_text(
+                claims_summary.get("promotion_gate_status_summary_text")
+            ),
+            "claims_promotion_block_reason_label": _clean_text(
+                claims_summary.get("promotion_block_reason_label"),
+                default="Not recorded",
+            ),
+            "claims_promotion_block_reason_summary": _clean_text(
+                claims_summary.get("promotion_block_reason_summary_text")
+            ),
+            "claims_source_class_label": _clean_text(
+                claims_summary.get("source_class_label"),
+                default="Not recorded",
+            ),
+            "claims_source_class_summary": _clean_text(
+                claims_summary.get("source_class_summary_text")
+            ),
+            "claims_trust_tier_label": _clean_text(
+                claims_summary.get("trust_tier_label"),
+                default="Not recorded",
+            ),
+            "claims_trust_tier_summary": _clean_text(
+                claims_summary.get("trust_tier_summary_text")
+            ),
+            "claims_provenance_confidence_label": _clean_text(
+                claims_summary.get("provenance_confidence_label"),
+                default="Not recorded",
+            ),
+            "claims_provenance_confidence_summary": _clean_text(
+                claims_summary.get("provenance_confidence_summary_text")
+            ),
+            "claims_governed_review_status_label": _clean_text(
+                claims_summary.get("governed_review_status_label"),
+                default="Not recorded",
+            ),
+            "claims_governed_review_status_summary": _clean_text(
+                claims_summary.get("governed_review_status_summary_text")
+            ),
+            "claims_governed_review_reason_label": _clean_text(
+                claims_summary.get("governed_review_reason_label"),
+                default="Not recorded",
+            ),
+            "claims_governed_review_reason_summary": _clean_text(
+                claims_summary.get("governed_review_reason_summary_text")
+            ),
+            "claims_governed_review_record_count": int(
+                claims_summary.get("governed_review_record_count") or 0
+            ),
+            "claims_governed_review_history_summary": _clean_text(
+                claims_summary.get("governed_review_history_summary_text")
+            ),
+            "claims_promotion_audit_summary": _clean_text(
+                claims_summary.get("promotion_audit_summary_text")
+            ),
+            "claims_support_basis_summary": _clean_text(claims_summary.get("claim_support_basis_summary_text")),
+            "claims_actionability_summary": _clean_text(claims_summary.get("claim_actionability_summary_text")),
+            "claims_actionability_basis_summary": _clean_text(
+                claims_summary.get("claim_actionability_basis_summary_text")
+            ),
+            "claims_observed_label_grounded_count": int(
+                claims_summary.get("claims_mostly_observed_label_grounded_count") or 0
+            ),
+            "claims_numeric_rule_based_support_count": int(
+                claims_summary.get("claims_with_numeric_rule_based_support_count") or 0
+            ),
+            "claims_weak_basis_support_count": int(
+                claims_summary.get("claims_with_weak_basis_support_count") or 0
+            ),
+            "claims_mixed_support_basis_count": int(
+                claims_summary.get("claims_with_mixed_support_basis_count") or 0
+            ),
+            "claims_decision_useful_active_support_count": int(
+                claims_summary.get("claims_with_decision_useful_active_support_count") or 0
+            ),
+            "claims_limited_active_support_quality_count": int(
+                claims_summary.get("claims_with_limited_active_support_quality_count") or 0
+            ),
+            "claims_context_limited_active_support_count": int(
+                claims_summary.get("claims_with_context_limited_active_support_count") or 0
+            ),
+            "claims_weak_or_unresolved_active_support_count": int(
+                claims_summary.get("claims_with_weak_or_unresolved_active_support_count") or 0
+            ),
+            "claims_posture_governing_support_count": int(
+                claims_summary.get("claims_with_posture_governing_support_count") or 0
+            ),
+            "claims_tentative_current_support_count": int(
+                claims_summary.get("claims_with_tentative_current_support_count") or 0
+            ),
+            "claims_accepted_limited_support_count": int(
+                claims_summary.get("claims_with_accepted_limited_support_count") or 0
+            ),
+            "claims_historical_non_governing_support_count": int(
+                claims_summary.get("claims_with_historical_non_governing_support_count") or 0
+            ),
+            "claims_contested_current_support_count": int(
+                claims_summary.get("claims_with_contested_current_support_count") or 0
+            ),
+            "claims_degraded_current_posture_count": int(
+                claims_summary.get("claims_with_degraded_current_posture_count") or 0
+            ),
+            "claims_historical_stronger_than_current_count": int(
+                claims_summary.get("claims_with_historical_stronger_than_current_count") or 0
+            ),
+            "claims_contradiction_limited_reuse_count": int(
+                claims_summary.get("claims_with_contradiction_limited_reuse_count") or 0
+            ),
+            "claims_weakly_reusable_support_count": int(
+                claims_summary.get("claims_with_weakly_reusable_support_count") or 0
+            ),
+            "claims_action_ready_follow_up_count": int(
+                claims_summary.get("claims_action_ready_follow_up_count") or 0
+            ),
+            "claims_need_stronger_evidence_count": int(
+                claims_summary.get("claims_promising_but_need_stronger_evidence_count") or 0
+            ),
+            "claims_need_clarifying_experiment_count": int(
+                claims_summary.get("claims_need_clarifying_experiment_count") or 0
+            ),
+            "claims_do_not_prioritize_yet_count": int(
+                claims_summary.get("claims_do_not_prioritize_yet_count") or 0
+            ),
+            "claims_insufficient_governed_basis_count": int(
+                claims_summary.get("claims_with_insufficient_governed_basis_count") or 0
+            ),
+            "claims_action_ready_from_active_support_count": int(
+                claims_summary.get("claims_action_ready_from_active_support_count") or 0
+            ),
+            "claims_active_but_limited_actionability_count": int(
+                claims_summary.get("claims_with_active_but_limited_actionability_count") or 0
+            ),
+            "claims_historically_interesting_count": int(
+                claims_summary.get("claims_historically_interesting_count") or 0
+            ),
+            "claims_mixed_current_historical_actionability_count": int(
+                claims_summary.get("claims_with_mixed_current_historical_actionability_count") or 0
+            ),
+            "claims_no_active_governed_support_actionability_count": int(
+                claims_summary.get("claims_with_no_active_governed_support_actionability_count") or 0
+            ),
+            "claims_read_across_summary": _claims_read_across_summary(item),
             "recommendation_reuse_active": _as_bool(controlled_reuse.get("recommendation_reuse_active")),
             "ranking_context_reuse_active": _as_bool(controlled_reuse.get("ranking_context_reuse_active")),
             "interpretation_support_active": _as_bool(controlled_reuse.get("interpretation_support_active")),

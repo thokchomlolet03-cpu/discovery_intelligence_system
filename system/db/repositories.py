@@ -15,6 +15,7 @@ from system.contracts import (
     validate_claim_record,
     validate_experiment_result_record,
     validate_experiment_request_record,
+    validate_governed_review_record,
     validate_job_state,
     validate_review_event_record,
     validate_session_metadata,
@@ -31,6 +32,7 @@ from system.db.models import (
     ClaimModel,
     ExperimentResultModel,
     ExperimentRequestModel,
+    GovernedReviewRecordModel,
     JobModel,
     ReviewEventModel,
     SessionModel,
@@ -260,6 +262,19 @@ def _experiment_result_payload(record: ExperimentResultModel) -> dict[str, Any]:
 
 
 def _belief_update_payload(record: BeliefUpdateModel) -> dict[str, Any]:
+    governance_status = record.governance_status
+    active_for_belief_state = governance_status in {"accepted", "proposed"}
+    metadata = record.metadata_json or {}
+    if governance_status == "accepted":
+        chronology_label = "Current accepted support change"
+    elif governance_status == "proposed":
+        chronology_label = "Current proposed support change"
+    elif governance_status == "superseded":
+        chronology_label = "Historical superseded support change"
+    elif governance_status == "rejected":
+        chronology_label = "Historical rejected support change"
+    else:
+        chronology_label = ""
     return validate_belief_update_record(
         {
             "belief_update_id": record.belief_update_id,
@@ -273,18 +288,30 @@ def _belief_update_payload(record: BeliefUpdateModel) -> dict[str, Any]:
             "updated_support_level": record.updated_support_level,
             "update_direction": record.update_direction,
             "update_reason": record.update_reason,
-            "governance_status": record.governance_status,
+            "support_input_quality_label": metadata.get("support_input_quality_label", ""),
+            "support_input_quality_summary": metadata.get("support_input_quality_summary", ""),
+            "assay_context_alignment_label": metadata.get("assay_context_alignment_label", ""),
+            "result_interpretation_basis": metadata.get("result_interpretation_basis", ""),
+            "numeric_result_basis_label": metadata.get("numeric_result_basis_label", ""),
+            "numeric_result_basis_summary": metadata.get("numeric_result_basis_summary", ""),
+            "numeric_result_resolution_label": metadata.get("numeric_result_resolution_label", ""),
+            "numeric_result_interpretation_label": metadata.get("numeric_result_interpretation_label", ""),
+            "target_rule_alignment_label": metadata.get("target_rule_alignment_label", ""),
+            "governance_status": governance_status,
+            "chronology_label": chronology_label,
+            "active_for_belief_state": active_for_belief_state,
             "created_at": record.created_at,
             "created_by": record.created_by,
             "created_by_user_id": record.created_by_user_id or "",
             "reviewed_at": record.reviewed_at,
             "reviewed_by": record.reviewed_by,
-            "metadata": record.metadata_json or {},
+            "metadata": metadata,
         }
     )
 
 
 def _belief_state_payload(record: BeliefStateModel) -> dict[str, Any]:
+    metadata = record.metadata_json or {}
     return validate_belief_state_record(
         {
             "belief_state_id": record.belief_state_id,
@@ -302,7 +329,17 @@ def _belief_state_payload(record: BeliefStateModel) -> dict[str, Any]:
             "latest_belief_update_refs": record.latest_belief_update_refs or [],
             "support_distribution_summary": record.support_distribution_summary,
             "governance_scope_summary": record.governance_scope_summary,
-            "metadata": record.metadata_json or {},
+            "chronology_summary_text": metadata.get("chronology_summary_text", ""),
+            "support_basis_mix_label": metadata.get("support_basis_mix_label", ""),
+            "support_basis_mix_summary": metadata.get("support_basis_mix_summary", ""),
+            "observed_label_support_count": metadata.get("observed_label_support_count", 0),
+            "numeric_rule_based_support_count": metadata.get("numeric_rule_based_support_count", 0),
+            "unresolved_basis_count": metadata.get("unresolved_basis_count", 0),
+            "weak_basis_count": metadata.get("weak_basis_count", 0),
+            "belief_state_strength_summary": metadata.get("belief_state_strength_summary", ""),
+            "belief_state_readiness_summary": metadata.get("belief_state_readiness_summary", ""),
+            "governance_mix_label": metadata.get("governance_mix_label", ""),
+            "metadata": metadata,
         }
     )
 
@@ -318,6 +355,36 @@ def _artifact_payload(record: ArtifactRecordModel) -> dict[str, Any]:
             "path": record.path,
             "created_at": record.created_at,
             "updated_at": record.updated_at,
+            "metadata": record.metadata_json or {},
+        }
+    )
+
+
+def _governed_review_payload(record: GovernedReviewRecordModel) -> dict[str, Any]:
+    return validate_governed_review_record(
+        {
+            "review_record_id": record.review_record_id,
+            "workspace_id": record.workspace_id,
+            "session_id": record.session_id or "",
+            "subject_type": record.subject_type,
+            "subject_id": record.subject_id,
+            "target_key": record.target_key,
+            "candidate_id": record.candidate_id,
+            "active": record.active,
+            "source_class_label": record.source_class_label,
+            "provenance_confidence_label": record.provenance_confidence_label,
+            "trust_tier_label": record.trust_tier_label,
+            "review_status_label": record.review_status_label,
+            "review_reason_label": record.review_reason_label,
+            "review_reason_summary": record.review_reason_summary,
+            "promotion_gate_status_label": record.promotion_gate_status_label,
+            "promotion_block_reason_label": record.promotion_block_reason_label,
+            "decision_outcome": record.decision_outcome,
+            "decision_summary": record.decision_summary,
+            "supersedes_review_record_id": record.supersedes_review_record_id or "",
+            "recorded_at": record.recorded_at,
+            "recorded_by": record.recorded_by,
+            "actor_user_id": record.actor_user_id or "",
             "metadata": record.metadata_json or {},
         }
     )
@@ -875,6 +942,127 @@ class ReviewRepository:
             return [_review_payload(row) for row in rows]
 
 
+class GovernedReviewRepository:
+    def __init__(self, session_repository: SessionRepository | None = None) -> None:
+        self.session_repository = session_repository or SessionRepository()
+
+    def record_review(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = validate_governed_review_record(payload)
+        workspace_id = record_payload.get("workspace_id") or ""
+        session_id = record_payload.get("session_id") or ""
+        if not workspace_id and session_id:
+            try:
+                workspace_id = self.session_repository.get_session(session_id)["workspace_id"]
+            except FileNotFoundError:
+                workspace_id = LEGACY_WORKSPACE_ID
+            record_payload["workspace_id"] = workspace_id
+        elif not workspace_id:
+            workspace_id = LEGACY_WORKSPACE_ID
+            record_payload["workspace_id"] = workspace_id
+        if session_id:
+            self.session_repository.upsert_session(
+                session_id=session_id,
+                workspace_id=workspace_id,
+            )
+        with session_scope() as db:
+            if record_payload.get("active"):
+                current_active = db.execute(
+                    select(GovernedReviewRecordModel).where(
+                        GovernedReviewRecordModel.workspace_id == workspace_id,
+                        GovernedReviewRecordModel.subject_type == record_payload["subject_type"],
+                        GovernedReviewRecordModel.subject_id == record_payload["subject_id"],
+                        GovernedReviewRecordModel.active.is_(True),
+                    )
+                ).scalar_one_or_none()
+                if current_active is not None:
+                    current_active.active = False
+                    db.add(current_active)
+                    if not record_payload.get("supersedes_review_record_id"):
+                        record_payload["supersedes_review_record_id"] = current_active.review_record_id
+            record = GovernedReviewRecordModel(
+                review_record_id=record_payload["review_record_id"] or _make_id("govreview"),
+                workspace_id=workspace_id,
+                session_id=session_id or None,
+                subject_type=record_payload["subject_type"],
+                subject_id=record_payload["subject_id"],
+                target_key=record_payload.get("target_key", ""),
+                candidate_id=record_payload.get("candidate_id", ""),
+                active=bool(record_payload.get("active", True)),
+                source_class_label=record_payload.get("source_class_label", ""),
+                provenance_confidence_label=record_payload.get("provenance_confidence_label", ""),
+                trust_tier_label=record_payload.get("trust_tier_label", ""),
+                review_status_label=record_payload.get("review_status_label", ""),
+                review_reason_label=record_payload.get("review_reason_label", ""),
+                review_reason_summary=record_payload.get("review_reason_summary", ""),
+                promotion_gate_status_label=record_payload.get("promotion_gate_status_label", ""),
+                promotion_block_reason_label=record_payload.get("promotion_block_reason_label", ""),
+                decision_outcome=record_payload.get("decision_outcome", ""),
+                decision_summary=record_payload.get("decision_summary", ""),
+                supersedes_review_record_id=record_payload.get("supersedes_review_record_id") or None,
+                recorded_at=_to_datetime(record_payload["recorded_at"]),
+                recorded_by=record_payload.get("recorded_by", "system") or "system",
+                actor_user_id=record_payload.get("actor_user_id") or None,
+                metadata_json=record_payload.get("metadata", {}),
+            )
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _governed_review_payload(record)
+
+    def list_reviews(
+        self,
+        *,
+        workspace_id: str | None = None,
+        subject_type: str | None = None,
+        subject_id: str | None = None,
+        session_id: str | None = None,
+        active_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(GovernedReviewRecordModel).order_by(
+                GovernedReviewRecordModel.recorded_at.asc(),
+                GovernedReviewRecordModel.review_record_id.asc(),
+            )
+            if workspace_id is not None:
+                statement = statement.where(GovernedReviewRecordModel.workspace_id == workspace_id)
+            if subject_type is not None:
+                statement = statement.where(GovernedReviewRecordModel.subject_type == subject_type)
+            if subject_id is not None:
+                statement = statement.where(GovernedReviewRecordModel.subject_id == subject_id)
+            if session_id is not None:
+                statement = statement.where(GovernedReviewRecordModel.session_id == session_id)
+            if active_only:
+                statement = statement.where(GovernedReviewRecordModel.active.is_(True))
+            rows = db.execute(statement).scalars().all()
+            return [_governed_review_payload(row) for row in rows]
+
+    def get_latest_active_review(
+        self,
+        *,
+        workspace_id: str,
+        subject_type: str,
+        subject_id: str,
+    ) -> dict[str, Any] | None:
+        with session_scope() as db:
+            statement = (
+                select(GovernedReviewRecordModel)
+                .where(
+                    GovernedReviewRecordModel.workspace_id == workspace_id,
+                    GovernedReviewRecordModel.subject_type == subject_type,
+                    GovernedReviewRecordModel.subject_id == subject_id,
+                    GovernedReviewRecordModel.active.is_(True),
+                )
+                .order_by(
+                    desc(GovernedReviewRecordModel.recorded_at),
+                    desc(GovernedReviewRecordModel.review_record_id),
+                )
+            )
+            record = db.execute(statement).scalars().first()
+            if record is None:
+                return None
+            return _governed_review_payload(record)
+
+
 class ClaimRepository:
     def __init__(self, session_repository: SessionRepository | None = None) -> None:
         self.session_repository = session_repository or SessionRepository()
@@ -1294,6 +1482,46 @@ class BeliefUpdateRepository:
                 raise FileNotFoundError(f"No persisted belief update found for '{belief_update_id}'.")
             return _belief_update_payload(record)
 
+    def update_belief_update_governance(
+        self,
+        *,
+        belief_update_id: str,
+        workspace_id: str,
+        governance_status: str,
+        reviewed_at: datetime,
+        reviewed_by: str,
+        metadata_updates: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(BeliefUpdateModel).where(
+                BeliefUpdateModel.belief_update_id == belief_update_id,
+                BeliefUpdateModel.workspace_id == workspace_id,
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No persisted belief update found for '{belief_update_id}'.")
+            payload = _belief_update_payload(record)
+            merged_metadata = dict(payload.get("metadata") or {})
+            if isinstance(metadata_updates, dict):
+                merged_metadata.update(metadata_updates)
+            updated_payload = validate_belief_update_record(
+                {
+                    **payload,
+                    "governance_status": governance_status,
+                    "reviewed_at": reviewed_at,
+                    "reviewed_by": reviewed_by,
+                    "metadata": merged_metadata,
+                }
+            )
+            record.governance_status = updated_payload["governance_status"]
+            record.reviewed_at = _to_datetime(updated_payload["reviewed_at"]) if updated_payload.get("reviewed_at") else None
+            record.reviewed_by = updated_payload.get("reviewed_by", "")
+            record.metadata_json = updated_payload.get("metadata", {})
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _belief_update_payload(record)
+
 
 class BeliefStateRepository:
     def __init__(self, session_repository: SessionRepository | None = None) -> None:
@@ -1355,6 +1583,19 @@ class BeliefStateRepository:
             if record is None:
                 raise FileNotFoundError(f"No persisted belief state found for target '{target_key}'.")
             return _belief_state_payload(record)
+
+    def delete_belief_state(self, *, workspace_id: str, target_key: str) -> bool:
+        with session_scope() as db:
+            statement = select(BeliefStateModel).where(
+                BeliefStateModel.workspace_id == workspace_id,
+                BeliefStateModel.target_key == target_key,
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                return False
+            db.delete(record)
+            db.flush()
+            return True
 
     def list_belief_states(self, *, workspace_id: str | None = None) -> list[dict[str, Any]]:
         with session_scope() as db:

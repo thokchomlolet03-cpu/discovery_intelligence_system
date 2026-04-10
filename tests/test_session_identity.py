@@ -239,6 +239,15 @@ class SessionIdentityServiceTest(unittest.TestCase):
                     "ranking_context_reuse_summary": "Ranking-context reuse is active for framing only and does not change the model score.",
                     "interpretation_support_summary": "Workspace feedback memory remains active as interpretation support.",
                 },
+                "belief_state_summary": {
+                    "active_claim_count": 2,
+                    "support_basis_mix_summary": "The current support picture is grounded mostly in observed labels (2) and remains bounded rather than final.",
+                    "belief_state_strength_summary": "The current support picture is tentative because it is built entirely from proposed support-change records.",
+                    "belief_state_readiness_summary": "Read-across remains weak because the current support picture is entirely proposed.",
+                    "chronology_summary_text": "Current support picture relies on 2 active claim-linked support changes and keeps no historical support records visible for context.",
+                },
+                "belief_state_alignment_label": "Partial alignment",
+                "belief_state_alignment_summary": "This session aligns with the current support picture, but the added support remains mostly proposed or otherwise limited.",
             },
         )
 
@@ -252,6 +261,11 @@ class SessionIdentityServiceTest(unittest.TestCase):
         self.assertIn("recommendation reuse", trust["future_eligibility_summary"].lower())
         self.assertIn("future learning consideration", trust["future_eligibility_summary"].lower())
         self.assertIn("not eligible for stronger future activation", trust["future_eligibility_summary"].lower())
+        self.assertEqual(trust["belief_state_label"], "Current belief state")
+        self.assertEqual(trust["belief_alignment_label"], "Partial alignment")
+        self.assertIn("tentative", trust["belief_state_summary"].lower())
+        self.assertIn("observed labels", trust["belief_state_summary"].lower())
+        self.assertIn("active claim-linked support changes", trust["belief_state_summary"].lower())
 
 
 if __name__ == "__main__":

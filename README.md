@@ -93,6 +93,7 @@ For the current budget-based VM auto-stop setup, use [docs/cost-control.md](docs
 The repository also includes product-and-scientific philosophy notes that explain the intended reasoning stance behind Discovery Intelligence:
 
 - [Interactive documentation portal](docs/index.html)
+- [Media page](docs/media.html)
 - [Current system truth](docs/current_system_truth.md)
 - [System evolution progress](docs/system_evolution_progress.md)
 - [Trusted evidence, promotion gates, and anti-poisoning architecture](docs/01_philosophy/03_trusted_evidence_and_promotion.md)
@@ -100,6 +101,7 @@ The repository also includes product-and-scientific philosophy notes that explai
 - [Interaction model and dynamic workbench specification](docs/01_philosophy/05_interaction_model_and_dynamic_workbench.md)
 - [LLM role and interaction boundary](docs/06_ai_interface/llm_role_and_interaction_boundary.md)
 - [Governed candidate and evidence exchange](docs/07_publication/governed_candidate_and_evidence_exchange.md)
+
 ## Run Tests
 
 The repository uses Python's built-in `unittest` test discovery.

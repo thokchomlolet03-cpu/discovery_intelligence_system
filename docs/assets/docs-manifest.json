@@ -8,11 +8,30 @@
     "docs_root": "docs"
   },
   "media": {
-    "title": "Discovery Intelligence and programming video tracks",
-    "summary": "Two embedded video surfaces: one focused on Discovery Intelligence and one focused on Python and programming.",
+    "title": "Discovery Intelligence and programming media",
+    "summary": "Full Spotify show embeds and full YouTube playlist embeds for Discovery Intelligence and the Python/programming track.",
     "items": [
       {
+        "type": "spotify",
+        "platform": "spotify",
+        "theme": "discovery",
+        "title": "Discovery Intelligence Spotify show",
+        "summary": "Full Spotify show focused on the evolving Discovery Intelligence system and the broader scientific-build conversation.",
+        "embed_url": "https://open.spotify.com/embed/show/3xUkLSJeK555lZ2LO8f53i?utm_source=generator",
+        "link_url": "https://open.spotify.com/show/3xUkLSJeK555lZ2LO8f53i?si=a8b71a58d1024e65"
+      },
+      {
+        "type": "spotify",
+        "platform": "spotify",
+        "theme": "engineering",
+        "title": "Python and programming Spotify show",
+        "summary": "Full Spotify show for Python, programming, and engineering discussions around the project.",
+        "embed_url": "https://open.spotify.com/embed/show/4PMbpzpjM417Pidno6CdWH?utm_source=generator",
+        "link_url": "https://open.spotify.com/show/4PMbpzpjM417Pidno6CdWH?si=456445b19a0846e8"
+      },
+      {
         "type": "youtube_playlist",
+        "platform": "youtube",
         "theme": "discovery",
         "title": "Discovery Intelligence playlist",
         "summary": "Dedicated video playlist for Discovery Intelligence-specific walkthroughs, ideas, and evolving system discussions.",
@@ -21,11 +40,20 @@
       },
       {
         "type": "youtube_playlist",
+        "platform": "youtube",
         "theme": "engineering",
         "title": "Python and programming playlist",
         "summary": "Full playlist for Python and programming-focused videos connected to the engineering side of the work.",
         "embed_url": "https://www.youtube.com/embed/videoseries?list=PLvxK9VSKk9KG_3Jg4sK8CGX6TGh5zhCxq",
         "link_url": "https://youtube.com/playlist?list=PLvxK9VSKk9KG_3Jg4sK8CGX6TGh5zhCxq"
+      },
+      {
+        "type": "youtube_channel",
+        "platform": "youtube",
+        "theme": "creator",
+        "title": "YouTube channel",
+        "summary": "Channel home for the broader Discovery Intelligence and programming video surface.",
+        "link_url": "https://youtube.com/@thokchomloletsingh5236?si=-vRkzSuuII4Ow8hZ"
       }
     ]
   },

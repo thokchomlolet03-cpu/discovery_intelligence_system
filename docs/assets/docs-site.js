@@ -525,6 +525,9 @@ function renderSectionNav(sections) {
 }
 
 function renderMedia() {
+  if (!elements.mediaGrid) {
+    return;
+  }
   const media = state.manifest.media || {};
   const items = media.items || [];
   elements.mediaGrid.innerHTML = "";
@@ -533,10 +536,14 @@ function renderMedia() {
     return;
   }
 
-  elements.mediaTitle.textContent = media.title || "Signals, code, and Discovery Intelligence media";
-  elements.mediaSummary.textContent =
-    media.summary ||
-    "External audio and video surfaces that track Discovery Intelligence, programming, and the surrounding build process.";
+  if (elements.mediaTitle) {
+    elements.mediaTitle.textContent = media.title || "Signals, code, and Discovery Intelligence media";
+  }
+  if (elements.mediaSummary) {
+    elements.mediaSummary.textContent =
+      media.summary ||
+      "External audio and video surfaces that track Discovery Intelligence, programming, and the surrounding build process.";
+  }
 
   items.forEach((item) => {
     const article = document.createElement("article");

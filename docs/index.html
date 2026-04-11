@@ -11,22 +11,21 @@
     <link rel="stylesheet" href="./assets/docs-site.css" />
   </head>
   <body>
-    <div class="ambient ambient-one"></div>
-    <div class="ambient ambient-two"></div>
-    <div class="ambient-grid"></div>
-
     <header class="site-header">
       <div class="brand-lockup">
-        <div class="brand-mark">DI</div>
         <div>
-          <p class="eyebrow">Interactive Docs Portal</p>
-          <h1 id="site-title">Discovery Intelligence Documentation Portal</h1>
+          <p class="wordmark">Discovery Intelligence</p>
+          <h1 id="site-title">Documentation Portal</h1>
           <p id="site-subtitle" class="site-subtitle">
-            A browser-readable, animated documentation surface built on top of the canonical markdown files in this repository.
+            Structured surface for understanding system truth, decision logic, and scientific reasoning layers.
           </p>
         </div>
       </div>
       <div class="site-actions">
+        <nav class="site-nav" aria-label="Primary">
+          <a class="site-nav-link active" href="./index.html">Portal</a>
+          <a class="site-nav-link" href="./media.html">Media</a>
+        </nav>
         <label class="search-shell">
           <span class="search-label">Search docs</span>
           <input id="doc-search" type="search" placeholder="Search title, category, or summary" />
@@ -55,12 +54,15 @@
         <div id="home-view" class="home-view">
           <section class="hero-card">
             <div class="hero-copy">
-              <p class="eyebrow">Canonical docs, richer surface</p>
-              <h2>Read the repo like a high-end workbench instead of a plain file tree.</h2>
+              <p class="eyebrow">Research-grade documentation</p>
+              <h2>Navigate the system like a reasoning surface, not a loose file tree.</h2>
               <p>
-                This portal keeps the markdown documents as source-of-truth, then adds structure maps, animated navigation, search,
-                and section-driven reading tools on top.
+                The markdown files stay canonical. This portal adds directive reading paths, calmer navigation, and browser-readable structure on top.
               </p>
+              <div class="hero-actions">
+                <a class="ghost-button" href="?doc=current_system_truth.md">Read Current System Truth</a>
+                <a class="ghost-button" href="./media.html">Open Media Surface</a>
+              </div>
             </div>
             <div class="hero-metrics">
               <article class="metric-card">
@@ -75,6 +77,32 @@
                 <span class="metric-value" id="metric-sync-value">Manifest</span>
                 <span class="metric-label" id="metric-sync-label">Indexing mode</span>
               </article>
+            </div>
+          </section>
+
+          <section class="command-card">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Start here</p>
+                <h3>Use the portal like a command center</h3>
+              </div>
+            </div>
+            <div class="command-grid">
+              <a class="doc-card command-link" href="?doc=current_system_truth.md">
+                <span class="command-step">1</span>
+                <strong>Current System Truth</strong>
+                <p>Start with the actual present-tense state of the system, its bridge-state limits, and what should not be overstated.</p>
+              </a>
+              <a class="doc-card command-link" href="?doc=system_evolution_progress.md">
+                <span class="command-step">2</span>
+                <strong>System Evolution Progress</strong>
+                <p>Then read the long-horizon progression, what is implemented, what remains partial, and what phase comes next.</p>
+              </a>
+              <a class="doc-card command-link" href="?doc=01_philosophy/05_interaction_model_and_dynamic_workbench.md">
+                <span class="command-step">3</span>
+                <strong>Interaction Model</strong>
+                <p>Then move into how the system should be used, explained, inspected, and governed as a workbench.</p>
+              </a>
             </div>
           </section>
 
@@ -122,14 +150,23 @@
           <section class="media-card">
             <div class="section-heading media-heading">
               <div>
-                <p class="eyebrow">Signals & media</p>
-                <h3 id="media-title">Research conversations around the project</h3>
+                <p class="eyebrow">Media surface</p>
+                <h3 id="media-title">Open the separate Spotify and YouTube page</h3>
                 <p id="media-summary" class="site-subtitle">
-                  External audio and video surfaces that track Discovery Intelligence, programming, and the surrounding build process.
+                  Keep the docs portal focused, and open the dedicated media page when you want full show and playlist embeds.
                 </p>
               </div>
             </div>
-            <div id="media-grid" class="media-grid"></div>
+            <div class="media-preview-grid">
+              <a class="doc-card media-preview-card" href="./media.html#spotify">
+                <strong>Spotify shows</strong>
+                <p>Open full show embeds for Discovery Intelligence and Python/programming.</p>
+              </a>
+              <a class="doc-card media-preview-card" href="./media.html#youtube">
+                <strong>YouTube playlists</strong>
+                <p>Open the dedicated playlist page for Discovery Intelligence and engineering videos.</p>
+              </a>
+            </div>
           </section>
         </div>
 

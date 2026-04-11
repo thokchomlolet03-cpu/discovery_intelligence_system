@@ -1,6 +1,49 @@
 {
   "site_title": "Discovery Intelligence Documentation Portal",
   "site_subtitle": "Interactive reading surface for the product, scientific, AI-interface, publication, and operational reference documents.",
+  "repo": {
+    "owner": "thokchomlolet03-cpu",
+    "name": "discovery_intelligence_system",
+    "branch": "main",
+    "docs_root": "docs"
+  },
+  "media": {
+    "title": "Signals, code, and Discovery Intelligence media",
+    "summary": "Audio and video surfaces that track the evolving Discovery Intelligence system, programming practice, and the surrounding scientific-build journey.",
+    "items": [
+      {
+        "type": "spotify",
+        "theme": "discovery",
+        "title": "Discovery Intelligence evolution conversations",
+        "summary": "Spotify show focused on the evolving nature of the Discovery Intelligence system and the broader thinking around the workbench.",
+        "embed_url": "https://open.spotify.com/embed/show/3xUkLSJeK555lZ2LO8f53i?utm_source=generator",
+        "link_url": "https://open.spotify.com/show/3xUkLSJeK555lZ2LO8f53i"
+      },
+      {
+        "type": "spotify",
+        "theme": "engineering",
+        "title": "Python and programming focus",
+        "summary": "Spotify show centered on Python, programming, and the engineering practice surrounding the project.",
+        "embed_url": "https://open.spotify.com/embed/show/4PMbpzpjM417Pidno6CdWH?utm_source=generator",
+        "link_url": "https://open.spotify.com/show/4PMbpzpjM417Pidno6CdWH"
+      },
+      {
+        "type": "youtube_playlist",
+        "theme": "discovery",
+        "title": "Discovery Intelligence playlist",
+        "summary": "Dedicated YouTube playlist for Discovery Intelligence-specific videos and walkthroughs.",
+        "embed_url": "https://www.youtube.com/embed/videoseries?list=PLvxK9VSKk9KEWjS0eyvLM9LSvEkfsOwhu",
+        "link_url": "https://youtube.com/playlist?list=PLvxK9VSKk9KEWjS0eyvLM9LSvEkfsOwhu"
+      },
+      {
+        "type": "youtube_channel",
+        "theme": "creator",
+        "title": "YouTube channel",
+        "summary": "Channel covering both Discovery Intelligence and the Python/programming side of the work.",
+        "link_url": "https://youtube.com/@thokchomloletsingh5236?si=-vRkzSuuII4Ow8hZ"
+      }
+    ]
+  },
   "documents": [
     {
       "title": "Current System Truth",

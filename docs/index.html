@@ -20,8 +20,8 @@
         <div class="brand-mark">DI</div>
         <div>
           <p class="eyebrow">Interactive Docs Portal</p>
-          <h1>Discovery Intelligence Documentation Portal</h1>
-          <p class="site-subtitle">
+          <h1 id="site-title">Discovery Intelligence Documentation Portal</h1>
+          <p id="site-subtitle" class="site-subtitle">
             A browser-readable, animated documentation surface built on top of the canonical markdown files in this repository.
           </p>
         </div>
@@ -72,8 +72,28 @@
                 <span class="metric-label">Categories</span>
               </article>
               <article class="metric-card">
-                <span class="metric-value">MD -> HTML</span>
-                <span class="metric-label">Canonical source preserved</span>
+                <span class="metric-value" id="metric-sync-value">Manifest</span>
+                <span class="metric-label" id="metric-sync-label">Indexing mode</span>
+              </article>
+            </div>
+          </section>
+
+          <section class="sync-card">
+            <div>
+              <p class="eyebrow">Auto indexing</p>
+              <h3>Future markdown docs can appear with less manual upkeep</h3>
+              <p id="sync-summary" class="site-subtitle">
+                The portal can merge curated metadata with a live repository scan so new markdown files do not always require hand-editing the manifest.
+              </p>
+            </div>
+            <div class="sync-stats">
+              <article class="sync-stat">
+                <span class="sync-stat-value" id="sync-doc-total">0</span>
+                <span class="sync-stat-label">Docs seen in repo</span>
+              </article>
+              <article class="sync-stat">
+                <span class="sync-stat-value" id="sync-auto-count">0</span>
+                <span class="sync-stat-label">Auto-indexed docs</span>
               </article>
             </div>
           </section>
@@ -97,6 +117,19 @@
               </div>
             </div>
             <div id="featured-grid" class="featured-grid"></div>
+          </section>
+
+          <section class="media-card">
+            <div class="section-heading media-heading">
+              <div>
+                <p class="eyebrow">Signals & media</p>
+                <h3 id="media-title">Research conversations around the project</h3>
+                <p id="media-summary" class="site-subtitle">
+                  External audio and video surfaces that track Discovery Intelligence, programming, and the surrounding build process.
+                </p>
+              </div>
+            </div>
+            <div id="media-grid" class="media-grid"></div>
           </section>
         </div>
 

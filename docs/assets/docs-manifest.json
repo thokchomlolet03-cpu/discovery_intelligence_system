@@ -1,0 +1,66 @@
+{
+  "site_title": "Discovery Intelligence Documentation Portal",
+  "site_subtitle": "Interactive reading surface for the product, scientific, AI-interface, publication, and operational reference documents.",
+  "documents": [
+    {
+      "title": "Current System Truth",
+      "path": "current_system_truth.md",
+      "category": "System Truth",
+      "summary": "Current product truth, scientific limits, bridge-state realities, and the near-term strategic direction."
+    },
+    {
+      "title": "System Evolution Progress",
+      "path": "system_evolution_progress.md",
+      "category": "System Truth",
+      "summary": "Long-horizon system evolution, current major stage, implemented scope, partial areas, and next phase guidance."
+    },
+    {
+      "title": "Trusted Evidence, Promotion Gates, and Anti-Poisoning Architecture",
+      "path": "01_philosophy/03_trusted_evidence_and_promotion.md",
+      "category": "Philosophy",
+      "summary": "Bridge-state trust architecture covering evidence strength, promotion boundaries, and anti-poisoning rules."
+    },
+    {
+      "title": "The Best Approach to Discovery",
+      "path": "01_philosophy/04_best_approach_to_discovery.md",
+      "category": "Philosophy",
+      "summary": "Epistemic working method for disciplined discovery, belief updating, contradiction handling, and bounded truth claims."
+    },
+    {
+      "title": "Interaction Model and Dynamic Workbench Specification",
+      "path": "01_philosophy/05_interaction_model_and_dynamic_workbench.md",
+      "category": "Philosophy",
+      "summary": "Long-term interaction and workbench model for explanation, comparison, scenario testing, and governed action."
+    },
+    {
+      "title": "LLM Role and Interaction Boundary",
+      "path": "06_ai_interface/llm_role_and_interaction_boundary.md",
+      "category": "AI Interface",
+      "summary": "Architectural boundary for using LLMs as clarification and explanation layers without letting them become the scientific authority."
+    },
+    {
+      "title": "Governed Candidate and Evidence Exchange",
+      "path": "07_publication/governed_candidate_and_evidence_exchange.md",
+      "category": "Publication",
+      "summary": "Forward-looking publication and external evidence exchange design for bounded candidate visibility, testing, and governed evidence intake."
+    },
+    {
+      "title": "Deployment",
+      "path": "deployment.md",
+      "category": "Operations",
+      "summary": "Deployment reference for running and maintaining the Discovery Intelligence application."
+    },
+    {
+      "title": "Google Cloud VM Checklist",
+      "path": "google-cloud-vm-checklist.md",
+      "category": "Operations",
+      "summary": "Exact first-time VM setup steps for hosting the system on Google Cloud."
+    },
+    {
+      "title": "Cost Control",
+      "path": "cost-control.md",
+      "category": "Operations",
+      "summary": "Budget-based VM auto-stop and cost-control reference for keeping infrastructure spend bounded."
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Discovery Intelligence Documentation Portal</title>
+    <meta
+      name="description"
+      content="Interactive browser-readable documentation portal for Discovery Intelligence."
+    />
+    <link rel="stylesheet" href="./assets/docs-site.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="ambient-grid"></div>
+
+    <header class="site-header">
+      <div class="brand-lockup">
+        <div class="brand-mark">DI</div>
+        <div>
+          <p class="eyebrow">Interactive Docs Portal</p>
+          <h1>Discovery Intelligence Documentation Portal</h1>
+          <p class="site-subtitle">
+            A browser-readable, animated documentation surface built on top of the canonical markdown files in this repository.
+          </p>
+        </div>
+      </div>
+      <div class="site-actions">
+        <label class="search-shell">
+          <span class="search-label">Search docs</span>
+          <input id="doc-search" type="search" placeholder="Search title, category, or summary" />
+        </label>
+        <button id="focus-toggle" class="ghost-button" type="button">Focus mode</button>
+      </div>
+    </header>
+
+    <div class="progress-rail">
+      <div id="reading-progress" class="reading-progress"></div>
+    </div>
+
+    <main class="portal-shell">
+      <aside class="library-panel">
+        <div class="panel-intro">
+          <p class="eyebrow">Library</p>
+          <h2>Document atlas</h2>
+          <p>
+            Explore philosophy, AI-interface, publication, system-truth, and operations references without leaving the browser.
+          </p>
+        </div>
+        <div id="library-groups" class="library-groups"></div>
+      </aside>
+
+      <section class="reading-stage">
+        <div id="home-view" class="home-view">
+          <section class="hero-card">
+            <div class="hero-copy">
+              <p class="eyebrow">Canonical docs, richer surface</p>
+              <h2>Read the repo like a high-end workbench instead of a plain file tree.</h2>
+              <p>
+                This portal keeps the markdown documents as source-of-truth, then adds structure maps, animated navigation, search,
+                and section-driven reading tools on top.
+              </p>
+            </div>
+            <div class="hero-metrics">
+              <article class="metric-card">
+                <span class="metric-value" id="metric-doc-count">0</span>
+                <span class="metric-label">Docs indexed</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-value" id="metric-category-count">0</span>
+                <span class="metric-label">Categories</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-value">MD -> HTML</span>
+                <span class="metric-label">Canonical source preserved</span>
+              </article>
+            </div>
+          </section>
+
+          <section class="constellation-card">
+            <div class="constellation-copy">
+              <p class="eyebrow">Document constellation</p>
+              <h3>Interactive map of the docs surface</h3>
+              <p>
+                Click a node to jump into a document. Categories stay visible so the structure feels like a system, not a pile of files.
+              </p>
+            </div>
+            <div id="doc-constellation" class="doc-constellation" aria-label="Document constellation diagram"></div>
+          </section>
+
+          <section>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Featured reading</p>
+                <h3>Start from the strongest anchors</h3>
+              </div>
+            </div>
+            <div id="featured-grid" class="featured-grid"></div>
+          </section>
+        </div>
+
+        <div id="doc-view" class="doc-view hidden">
+          <div class="doc-header-card">
+            <div class="doc-header-copy">
+              <p id="doc-category" class="eyebrow">Category</p>
+              <h2 id="doc-title">Document title</h2>
+              <p id="doc-summary" class="doc-summary"></p>
+              <div class="doc-meta-row">
+                <span id="doc-path-chip" class="meta-chip">path</span>
+                <span id="doc-section-chip" class="meta-chip">0 sections</span>
+                <span id="doc-readtime-chip" class="meta-chip">0 min read</span>
+              </div>
+            </div>
+            <div class="doc-header-actions">
+              <button id="back-home" class="ghost-button" type="button">Back to library</button>
+              <a id="raw-doc-link" class="ghost-button" href="#" target="_blank" rel="noreferrer">Open raw markdown</a>
+            </div>
+          </div>
+
+          <div class="reader-layout">
+            <article class="article-shell">
+              <div id="article-stage" class="article-stage"></div>
+            </article>
+            <aside class="insight-rail">
+              <section class="insight-card">
+                <p class="eyebrow">Section map</p>
+                <div id="section-orbit" class="section-orbit"></div>
+              </section>
+              <section class="insight-card">
+                <p class="eyebrow">Jump list</p>
+                <nav id="section-nav" class="section-nav"></nav>
+              </section>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <template id="library-card-template">
+      <button class="library-card" type="button">
+        <span class="library-card-category"></span>
+        <strong class="library-card-title"></strong>
+        <span class="library-card-summary"></span>
+      </button>
+    </template>
+
+    <script src="./assets/docs-site.js"></script>
+  </body>
+</html>

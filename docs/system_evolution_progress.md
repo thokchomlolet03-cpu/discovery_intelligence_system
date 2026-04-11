@@ -16,7 +16,6 @@ Bridge-state workbench stabilization after the neutral-core cleanup, trust-surfa
 - Support for structure-only, labeled, and measurement-oriented uploads.
 - Session comparison and workspace feedback continuity.
 - Candidate ranking, rationale generation, and dashboard/session reconstruction from persisted artifacts.
-
 ### Partial
 - Measurement-first modeling is now surfaced more honestly in Discovery and Dashboard, but the broader scientific core still leans on compatibility-shaped ranking and heuristic signals.
 - Explanation quality is materially better than before, and Discovery/Dashboard now surface evidence, model, policy, and fallback semantics more clearly, but trust-contract work is not fully finished.

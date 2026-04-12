@@ -46,6 +46,30 @@ const elements = {
   backHome: document.getElementById("back-home"),
 };
 
+function setText(node, value) {
+  if (node) {
+    node.textContent = value;
+  }
+}
+
+function setHtml(node, value) {
+  if (node) {
+    node.innerHTML = value;
+  }
+}
+
+function setHref(node, value) {
+  if (node) {
+    node.href = value;
+  }
+}
+
+function toggleHidden(node, hidden) {
+  if (node) {
+    node.classList.toggle("hidden", Boolean(hidden));
+  }
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -381,18 +405,28 @@ function readTimeFromMarkdown(markdown) {
 }
 
 function buildLibrary() {
+  if (!elements.libraryGroups) return;
   elements.libraryGroups.innerHTML = "";
   const groups = groupByCategory(state.filteredDocuments);
+  const cardTemplate = document.getElementById("library-card-template");
   Object.entries(groups).forEach(([category, docs]) => {
     const group = document.createElement("section");
     group.className = "library-group";
     group.innerHTML = `<div class="group-title">${escapeHtml(category)}</div>`;
 
     docs.forEach((doc) => {
-      const button = document.getElementById("library-card-template").content.firstElementChild.cloneNode(true);
-      button.querySelector(".library-card-category").textContent = doc.auto_discovered ? `${doc.category} · Auto` : doc.category;
-      button.querySelector(".library-card-title").textContent = doc.title;
-      button.querySelector(".library-card-summary").textContent = doc.summary || "";
+      const button = cardTemplate?.content?.firstElementChild
+        ? cardTemplate.content.firstElementChild.cloneNode(true)
+        : document.createElement("button");
+      if (!button.classList.contains("library-card")) {
+        button.className = "library-card";
+        button.type = "button";
+        button.innerHTML =
+          '<span class="library-card-category"></span><strong class="library-card-title"></strong><span class="library-card-summary"></span>';
+      }
+      setText(button.querySelector(".library-card-category"), doc.auto_discovered ? `${doc.category} · Auto` : doc.category);
+      setText(button.querySelector(".library-card-title"), doc.title);
+      setText(button.querySelector(".library-card-summary"), doc.summary || "");
       button.dataset.path = doc.path;
       if (state.activeDocument && state.activeDocument.path === doc.path) {
         button.classList.add("active");
@@ -405,6 +439,7 @@ function buildLibrary() {
 }
 
 function buildFeatured() {
+  if (!elements.featuredGrid) return;
   elements.featuredGrid.innerHTML = "";
   state.documents.slice(0, 6).forEach((doc) => {
     const card = document.createElement("button");
@@ -429,6 +464,7 @@ function polarPosition(index, total, radiusX, radiusY, centerX, centerY) {
 }
 
 function renderConstellation() {
+  if (!elements.constellation) return;
   elements.constellation.innerHTML = "";
   const docs = state.documents.slice(0, 10);
   const width = elements.constellation.clientWidth || 600;
@@ -468,6 +504,7 @@ function renderConstellation() {
 }
 
 function renderSectionOrbit(sections) {
+  if (!elements.sectionOrbit) return;
   elements.sectionOrbit.innerHTML = "";
   if (!sections.length) {
     elements.sectionOrbit.innerHTML = "<p class='site-subtitle'>Section map becomes active when a document is open.</p>";
@@ -512,6 +549,7 @@ function renderSectionOrbit(sections) {
 }
 
 function renderSectionNav(sections) {
+  if (!elements.sectionNav) return;
   elements.sectionNav.innerHTML = "";
   sections.forEach((section) => {
     const button = document.createElement("button");
@@ -525,24 +563,22 @@ function renderSectionNav(sections) {
 }
 
 function renderMedia() {
+  const media = state.manifest.media || {};
+  const items = media.items || [];
+  setText(elements.mediaTitle, media.title || "Signals, code, and Discovery Intelligence media");
+  setText(
+    elements.mediaSummary,
+    media.summary ||
+      "External audio and video surfaces that track Discovery Intelligence, programming, and the surrounding build process."
+  );
   if (!elements.mediaGrid) {
     return;
   }
-  const media = state.manifest.media || {};
-  const items = media.items || [];
+
   elements.mediaGrid.innerHTML = "";
   if (!items.length) {
     elements.mediaGrid.innerHTML = "<p class='site-subtitle'>No media entries configured yet.</p>";
     return;
-  }
-
-  if (elements.mediaTitle) {
-    elements.mediaTitle.textContent = media.title || "Signals, code, and Discovery Intelligence media";
-  }
-  if (elements.mediaSummary) {
-    elements.mediaSummary.textContent =
-      media.summary ||
-      "External audio and video surfaces that track Discovery Intelligence, programming, and the surrounding build process.";
   }
 
   items.forEach((item) => {
@@ -609,21 +645,26 @@ function renderMedia() {
 }
 
 function applyManifestChrome() {
-  elements.siteTitle.textContent = state.manifest.site_title || "Discovery Intelligence Documentation Portal";
-  elements.siteSubtitle.textContent =
+  setText(elements.siteTitle, state.manifest.site_title || "Discovery Intelligence Documentation Portal");
+  setText(
+    elements.siteSubtitle,
     state.manifest.site_subtitle ||
-    "Interactive reading surface for the product, scientific, AI-interface, publication, and operational reference documents.";
+      "Interactive reading surface for the product, scientific, AI-interface, publication, and operational reference documents."
+  );
 }
 
 function updateDiscoverySummary() {
   const liveScan = state.discovery.mode === "github-api";
-  elements.metricSyncValue.textContent = liveScan ? "Live scan" : "Manifest";
-  elements.metricSyncLabel.textContent = liveScan ? "GitHub auto-indexing active" : "Manifest-only fallback";
-  elements.syncDocTotal.textContent = String(state.discovery.repoDocCount || state.documents.length);
-  elements.syncAutoCount.textContent = String(state.discovery.autoCount || 0);
-  elements.syncSummary.textContent = liveScan
-    ? `The portal is reading the GitHub repository tree on ${state.manifest.repo.branch} and can auto-index new docs markdown files that are added under /docs, even if you have not curated them in the manifest yet.`
-    : "The portal is currently using the curated manifest only. If the live repository scan is unavailable, the browser falls back safely to the known document list.";
+  setText(elements.metricSyncValue, liveScan ? "Live scan" : "Manifest");
+  setText(elements.metricSyncLabel, liveScan ? "GitHub auto-indexing active" : "Manifest-only fallback");
+  setText(elements.syncDocTotal, String(state.discovery.repoDocCount || state.documents.length));
+  setText(elements.syncAutoCount, String(state.discovery.autoCount || 0));
+  setText(
+    elements.syncSummary,
+    liveScan
+      ? `The portal is reading the GitHub repository tree on ${state.manifest.repo.branch} and can auto-index new docs markdown files that are added under /docs, even if you have not curated them in the manifest yet.`
+      : "The portal is currently using the curated manifest only. If the live repository scan is unavailable, the browser falls back safely to the known document list."
+  );
 }
 
 function jumpToSection(id) {
@@ -634,6 +675,7 @@ function jumpToSection(id) {
 }
 
 function updateSectionHighlight() {
+  if (!elements.sectionNav) return;
   const headings = state.activeSections
     .map((section) => ({ section, node: document.getElementById(section.id) }))
     .filter((entry) => entry.node);
@@ -655,11 +697,14 @@ function updateReadingProgress() {
   const doc = document.documentElement;
   const scrollable = doc.scrollHeight - window.innerHeight;
   const progress = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
-  elements.readingProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  if (elements.readingProgress) {
+    elements.readingProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  }
   updateSectionHighlight();
 }
 
 function observeArticleReveals() {
+  if (!elements.articleStage || typeof IntersectionObserver === "undefined") return;
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -677,21 +722,24 @@ function observeArticleReveals() {
 async function openDocument(path) {
   const doc = state.documents.find((item) => item.path === path);
   if (!doc) return;
+  if (!elements.homeView || !elements.docView || !elements.articleStage) {
+    throw new Error("Documentation reader shell is incomplete. Required reading-stage elements are missing.");
+  }
   const markdown = await fetchText(path);
   const rendered = markdownToHtml(markdown);
 
   state.activeDocument = doc;
   state.activeSections = rendered.sections;
 
-  elements.homeView.classList.add("hidden");
-  elements.docView.classList.remove("hidden");
-  elements.docCategory.textContent = doc.auto_discovered ? `${doc.category} · Auto indexed` : doc.category;
-  elements.docTitle.textContent = doc.title;
-  elements.docSummary.textContent = doc.summary || "";
-  elements.docPathChip.textContent = doc.path;
-  elements.docSectionChip.textContent = `${rendered.sections.length} sections`;
-  elements.docReadtimeChip.textContent = `${readTimeFromMarkdown(markdown)} min read`;
-  elements.rawDocLink.href = doc.path;
+  toggleHidden(elements.homeView, true);
+  toggleHidden(elements.docView, false);
+  setText(elements.docCategory, doc.auto_discovered ? `${doc.category} · Auto indexed` : doc.category);
+  setText(elements.docTitle, doc.title);
+  setText(elements.docSummary, doc.summary || "");
+  setText(elements.docPathChip, doc.path);
+  setText(elements.docSectionChip, `${rendered.sections.length} sections`);
+  setText(elements.docReadtimeChip, `${readTimeFromMarkdown(markdown)} min read`);
+  setHref(elements.rawDocLink, doc.path);
   elements.articleStage.innerHTML = rendered.html;
 
   renderSectionNav(rendered.sections);
@@ -709,8 +757,8 @@ async function openDocument(path) {
 function showHome() {
   state.activeDocument = null;
   state.activeSections = [];
-  elements.docView.classList.add("hidden");
-  elements.homeView.classList.remove("hidden");
+  toggleHidden(elements.docView, true);
+  toggleHidden(elements.homeView, false);
   renderSectionOrbit([]);
   const url = new URL(window.location.href);
   url.searchParams.delete("doc");
@@ -736,8 +784,8 @@ async function initialize() {
   state.documents = await buildDocuments();
   state.filteredDocuments = [...state.documents];
 
-  elements.metricDocCount.textContent = String(state.documents.length);
-  elements.metricCategoryCount.textContent = String(new Set(state.documents.map((doc) => doc.category)).size);
+  setText(elements.metricDocCount, String(state.documents.length));
+  setText(elements.metricCategoryCount, String(new Set(state.documents.map((doc) => doc.category)).size));
   updateDiscoverySummary();
 
   buildLibrary();
@@ -752,17 +800,23 @@ async function initialize() {
   }
 }
 
-elements.search.addEventListener("input", (event) => {
-  filterDocuments(event.target.value);
-});
+if (elements.search) {
+  elements.search.addEventListener("input", (event) => {
+    filterDocuments(event.target.value);
+  });
+}
 
-elements.focusToggle.addEventListener("click", () => {
-  state.focusMode = !state.focusMode;
-  document.body.classList.toggle("focus-mode", state.focusMode);
-  elements.focusToggle.textContent = state.focusMode ? "Exit focus mode" : "Focus mode";
-});
+if (elements.focusToggle) {
+  elements.focusToggle.addEventListener("click", () => {
+    state.focusMode = !state.focusMode;
+    document.body.classList.toggle("focus-mode", state.focusMode);
+    setText(elements.focusToggle, state.focusMode ? "Exit focus mode" : "Focus mode");
+  });
+}
 
-elements.backHome.addEventListener("click", showHome);
+if (elements.backHome) {
+  elements.backHome.addEventListener("click", showHome);
+}
 window.addEventListener("scroll", updateReadingProgress, { passive: true });
 window.addEventListener("resize", () => {
   renderConstellation();
@@ -770,7 +824,8 @@ window.addEventListener("resize", () => {
 });
 
 initialize().catch((error) => {
-  elements.homeView.innerHTML = `
+  if (elements.homeView) {
+    elements.homeView.innerHTML = `
     <section class="hero-card">
       <div class="hero-copy">
         <p class="eyebrow">Portal load error</p>
@@ -779,4 +834,6 @@ initialize().catch((error) => {
       </div>
     </section>
   `;
+  }
+  console.error("Discovery Intelligence docs portal failed to initialize.", error);
 });

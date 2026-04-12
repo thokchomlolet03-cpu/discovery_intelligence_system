@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Discovery Intelligence Media</title>
+    <title>Discovery Intelligence Media Surface</title>
     <meta
       name="description"
-      content="Embedded Spotify shows and YouTube playlists for Discovery Intelligence and Python/programming."
+      content="Dedicated Spotify and YouTube media surface for Discovery Intelligence and programming content."
     />
     <link rel="stylesheet" href="./assets/docs-site.css" />
   </head>
@@ -14,96 +14,99 @@
     <header class="site-header">
       <div class="brand-lockup">
         <div>
-          <p class="eyebrow">Media</p>
-          <h1>Discovery Intelligence</h1>
-          <p class="site-subtitle">
-            Full-show and full-playlist media surface for Discovery Intelligence and Python/programming topics.
+          <p class="wordmark">Discovery Intelligence</p>
+          <h1 id="media-page-title">Media Surface</h1>
+          <p id="media-page-summary" class="site-subtitle">
+            Full Spotify show embeds and full YouTube playlist embeds for Discovery Intelligence and the Python/programming track.
           </p>
         </div>
       </div>
       <div class="site-actions">
-        <a class="ghost-button" href="./index.html">Docs portal</a>
+        <nav class="site-nav" aria-label="Primary">
+          <a class="site-nav-link" href="./index.html">Portal</a>
+          <a class="site-nav-link active" href="./media.html">Media</a>
+        </nav>
       </div>
     </header>
 
-    <main class="page-shell">
-      <section class="page-hero">
-        <p class="eyebrow">Media library</p>
-        <h2>Spotify shows and YouTube playlists</h2>
-        <p class="helper-copy">
-          Each section keeps the full Spotify show and the full YouTube playlist embedded so readers can move through episodes or videos inside the site when the platform allows it.
-        </p>
+    <div class="progress-rail">
+      <div class="reading-progress reading-progress-static"></div>
+    </div>
+
+    <main class="media-page-shell">
+      <section class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Separate media page</p>
+          <h2>Listen and watch without leaving the site.</h2>
+          <p>
+            This page keeps the full Spotify shows and full YouTube playlists in one place so the documentation portal can stay focused on system truth and reasoning structure.
+          </p>
+        </div>
+        <div class="hero-metrics">
+          <article class="metric-card">
+            <span class="metric-value">2</span>
+            <span class="metric-label">Spotify shows</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">2</span>
+            <span class="metric-label">YouTube playlists</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">Full</span>
+            <span class="metric-label">Show / playlist embeds</span>
+          </article>
+        </div>
       </section>
 
-      <section class="media-stage">
-        <article class="media-card">
-          <p class="eyebrow">Track 1</p>
-          <h3>Discovery Intelligence</h3>
-          <p class="helper-copy">
-            System evolution, scientific-core direction, product reasoning, and the larger Discovery Intelligence journey.
-          </p>
-          <div class="embed-grid">
-            <div class="embed-panel">
-              <h4>Spotify show</h4>
-              <iframe
-                class="embed-frame spotify"
-                src="https://open.spotify.com/embed/show/3xUkLSJeK555lZ2LO8f53i?utm_source=generator"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-              ></iframe>
-            </div>
-            <div class="embed-panel">
-              <h4>YouTube playlist</h4>
-              <iframe
-                class="embed-frame youtube"
-                src="https://www.youtube.com/embed/videoseries?list=PLvxK9VSKk9KEWjS0eyvLM9LSvEkfsOwhu"
-                title="Discovery Intelligence YouTube playlist"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen
-                loading="lazy"
-              ></iframe>
-            </div>
+      <section id="spotify" class="media-section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Spotify</p>
+            <h3>Full show embeds</h3>
+            <p class="site-subtitle">
+              These are show-level embeds, not single-episode embeds, so visitors can move through episodes inside the embedded Spotify surface where Spotify allows it.
+            </p>
           </div>
-          <div class="support-links">
-            <a class="ghost-button" href="https://open.spotify.com/show/3xUkLSJeK555lZ2LO8f53i?si=a8b71a58d1024e65" target="_blank" rel="noreferrer">Open Spotify show</a>
-            <a class="ghost-button" href="https://youtube.com/playlist?list=PLvxK9VSKk9KEWjS0eyvLM9LSvEkfsOwhu&si=Aq5P0ZoIKqVS1kR8" target="_blank" rel="noreferrer">Open YouTube playlist</a>
-          </div>
-        </article>
+        </div>
+        <div id="spotify-grid" class="media-grid"></div>
+      </section>
 
-        <article class="media-card">
-          <p class="eyebrow">Track 2</p>
-          <h3>Python and Programming</h3>
-          <p class="helper-copy">
-            Python, programming practice, and software-engineering topics that support the system-building side of the work.
-          </p>
-          <div class="embed-grid">
-            <div class="embed-panel">
-              <h4>Spotify show</h4>
-              <iframe
-                class="embed-frame spotify"
-                src="https://open.spotify.com/embed/show/4PMbpzpjM417Pidno6CdWH?utm_source=generator"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-              ></iframe>
-            </div>
-            <div class="embed-panel">
-              <h4>YouTube playlist</h4>
-              <iframe
-                class="embed-frame youtube"
-                src="https://www.youtube.com/embed/videoseries?list=PLvxK9VSKk9KG_3Jg4sK8CGX6TGh5zhCxq"
-                title="Python and programming YouTube playlist"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen
-                loading="lazy"
-              ></iframe>
-            </div>
+      <section id="youtube" class="media-section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">YouTube</p>
+            <h3>Full playlist embeds</h3>
+            <p class="site-subtitle">
+              These are playlist-level embeds so viewers can move from one video to another inside the embedded YouTube player without leaving the page.
+            </p>
           </div>
-          <div class="support-links">
-            <a class="ghost-button" href="https://open.spotify.com/show/4PMbpzpjM417Pidno6CdWH?si=456445b19a0846e8" target="_blank" rel="noreferrer">Open Spotify show</a>
-            <a class="ghost-button" href="https://youtube.com/playlist?list=PLvxK9VSKk9KG_3Jg4sK8CGX6TGh5zhCxq&si=ehKeX8hw6QtHp8kZ" target="_blank" rel="noreferrer">Open YouTube playlist</a>
+        </div>
+        <div id="youtube-grid" class="media-grid"></div>
+      </section>
+
+      <section class="media-section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Channel</p>
+            <h3>Broader video surface</h3>
+            <p class="site-subtitle">
+              Open the main YouTube channel for the broader Discovery Intelligence and programming stream.
+            </p>
           </div>
-        </article>
+        </div>
+        <div class="media-preview-grid">
+          <a class="doc-card media-preview-card" href="https://youtube.com/@thokchomloletsingh5236?si=-vRkzSuuII4Ow8hZ" target="_blank" rel="noreferrer">
+            <strong>Open the YouTube channel</strong>
+            <p>Go to the full channel home for everything outside the embedded playlists.</p>
+          </a>
+          <a class="doc-card media-preview-card" href="./index.html">
+            <strong>Back to documentation portal</strong>
+            <p>Return to the main documentation surface for system truth, philosophy, AI interface, and publication docs.</p>
+          </a>
+        </div>
       </section>
     </main>
+
+    <script src="./assets/media-page.js"></script>
   </body>
 </html>

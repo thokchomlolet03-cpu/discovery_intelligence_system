@@ -6,7 +6,7 @@
     <title>Discovery Intelligence Documentation Portal</title>
     <meta
       name="description"
-      content="Structured browser-readable documentation portal for Discovery Intelligence."
+      content="Interactive browser-readable documentation portal for Discovery Intelligence."
     />
     <link rel="stylesheet" href="./assets/docs-site.css" />
   </head>
@@ -14,15 +14,18 @@
     <header class="site-header">
       <div class="brand-lockup">
         <div>
-          <p class="eyebrow">Documentation Portal</p>
-          <h1>Discovery Intelligence</h1>
-          <p class="site-subtitle">
+          <p class="wordmark">Discovery Intelligence</p>
+          <h1 id="site-title">Documentation Portal</h1>
+          <p id="site-subtitle" class="site-subtitle">
             Structured surface for understanding system truth, decision logic, and scientific reasoning layers.
           </p>
         </div>
       </div>
       <div class="site-actions">
-        <a class="ghost-button" href="./media.html">Media</a>
+        <nav class="site-nav" aria-label="Primary">
+          <a class="site-nav-link active" href="./index.html">Portal</a>
+          <a class="site-nav-link" href="./media.html">Media</a>
+        </nav>
         <label class="search-shell">
           <span class="search-label">Search docs</span>
           <input id="doc-search" type="search" placeholder="Search title, category, or summary" />
@@ -40,8 +43,8 @@
         <div class="panel-intro">
           <p class="eyebrow">Library</p>
           <h2>Document atlas</h2>
-          <p class="helper-copy">
-            Compact navigation across system truth, philosophy, AI interface, publication, and operations references.
+          <p>
+            Explore philosophy, AI-interface, publication, system-truth, and operations references without leaving the browser.
           </p>
         </div>
         <div id="library-groups" class="library-groups"></div>
@@ -51,11 +54,15 @@
         <div id="home-view" class="home-view">
           <section class="hero-card">
             <div class="hero-copy">
-              <p class="eyebrow">Start here</p>
-              <h2>Read the system in a clear order.</h2>
+              <p class="eyebrow">Research-grade documentation</p>
+              <h2>Navigate the system like a reasoning surface, not a loose file tree.</h2>
               <p>
-                Start with current system truth, then move into system evolution, then the interaction model that explains how the workbench should behave.
+                The markdown files stay canonical. This portal adds directive reading paths, calmer navigation, and browser-readable structure on top.
               </p>
+              <div class="hero-actions">
+                <a class="ghost-button" href="?doc=current_system_truth.md">Read Current System Truth</a>
+                <a class="ghost-button" href="./media.html">Open Media Surface</a>
+              </div>
             </div>
             <div class="hero-metrics">
               <article class="metric-card">
@@ -67,36 +74,64 @@
                 <span class="metric-label">Categories</span>
               </article>
               <article class="metric-card">
-                <span class="metric-value">Structured</span>
-                <span class="metric-label">Canonical markdown remains the source of truth</span>
+                <span class="metric-value" id="metric-sync-value">Manifest</span>
+                <span class="metric-label" id="metric-sync-label">Indexing mode</span>
               </article>
             </div>
           </section>
 
-          <section class="start-grid" aria-label="Recommended reading order">
-            <a class="start-card" href="?doc=current_system_truth.md">
-              <span class="eyebrow">1. Core understanding</span>
-              <strong>Current System Truth</strong>
-              <span class="helper-copy">Read the current product truth, bridge-state limits, and what the system can honestly claim today.</span>
-            </a>
-            <a class="start-card" href="?doc=system_evolution_progress.md">
-              <span class="eyebrow">2. Direction</span>
-              <strong>System Evolution Progress</strong>
-              <span class="helper-copy">See the current major stage, what is live, what remains partial, and what should happen next.</span>
-            </a>
-            <a class="start-card" href="?doc=01_philosophy/05_interaction_model_and_dynamic_workbench.md">
-              <span class="eyebrow">3. Interaction model</span>
-              <strong>Dynamic Workbench Specification</strong>
-              <span class="helper-copy">Understand how explanation, comparison, what-if reasoning, and governed interaction should fit together.</span>
-            </a>
+          <section class="command-card">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Start here</p>
+                <h3>Use the portal like a command center</h3>
+              </div>
+            </div>
+            <div class="command-grid">
+              <a class="doc-card command-link" href="?doc=current_system_truth.md">
+                <span class="command-step">1</span>
+                <strong>Current System Truth</strong>
+                <p>Start with the actual present-tense state of the system, its bridge-state limits, and what should not be overstated.</p>
+              </a>
+              <a class="doc-card command-link" href="?doc=system_evolution_progress.md">
+                <span class="command-step">2</span>
+                <strong>System Evolution Progress</strong>
+                <p>Then read the long-horizon progression, what is implemented, what remains partial, and what phase comes next.</p>
+              </a>
+              <a class="doc-card command-link" href="?doc=01_philosophy/05_interaction_model_and_dynamic_workbench.md">
+                <span class="command-step">3</span>
+                <strong>Interaction Model</strong>
+                <p>Then move into how the system should be used, explained, inspected, and governed as a workbench.</p>
+              </a>
+            </div>
+          </section>
+
+          <section class="sync-card">
+            <div>
+              <p class="eyebrow">Auto indexing</p>
+              <h3>Future markdown docs can appear with less manual upkeep</h3>
+              <p id="sync-summary" class="site-subtitle">
+                The portal can merge curated metadata with a live repository scan so new markdown files do not always require hand-editing the manifest.
+              </p>
+            </div>
+            <div class="sync-stats">
+              <article class="sync-stat">
+                <span class="sync-stat-value" id="sync-doc-total">0</span>
+                <span class="sync-stat-label">Docs seen in repo</span>
+              </article>
+              <article class="sync-stat">
+                <span class="sync-stat-value" id="sync-auto-count">0</span>
+                <span class="sync-stat-label">Auto-indexed docs</span>
+              </article>
+            </div>
           </section>
 
           <section class="constellation-card">
             <div class="constellation-copy">
-              <p class="eyebrow">Document map</p>
-              <h3>Browse the full docs surface</h3>
-              <p class="helper-copy">
-                Use the map for quick browsing, then move into the reader when you want the full document.
+              <p class="eyebrow">Document constellation</p>
+              <h3>Interactive map of the docs surface</h3>
+              <p>
+                Click a node to jump into a document. Categories stay visible so the structure feels like a system, not a pile of files.
               </p>
             </div>
             <div id="doc-constellation" class="doc-constellation" aria-label="Document constellation diagram"></div>
@@ -105,11 +140,33 @@
           <section>
             <div class="section-heading">
               <div>
-                <p class="eyebrow">Continue reading</p>
-                <h3>Recommended next documents</h3>
+                <p class="eyebrow">Featured reading</p>
+                <h3>Start from the strongest anchors</h3>
               </div>
             </div>
             <div id="featured-grid" class="featured-grid"></div>
+          </section>
+
+          <section class="media-card">
+            <div class="section-heading media-heading">
+              <div>
+                <p class="eyebrow">Media surface</p>
+                <h3 id="media-title">Open the separate Spotify and YouTube page</h3>
+                <p id="media-summary" class="site-subtitle">
+                  Keep the docs portal focused, and open the dedicated media page when you want full show and playlist embeds.
+                </p>
+              </div>
+            </div>
+            <div class="media-preview-grid">
+              <a class="doc-card media-preview-card" href="./media.html#spotify">
+                <strong>Spotify shows</strong>
+                <p>Open full show embeds for Discovery Intelligence and Python/programming.</p>
+              </a>
+              <a class="doc-card media-preview-card" href="./media.html#youtube">
+                <strong>YouTube playlists</strong>
+                <p>Open the dedicated playlist page for Discovery Intelligence and engineering videos.</p>
+              </a>
+            </div>
           </section>
         </div>
 
@@ -136,14 +193,13 @@
               <div id="article-stage" class="article-stage"></div>
             </article>
             <aside class="insight-rail">
-              <section class="insight-shell">
-                <div class="insight-header">
-                  <p class="eyebrow">Jump list</p>
-                  <p class="helper-copy">Navigate the current document without losing your place.</p>
-                </div>
-                <div id="jump-list-container" class="jump-list-container">
-                  <nav id="section-nav" class="section-nav"></nav>
-                </div>
+              <section class="insight-card">
+                <p class="eyebrow">Section map</p>
+                <div id="section-orbit" class="section-orbit"></div>
+              </section>
+              <section class="insight-card">
+                <p class="eyebrow">Jump list</p>
+                <nav id="section-nav" class="section-nav"></nav>
               </section>
             </aside>
           </div>

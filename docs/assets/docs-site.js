@@ -49,6 +49,12 @@ function setHref(node, value) {
   }
 }
 
+function documentUrl(path) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("doc", path);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function toggleHidden(node, hidden) {
   if (node) {
     node.classList.toggle("hidden", Boolean(hidden));
@@ -237,10 +243,10 @@ function buildLibrary() {
     docs.forEach((doc) => {
       const button = cardTemplate?.content?.firstElementChild
         ? cardTemplate.content.firstElementChild.cloneNode(true)
-        : document.createElement("button");
+        : document.createElement("a");
       if (!button.classList.contains("library-card")) {
         button.className = "library-card";
-        button.type = "button";
+        button.href = "#";
         button.innerHTML =
           '<span class="library-card-category"></span><strong class="library-card-title"></strong><span class="library-card-summary"></span>';
       }
@@ -248,10 +254,14 @@ function buildLibrary() {
       setText(button.querySelector(".library-card-title"), doc.title);
       setText(button.querySelector(".library-card-summary"), doc.summary || "");
       button.dataset.path = doc.path;
+      button.href = documentUrl(doc.path);
       if (state.activeDocument && state.activeDocument.path === doc.path) {
         button.classList.add("active");
       }
-      button.addEventListener("click", () => openDocument(doc.path));
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        safeOpenDocument(doc.path);
+      });
       group.appendChild(button);
     });
     elements.libraryGroups.appendChild(group);
@@ -262,15 +272,18 @@ function buildFeatured() {
   if (!elements.featuredGrid) return;
   elements.featuredGrid.innerHTML = "";
   state.documents.slice(0, 6).forEach((doc) => {
-    const card = document.createElement("button");
+    const card = document.createElement("a");
     card.className = "featured-card";
-    card.type = "button";
+    card.href = documentUrl(doc.path);
     card.innerHTML = `
       <p class="eyebrow">${escapeHtml(doc.category)}</p>
       <h4>${escapeHtml(doc.title)}</h4>
       <p>${escapeHtml(doc.summary || "")}</p>
     `;
-    card.addEventListener("click", () => openDocument(doc.path));
+    card.addEventListener("click", (event) => {
+      event.preventDefault();
+      safeOpenDocument(doc.path);
+    });
     elements.featuredGrid.appendChild(card);
   });
 }
@@ -312,14 +325,17 @@ function renderConstellation() {
     line.style.transform = `translate(0, 0) rotate(${angle}deg)`;
     elements.constellation.appendChild(line);
 
-    const node = document.createElement("button");
+    const node = document.createElement("a");
     node.className = "constellation-node";
-    node.type = "button";
+    node.href = documentUrl(doc.path);
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
     node.style.transform = "translate(-50%, -50%)";
     node.textContent = doc.title;
-    node.addEventListener("click", () => openDocument(doc.path));
+    node.addEventListener("click", (event) => {
+      event.preventDefault();
+      safeOpenDocument(doc.path);
+    });
     elements.constellation.appendChild(node);
   });
 }
@@ -439,11 +455,53 @@ async function openDocument(path) {
     elements.jumpListContainer.scrollTop = 0;
   }
 
-  const url = new URL(window.location.href);
-  url.searchParams.set("doc", path);
-  window.history.replaceState({}, "", url);
+  window.history.replaceState({}, "", documentUrl(path));
   window.scrollTo({ top: 0, behavior: "auto" });
   updateReadingProgress();
+}
+
+function showDocumentLoadError(path, error) {
+  const message = error?.message || `Unknown error while loading ${path}`;
+  console.error("Discovery Intelligence docs portal failed to open document.", path, error);
+
+  if (!elements.homeView || !elements.docView || !elements.articleStage) {
+    return;
+  }
+
+  setReaderMode(true);
+  toggleHidden(elements.homeView, true);
+  toggleHidden(elements.docView, false);
+  setText(elements.docCategory, "Document load error");
+  setText(elements.docTitle, state.activeDocument?.title || path);
+  setText(elements.docSummary, "The portal could not render this markdown file. You can still open the raw markdown directly.");
+  setText(elements.docPathChip, path);
+  setText(elements.docSectionChip, "0 sections");
+  setText(elements.docReadtimeChip, "Load failed");
+  setHref(elements.rawDocLink, path);
+  setHtml(
+    elements.articleStage,
+    `
+    <section class="hero-card">
+      <div class="hero-copy">
+        <p class="eyebrow">Document load error</p>
+        <h2>We could not open this article.</h2>
+        <p>${escapeHtml(message)}</p>
+      </div>
+    </section>
+  `
+  );
+  renderSectionNav([]);
+  if (elements.jumpListContainer) {
+    elements.jumpListContainer.scrollTop = 0;
+  }
+}
+
+async function safeOpenDocument(path) {
+  try {
+    await openDocument(path);
+  } catch (error) {
+    showDocumentLoadError(path, error);
+  }
 }
 
 function showHome() {
@@ -489,7 +547,7 @@ async function initialize() {
 
   const requested = new URL(window.location.href).searchParams.get("doc");
   if (requested) {
-    await openDocument(requested);
+    await safeOpenDocument(requested);
   }
 }
 

@@ -5,6 +5,7 @@ const state = {
   activeDocument: null,
   activeSections: [],
   focusMode: false,
+  activeMapCategory: "",
 };
 
 const elements = {
@@ -225,6 +226,10 @@ function groupByCategory(documents) {
   }, {});
 }
 
+function sortedCategoryEntries(documents) {
+  return Object.entries(groupByCategory(documents)).sort(([left], [right]) => left.localeCompare(right));
+}
+
 function readTimeFromMarkdown(markdown) {
   const words = String(markdown || "").trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 220));
@@ -299,45 +304,118 @@ function polarPosition(index, total, radiusX, radiusY, centerX, centerY) {
 function renderConstellation() {
   if (!elements.constellation) return;
   elements.constellation.innerHTML = "";
-  const docs = state.documents.slice(0, 10);
+  const categoryEntries = sortedCategoryEntries(state.documents);
+  if (!categoryEntries.length) {
+    return;
+  }
+  if (!state.activeMapCategory || !categoryEntries.some(([category]) => category === state.activeMapCategory)) {
+    state.activeMapCategory = categoryEntries[0][0];
+  }
+  const activeCategoryEntry = categoryEntries.find(([category]) => category === state.activeMapCategory) || categoryEntries[0];
+  const activeCategory = activeCategoryEntry[0];
+  const activeDocs = activeCategoryEntry[1];
+  const activeCategoryIndex = categoryEntries.findIndex(([category]) => category === activeCategory);
   const width = elements.constellation.clientWidth || 600;
-  const height = 320;
+  const height = 380;
   const centerX = width / 2;
   const centerY = height / 2;
-  const radiusX = Math.max(110, width * 0.35);
-  const radiusY = 115;
+  const categoryRadiusX = Math.max(128, width * 0.36);
+  const categoryRadiusY = 138;
+  const activeCategoryPosition = polarPosition(
+    activeCategoryIndex,
+    categoryEntries.length,
+    categoryRadiusX,
+    categoryRadiusY,
+    centerX,
+    centerY
+  );
+  const fileRadiusX = Math.max(82, width * 0.16);
+  const fileRadiusY = 86;
 
   const center = document.createElement("div");
   center.className = "constellation-center";
-  center.textContent = "Docs map";
+  center.innerHTML = `
+    <span class="constellation-center-label">Layer 1</span>
+    <strong>Choose a folder</strong>
+    <span>Then inspect its files.</span>
+  `;
   elements.constellation.appendChild(center);
 
-  docs.forEach((doc, index) => {
-    const { x, y } = polarPosition(index, docs.length, radiusX, radiusY, centerX, centerY);
+  categoryEntries.forEach(([category], index) => {
+    const { x, y } = polarPosition(index, categoryEntries.length, categoryRadiusX, categoryRadiusY, centerX, centerY);
     const dx = x - centerX;
     const dy = y - centerY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
     const line = document.createElement("div");
-    line.className = "constellation-line";
+    line.className = "constellation-line constellation-line-category";
+    line.style.width = `${distance}px`;
+    line.style.transform = `translate(0, 0) rotate(${angle}deg)`;
+    elements.constellation.appendChild(line);
+
+    const node = document.createElement("button");
+    node.className = `constellation-node constellation-category-node${category === activeCategory ? " active" : ""}`;
+    node.type = "button";
+    node.style.left = `${x}px`;
+    node.style.top = `${y}px`;
+    node.style.transform = "translate(-50%, -50%)";
+    node.innerHTML = `
+      <span class="constellation-node-label">${escapeHtml(category)}</span>
+      <span class="constellation-node-meta">${(groupByCategory(state.documents)[category] || []).length} doc${(groupByCategory(state.documents)[category] || []).length === 1 ? "" : "s"}</span>
+    `;
+    node.addEventListener("click", () => {
+      state.activeMapCategory = category;
+      renderConstellation();
+    });
+    elements.constellation.appendChild(node);
+  });
+
+  activeDocs.slice(0, 8).forEach((doc, index) => {
+    const { x, y } = polarPosition(
+      index,
+      activeDocs.length,
+      fileRadiusX,
+      fileRadiusY,
+      activeCategoryPosition.x,
+      activeCategoryPosition.y
+    );
+    const dx = x - activeCategoryPosition.x;
+    const dy = y - activeCategoryPosition.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+    const line = document.createElement("div");
+    line.className = "constellation-line constellation-line-file";
     line.style.width = `${distance}px`;
     line.style.transform = `translate(0, 0) rotate(${angle}deg)`;
     elements.constellation.appendChild(line);
 
     const node = document.createElement("a");
-    node.className = "constellation-node";
+    node.className = `constellation-node constellation-file-node${state.activeDocument && state.activeDocument.path === doc.path ? " active" : ""}`;
     node.href = documentUrl(doc.path);
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
     node.style.transform = "translate(-50%, -50%)";
-    node.textContent = doc.title;
+    node.innerHTML = `
+      <span class="constellation-node-label">${escapeHtml(doc.title)}</span>
+      <span class="constellation-node-meta">${escapeHtml(doc.path.split("/").pop() || doc.path)}</span>
+    `;
     node.addEventListener("click", (event) => {
       event.preventDefault();
       safeOpenDocument(doc.path);
     });
     elements.constellation.appendChild(node);
   });
+
+  const activeCategorySummary = document.createElement("div");
+  activeCategorySummary.className = "constellation-category-summary";
+  activeCategorySummary.innerHTML = `
+    <span class="constellation-summary-label">Layer 2</span>
+    <strong>${escapeHtml(activeCategory)}</strong>
+    <span>${activeDocs.length} file${activeDocs.length === 1 ? "" : "s"} available in this folder</span>
+  `;
+  elements.constellation.appendChild(activeCategorySummary);
 }
 
 function renderSectionNav(sections) {
@@ -434,6 +512,7 @@ async function openDocument(path) {
   const rendered = markdownToHtml(markdown);
 
   state.activeDocument = doc;
+  state.activeMapCategory = doc.category || state.activeMapCategory;
   state.activeSections = rendered.sections;
   setReaderMode(true);
 
@@ -450,6 +529,7 @@ async function openDocument(path) {
 
   renderSectionNav(rendered.sections);
   buildLibrary();
+  renderConstellation();
   observeArticleReveals();
   if (elements.jumpListContainer) {
     elements.jumpListContainer.scrollTop = 0;
@@ -514,6 +594,7 @@ function showHome() {
   url.searchParams.delete("doc");
   window.history.replaceState({}, "", url);
   buildLibrary();
+  renderConstellation();
 }
 
 function filterDocuments(query) {

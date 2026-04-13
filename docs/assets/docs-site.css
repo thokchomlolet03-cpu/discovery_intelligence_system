@@ -386,6 +386,38 @@ a {
   overflow: hidden;
 }
 
+.constellation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.constellation-controls .ghost-button {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.doc-constellation-viewport {
+  position: relative;
+  min-height: 360px;
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    var(--panel-strong);
+  background-size: 32px 32px, 32px 32px, auto;
+}
+
+.doc-constellation-stage {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+}
+
 .constellation-copy h3,
 .section-heading h3,
 .page-hero h2,
@@ -397,7 +429,8 @@ a {
 .doc-constellation {
   position: relative;
   min-height: 340px;
-  overflow: hidden;
+  min-width: 680px;
+  overflow: visible;
 }
 
 .constellation-center {

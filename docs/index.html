@@ -107,8 +107,17 @@
               <p class="helper-copy">
                 Use the map for quick browsing, then move into the reader when you want the full document.
               </p>
+              <div class="constellation-controls">
+                <button id="map-zoom-out" class="ghost-button" type="button">Zoom out</button>
+                <button id="map-zoom-reset" class="ghost-button" type="button">Reset</button>
+                <button id="map-zoom-in" class="ghost-button" type="button">Zoom in</button>
+              </div>
             </div>
-            <div id="doc-constellation" class="doc-constellation" aria-label="Document constellation diagram"></div>
+            <div id="doc-constellation-viewport" class="doc-constellation-viewport" aria-label="Scrollable document constellation viewport">
+              <div id="doc-constellation-stage" class="doc-constellation-stage">
+                <div id="doc-constellation" class="doc-constellation" aria-label="Document constellation diagram"></div>
+              </div>
+            </div>
           </section>
 
           <section>

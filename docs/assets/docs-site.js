@@ -6,6 +6,7 @@ const state = {
   activeSections: [],
   focusMode: false,
   activeMapCategory: "",
+  mapZoom: 1,
 };
 
 const elements = {
@@ -17,7 +18,12 @@ const elements = {
   focusToggle: document.getElementById("focus-toggle"),
   metricDocCount: document.getElementById("metric-doc-count"),
   metricCategoryCount: document.getElementById("metric-category-count"),
+  constellationViewport: document.getElementById("doc-constellation-viewport"),
+  constellationStage: document.getElementById("doc-constellation-stage"),
   constellation: document.getElementById("doc-constellation"),
+  mapZoomIn: document.getElementById("map-zoom-in"),
+  mapZoomOut: document.getElementById("map-zoom-out"),
+  mapZoomReset: document.getElementById("map-zoom-reset"),
   readingProgress: document.getElementById("reading-progress"),
   articleStage: document.getElementById("article-stage"),
   sectionNav: document.getElementById("section-nav"),
@@ -301,8 +307,30 @@ function polarPosition(index, total, radiusX, radiusY, centerX, centerY) {
   };
 }
 
+function applyConstellationViewport(resetScroll = false) {
+  if (!elements.constellation || !elements.constellationStage || !elements.constellationViewport) return;
+  const baseWidth = 860;
+  const baseHeight = 520;
+  const zoom = Math.max(0.7, Math.min(1.9, state.mapZoom || 1));
+  const width = Math.round(baseWidth * zoom);
+  const height = Math.round(baseHeight * zoom);
+  elements.constellation.style.width = `${width}px`;
+  elements.constellation.style.height = `${height}px`;
+  elements.constellationStage.style.width = `${width}px`;
+  elements.constellationStage.style.height = `${height}px`;
+
+  if (resetScroll) {
+    requestAnimationFrame(() => {
+      const viewport = elements.constellationViewport;
+      viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
+      viewport.scrollTop = Math.max(0, (viewport.scrollHeight - viewport.clientHeight) / 2);
+    });
+  }
+}
+
 function renderConstellation() {
   if (!elements.constellation) return;
+  applyConstellationViewport();
   elements.constellation.innerHTML = "";
   const categoryEntries = sortedCategoryEntries(state.documents);
   if (!categoryEntries.length) {
@@ -315,8 +343,8 @@ function renderConstellation() {
   const activeCategory = activeCategoryEntry[0];
   const activeDocs = activeCategoryEntry[1];
   const activeCategoryIndex = categoryEntries.findIndex(([category]) => category === activeCategory);
-  const width = elements.constellation.clientWidth || 600;
-  const height = 380;
+  const width = elements.constellation.clientWidth || 860;
+  const height = elements.constellation.clientHeight || 520;
   const centerX = width / 2;
   const centerY = height / 2;
   const categoryRadiusX = Math.max(128, width * 0.36);
@@ -416,6 +444,19 @@ function renderConstellation() {
     <span>${activeDocs.length} file${activeDocs.length === 1 ? "" : "s"} available in this folder</span>
   `;
   elements.constellation.appendChild(activeCategorySummary);
+}
+
+function adjustMapZoom(direction) {
+  const nextZoom =
+    direction === "reset"
+      ? 1
+      : Math.max(0.7, Math.min(1.9, Number((state.mapZoom + direction * 0.15).toFixed(2))));
+  const changed = nextZoom !== state.mapZoom;
+  state.mapZoom = nextZoom;
+  if (changed || direction === "reset") {
+    renderConstellation();
+    applyConstellationViewport(direction === "reset");
+  }
 }
 
 function renderSectionNav(sections) {
@@ -623,6 +664,7 @@ async function initialize() {
 
   buildLibrary();
   buildFeatured();
+  applyConstellationViewport(true);
   renderConstellation();
   setReaderMode(false);
 
@@ -644,6 +686,18 @@ if (elements.focusToggle) {
     document.body.classList.toggle("focus-mode", state.focusMode);
     setText(elements.focusToggle, state.focusMode ? "Exit focus mode" : "Focus mode");
   });
+}
+
+if (elements.mapZoomIn) {
+  elements.mapZoomIn.addEventListener("click", () => adjustMapZoom(1));
+}
+
+if (elements.mapZoomOut) {
+  elements.mapZoomOut.addEventListener("click", () => adjustMapZoom(-1));
+}
+
+if (elements.mapZoomReset) {
+  elements.mapZoomReset.addEventListener("click", () => adjustMapZoom("reset"));
 }
 
 if (elements.backHome) {

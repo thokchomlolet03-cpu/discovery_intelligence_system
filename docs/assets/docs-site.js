@@ -336,27 +336,33 @@ function renderConstellation() {
   if (!categoryEntries.length) {
     return;
   }
-  if (!state.activeMapCategory || !categoryEntries.some(([category]) => category === state.activeMapCategory)) {
-    state.activeMapCategory = categoryEntries[0][0];
+  if (state.activeMapCategory && !categoryEntries.some(([category]) => category === state.activeMapCategory)) {
+    state.activeMapCategory = "";
   }
-  const activeCategoryEntry = categoryEntries.find(([category]) => category === state.activeMapCategory) || categoryEntries[0];
-  const activeCategory = activeCategoryEntry[0];
-  const activeDocs = activeCategoryEntry[1];
-  const activeCategoryIndex = categoryEntries.findIndex(([category]) => category === activeCategory);
+  const activeCategoryEntry = state.activeMapCategory
+    ? categoryEntries.find(([category]) => category === state.activeMapCategory) || null
+    : null;
+  const activeCategory = activeCategoryEntry ? activeCategoryEntry[0] : "";
+  const activeDocs = activeCategoryEntry ? activeCategoryEntry[1] : [];
+  const activeCategoryIndex = activeCategoryEntry
+    ? categoryEntries.findIndex(([category]) => category === activeCategory)
+    : -1;
   const width = elements.constellation.clientWidth || 860;
   const height = elements.constellation.clientHeight || 520;
   const centerX = width / 2;
   const centerY = height / 2;
   const categoryRadiusX = Math.max(128, width * 0.36);
   const categoryRadiusY = 138;
-  const activeCategoryPosition = polarPosition(
-    activeCategoryIndex,
-    categoryEntries.length,
-    categoryRadiusX,
-    categoryRadiusY,
-    centerX,
-    centerY
-  );
+  const activeCategoryPosition = activeCategoryEntry
+    ? polarPosition(
+        activeCategoryIndex,
+        categoryEntries.length,
+        categoryRadiusX,
+        categoryRadiusY,
+        centerX,
+        centerY
+      )
+    : null;
   const fileRadiusX = Math.max(82, width * 0.16);
   const fileRadiusY = 86;
 
@@ -393,7 +399,7 @@ function renderConstellation() {
       <span class="constellation-node-meta">${(groupByCategory(state.documents)[category] || []).length} doc${(groupByCategory(state.documents)[category] || []).length === 1 ? "" : "s"}</span>
     `;
     node.addEventListener("click", () => {
-      state.activeMapCategory = category;
+      state.activeMapCategory = state.activeMapCategory === category ? "" : category;
       renderConstellation();
     });
     elements.constellation.appendChild(node);
@@ -438,11 +444,17 @@ function renderConstellation() {
 
   const activeCategorySummary = document.createElement("div");
   activeCategorySummary.className = "constellation-category-summary";
-  activeCategorySummary.innerHTML = `
-    <span class="constellation-summary-label">Layer 2</span>
-    <strong>${escapeHtml(activeCategory)}</strong>
-    <span>${activeDocs.length} file${activeDocs.length === 1 ? "" : "s"} available in this folder</span>
-  `;
+  activeCategorySummary.innerHTML = activeCategoryEntry
+    ? `
+        <span class="constellation-summary-label">Layer 2</span>
+        <strong>${escapeHtml(activeCategory)}</strong>
+        <span>${activeDocs.length} file${activeDocs.length === 1 ? "" : "s"} available in this folder</span>
+      `
+    : `
+        <span class="constellation-summary-label">Layer 2</span>
+        <strong>No folder expanded</strong>
+        <span>Click a folder to reveal its files, then click it again to hide them.</span>
+      `;
   elements.constellation.appendChild(activeCategorySummary);
 }
 

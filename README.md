@@ -99,6 +99,7 @@ The repository also includes product-and-scientific philosophy notes that explai
 - [Trusted evidence, promotion gates, and anti-poisoning architecture](docs/01_philosophy/03_trusted_evidence_and_promotion.md)
 - [The best approach to discovery](docs/01_philosophy/04_best_approach_to_discovery.md)
 - [Interaction model and dynamic workbench specification](docs/01_philosophy/05_interaction_model_and_dynamic_workbench.md)
+- [Dynamic representation and evaluation architecture](docs/01_philosophy/06_dynamic_representation_and_evaluation_architecture.md)
 - [LLM role and interaction boundary](docs/06_ai_interface/llm_role_and_interaction_boundary.md)
 - [Governed candidate and evidence exchange](docs/07_publication/governed_candidate_and_evidence_exchange.md)
 

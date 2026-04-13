@@ -89,6 +89,12 @@
       "summary": "Long-term interaction and workbench model for explanation, comparison, scenario testing, and governed action."
     },
     {
+      "title": "Dynamic Representation and Evaluation Architecture",
+      "path": "01_philosophy/06_dynamic_representation_and_evaluation_architecture.md",
+      "category": "Philosophy",
+      "summary": "Governed, versioned representation architecture covering profile selection, runtime support semantics, evaluation, and controlled promotion."
+    },
+    {
       "title": "LLM Role and Interaction Boundary",
       "path": "06_ai_interface/llm_role_and_interaction_boundary.md",
       "category": "AI Interface",

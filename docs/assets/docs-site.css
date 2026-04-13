@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg: #0b0f14;
   --bg-soft: #111821;
   --panel: #111821;
@@ -19,6 +20,22 @@
   --mono: "SFMono-Regular", "Menlo", "Monaco", "Courier New", monospace;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f7fb;
+  --bg-soft: #eef3f9;
+  --panel: #ffffff;
+  --panel-strong: #f7f9fc;
+  --text: #0f172a;
+  --muted: #475569;
+  --muted-strong: #1e293b;
+  --line: rgba(15, 23, 42, 0.10);
+  --line-strong: rgba(15, 23, 42, 0.18);
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.10);
+  --shadow: 0 24px 60px rgba(15, 23, 42, 0.10);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -33,6 +50,10 @@ body {
   background: linear-gradient(180deg, #0b0f14 0%, #0d131b 100%);
   color: var(--text);
   font-family: var(--sans);
+}
+
+:root[data-theme="light"] body {
+  background: linear-gradient(180deg, #f4f7fb 0%, #edf2f8 100%);
 }
 
 a {
@@ -181,6 +202,16 @@ a {
 .section-nav button:hover {
   border-color: rgba(59, 130, 246, 0.38);
   background: rgba(22, 31, 43, 0.98);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .ghost-button:hover,
+:root[data-theme="light"] .library-card:hover,
+:root[data-theme="light"] .featured-card:hover,
+:root[data-theme="light"] .start-card:hover,
+:root[data-theme="light"] .section-nav button:hover {
+  border-color: rgba(37, 99, 235, 0.30);
+  background: rgba(37, 99, 235, 0.06);
   color: var(--text);
 }
 
@@ -540,6 +571,11 @@ a {
   font-family: var(--mono);
 }
 
+:root[data-theme="light"] .article-stage pre {
+  background: #e8eef6;
+  color: #0f172a;
+}
+
 .article-stage code {
   font-family: var(--mono);
 }
@@ -552,8 +588,18 @@ a {
   color: #bfdbfe;
 }
 
+:root[data-theme="light"] .article-stage p code,
+:root[data-theme="light"] .article-stage li code {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
 .article-stage a {
   color: #93c5fd;
+}
+
+:root[data-theme="light"] .article-stage a {
+  color: #1d4ed8;
 }
 
 .article-stage .reveal,

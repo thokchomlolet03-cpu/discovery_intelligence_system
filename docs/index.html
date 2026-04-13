@@ -8,6 +8,14 @@
       name="description"
       content="Structured browser-readable documentation portal for Discovery Intelligence."
     />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("di-docs-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {}
+    </script>
     <link rel="stylesheet" href="./assets/docs-site.css" />
   </head>
   <body>
@@ -27,6 +35,7 @@
           <span class="search-label">Search docs</span>
           <input id="doc-search" type="search" placeholder="Search title, category, or summary" />
         </label>
+        <button id="theme-toggle" class="ghost-button" type="button">Light mode</button>
         <button id="focus-toggle" class="ghost-button" type="button">Focus mode</button>
       </div>
     </header>
@@ -160,5 +169,6 @@
     </template>
 
     <script src="./assets/docs-site.js"></script>
+    <script src="./assets/theme-toggle.js"></script>
   </body>
 </html>

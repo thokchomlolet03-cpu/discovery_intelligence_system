@@ -8,6 +8,14 @@
       name="description"
       content="Embedded Spotify shows and YouTube playlists for Discovery Intelligence and Python/programming."
     />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("di-docs-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {}
+    </script>
     <link rel="stylesheet" href="./assets/docs-site.css" />
   </head>
   <body>
@@ -22,6 +30,7 @@
         </div>
       </div>
       <div class="site-actions">
+        <button id="theme-toggle" class="ghost-button" type="button">Light mode</button>
         <a class="ghost-button" href="./index.html">Docs portal</a>
       </div>
     </header>
@@ -105,5 +114,6 @@
         </article>
       </section>
     </main>
+    <script src="./assets/theme-toggle.js"></script>
   </body>
 </html>

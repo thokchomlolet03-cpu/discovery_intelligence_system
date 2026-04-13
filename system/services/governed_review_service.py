@@ -72,6 +72,18 @@ SUBJECT_TYPE_BELIEF_STATE = "belief_state"
 SUBJECT_TYPE_CONTINUITY_CLUSTER = "continuity_cluster"
 SUBJECT_TYPE_SESSION_FAMILY_CARRYOVER = "session_family_carryover"
 
+REVIEW_ORIGIN_DERIVED = "derived"
+REVIEW_ORIGIN_MANUAL = "manual"
+
+MANUAL_ACTION_APPROVED = "approved_by_reviewer"
+MANUAL_ACTION_BLOCKED = "blocked_by_reviewer"
+MANUAL_ACTION_DEFERRED = "deferred_by_reviewer"
+MANUAL_ACTION_DOWNGRADED = "downgraded_by_reviewer"
+MANUAL_ACTION_QUARANTINED = "quarantined_by_reviewer"
+MANUAL_ACTION_REOPENED = "reopened_for_review"
+MANUAL_ACTION_REVISED = "revised_by_reviewer"
+MANUAL_ACTION_SUPERSEDED = "superseded_by_later_review"
+
 governed_review_repository = GovernedReviewRepository()
 
 
@@ -106,6 +118,24 @@ def _latest_record(records: list[dict[str, Any]]) -> dict[str, Any] | None:
     return latest
 
 
+def _latest_active_record(
+    records: list[dict[str, Any]],
+    *,
+    review_origin_label: str | None = None,
+) -> dict[str, Any] | None:
+    filtered = [
+        record
+        for record in records
+        if isinstance(record, dict)
+        and bool(record.get("active"))
+        and (
+            review_origin_label is None
+            or _clean_text(record.get("review_origin_label"), default=REVIEW_ORIGIN_DERIVED) == review_origin_label
+        )
+    ]
+    return _latest_record(filtered)
+
+
 def _decision_outcome(
     *,
     trust_tier_label: str,
@@ -128,6 +158,140 @@ def _decision_outcome(
     if "candidate" in review_status or "candidate" in trust_tier:
         return "candidate"
     return "local_only"
+
+
+def _manual_action_label_for_status(review_status_label: Any) -> str:
+    review_status = _clean_text(review_status_label)
+    if review_status == REVIEW_STATUS_APPROVED:
+        return MANUAL_ACTION_APPROVED
+    if review_status == REVIEW_STATUS_BLOCKED:
+        return MANUAL_ACTION_BLOCKED
+    if review_status == REVIEW_STATUS_DEFERRED:
+        return MANUAL_ACTION_DEFERRED
+    if review_status == REVIEW_STATUS_DOWNGRADED:
+        return MANUAL_ACTION_DOWNGRADED
+    if review_status == REVIEW_STATUS_QUARANTINED:
+        return MANUAL_ACTION_QUARANTINED
+    return ""
+
+
+def _humanize_manual_action_label(value: Any) -> str:
+    text = _clean_text(value)
+    if not text:
+        return ""
+    mapping = {
+        MANUAL_ACTION_APPROVED: "Approved by reviewer",
+        MANUAL_ACTION_BLOCKED: "Blocked by reviewer",
+        MANUAL_ACTION_DEFERRED: "Deferred by reviewer",
+        MANUAL_ACTION_DOWNGRADED: "Downgraded by reviewer",
+        MANUAL_ACTION_QUARANTINED: "Quarantined by reviewer",
+        MANUAL_ACTION_REOPENED: "Reopened for review",
+        MANUAL_ACTION_REVISED: "Revised by reviewer",
+        MANUAL_ACTION_SUPERSEDED: "Superseded by later review",
+    }
+    return mapping.get(text, text.replace("_", " ").strip().title())
+
+
+def _origin_summary(origin_label: str) -> str:
+    if origin_label == REVIEW_ORIGIN_MANUAL:
+        return "Current effective governance posture is controlled by explicit human review rather than by derived posture alone."
+    return "Current effective governance posture is still derived from the bridge-state rules because no active manual override is governing this layer."
+
+
+def _governance_note(record: dict[str, Any] | None) -> str:
+    if not isinstance(record, dict):
+        return ""
+    metadata = record.get("metadata")
+    metadata = metadata if isinstance(metadata, dict) else {}
+    return _clean_text(
+        metadata.get("governance_note")
+        or metadata.get("reviewer_note")
+        or metadata.get("review_note")
+        or metadata.get("note")
+    )
+
+
+def _carryover_effect_summary(
+    *,
+    subject_label: str,
+    review_status_label: str,
+    manual_action_label: str = "",
+) -> str:
+    layer_name = _clean_text(subject_label, default="This layer")
+    review_status = _clean_text(review_status_label)
+    action = _clean_text(manual_action_label)
+    if action == MANUAL_ACTION_REOPENED:
+        return (
+            f"{layer_name} was reopened for reconsideration. Broader carryover should stay bounded while fresh review determines whether earlier restrictions still apply."
+        )
+    if action == MANUAL_ACTION_REVISED:
+        return (
+            f"{layer_name} was manually revised. Earlier broader-carryover posture remains historical context only until the revised posture is inspected and either maintained or superseded again."
+        )
+    if review_status == REVIEW_STATUS_APPROVED:
+        return (
+            f"{layer_name} is approved for bounded broader carryover, but that approval is still bridge-state and can be downgraded, quarantined, or superseded later."
+        )
+    if review_status == REVIEW_STATUS_BLOCKED:
+        return (
+            f"{layer_name} remains locally inspectable, but broader carryover stays blocked until a later reopen or revise action explicitly changes that boundary."
+        )
+    if review_status == REVIEW_STATUS_DEFERRED:
+        return (
+            f"{layer_name} stays visible for local use and reviewer follow-up, but broader carryover is not active while the posture remains deferred."
+        )
+    if review_status == REVIEW_STATUS_DOWNGRADED:
+        return (
+            f"{layer_name} keeps its history, but any earlier stronger broader influence should now be treated as withdrawn until stronger evidence or review restores it."
+        )
+    if review_status == REVIEW_STATUS_QUARANTINED:
+        return (
+            f"{layer_name} can remain useful as local context, but broader carryover candidacy is strongly limited while quarantine remains effective."
+        )
+    if review_status == REVIEW_STATUS_CANDIDATE:
+        return (
+            f"{layer_name} is reviewable for broader carryover, but broader influence is still inactive until a stronger manual or derived posture takes effect."
+        )
+    return (
+        f"{layer_name} remains local-only by default. Local usefulness can persist while broader carryover stays inactive."
+    )
+
+
+def _consistency_summary(
+    *,
+    subject_label: str,
+    latest_derived: dict[str, Any] | None,
+    latest_manual: dict[str, Any] | None,
+    effective: dict[str, Any] | None,
+    fallback_fields: dict[str, Any],
+) -> tuple[str, str]:
+    layer_name = _clean_text(subject_label, default="This layer")
+    if latest_manual and latest_derived:
+        return (
+            "Consistent manual override",
+            f"{layer_name} is using a canonical manual override while the latest derived posture remains visible for audit and comparison.",
+        )
+    if latest_manual and not latest_derived and fallback_fields:
+        return (
+            "Watch derived snapshot gap",
+            f"{layer_name} is currently governed by manual review, but no persisted derived snapshot is visible in the ledger for direct comparison. The page is relying on fallback derived context.",
+        )
+    if latest_derived and effective and _clean_text(effective.get('review_origin_label'), default=REVIEW_ORIGIN_DERIVED) == REVIEW_ORIGIN_DERIVED:
+        return (
+            "Consistent derived posture",
+            f"{layer_name} is still governed by the canonical derived posture and no active manual override is currently displacing it.",
+        )
+    if effective:
+        return (
+            "Limited history available",
+            f"{layer_name} has a current effective posture, but its review history is still sparse enough that drift should be checked carefully when future code paths change summaries.",
+        )
+    if fallback_fields:
+        return (
+            "Fallback-only posture",
+            f"{layer_name} is currently using live computed posture without a persisted governed-review record, so reviewer-facing surfaces should treat it as bridge-state context.",
+        )
+    return ("No governed review history", "")
 
 
 def _json_signature(value: Any) -> str:
@@ -753,12 +917,14 @@ def list_subject_governed_reviews(
     workspace_id: str | None = None,
     subject_type: str,
     subject_id: str,
+    review_origin_label: str | None = None,
     active_only: bool = False,
 ) -> list[dict[str, Any]]:
     return governed_review_repository.list_reviews(
         workspace_id=workspace_id,
         subject_type=subject_type,
         subject_id=subject_id,
+        review_origin_label=review_origin_label,
         active_only=active_only,
     )
 
@@ -768,11 +934,13 @@ def latest_subject_governed_review(
     workspace_id: str,
     subject_type: str,
     subject_id: str,
+    review_origin_label: str | None = None,
 ) -> dict[str, Any] | None:
     return governed_review_repository.get_latest_active_review(
         workspace_id=workspace_id,
         subject_type=subject_type,
         subject_id=subject_id,
+        review_origin_label=review_origin_label,
     )
 
 
@@ -792,6 +960,9 @@ def record_subject_governed_review(
             "source_class_label": payload.get("source_class_label", ""),
             "provenance_confidence_label": payload.get("provenance_confidence_label", ""),
             "trust_tier_label": payload.get("trust_tier_label", ""),
+            "review_origin_label": payload.get("review_origin_label", REVIEW_ORIGIN_DERIVED),
+            "manual_action_label": payload.get("manual_action_label", ""),
+            "reviewer_label": payload.get("reviewer_label", ""),
             "review_status_label": payload.get("review_status_label", ""),
             "review_reason_label": payload.get("review_reason_label", ""),
             "review_reason_summary": payload.get("review_reason_summary", ""),
@@ -803,6 +974,7 @@ def record_subject_governed_review(
             "recorded_at": payload.get("recorded_at") or _utc_now(),
             "recorded_by": payload.get("recorded_by", "system"),
             "actor_user_id": payload.get("actor_user_id", ""),
+            "reviewer_user_id": payload.get("reviewer_user_id", ""),
             "metadata": payload.get("metadata", {}),
         }
     )
@@ -831,6 +1003,9 @@ def sync_subject_governed_review_snapshot(
             "source_class_label": payload.get("source_class_label", ""),
             "provenance_confidence_label": payload.get("provenance_confidence_label", ""),
             "trust_tier_label": payload.get("trust_tier_label", ""),
+            "review_origin_label": payload.get("review_origin_label", REVIEW_ORIGIN_DERIVED),
+            "manual_action_label": payload.get("manual_action_label", ""),
+            "reviewer_label": payload.get("reviewer_label", ""),
             "review_status_label": payload.get("review_status_label", ""),
             "review_reason_label": payload.get("review_reason_label", ""),
             "review_reason_summary": payload.get("review_reason_summary", ""),
@@ -842,6 +1017,7 @@ def sync_subject_governed_review_snapshot(
             "recorded_at": payload.get("recorded_at") or _utc_now(),
             "recorded_by": payload.get("recorded_by", "system"),
             "actor_user_id": payload.get("actor_user_id", ""),
+            "reviewer_user_id": payload.get("reviewer_user_id", ""),
             "metadata": payload.get("metadata", {}),
         }
     )
@@ -854,11 +1030,13 @@ def sync_subject_governed_review_snapshot(
     workspace_id = _clean_text(clean_payload.get("workspace_id"))
     subject_type = _clean_text(clean_payload.get("subject_type"))
     subject_id = _clean_text(clean_payload.get("subject_id"))
+    review_origin_label = _clean_text(clean_payload.get("review_origin_label"), default=REVIEW_ORIGIN_DERIVED)
     latest = (
         latest_subject_governed_review(
             workspace_id=workspace_id,
             subject_type=subject_type,
             subject_id=subject_id,
+            review_origin_label=review_origin_label,
         )
         if workspace_id and subject_type and subject_id
         else None
@@ -867,6 +1045,9 @@ def sync_subject_governed_review_snapshot(
         "source_class_label",
         "provenance_confidence_label",
         "trust_tier_label",
+        "review_origin_label",
+        "manual_action_label",
+        "reviewer_label",
         "review_status_label",
         "review_reason_label",
         "review_reason_summary",
@@ -888,6 +1069,34 @@ def sync_subject_governed_review_snapshot(
     return record_subject_governed_review(clean_payload)
 
 
+def record_manual_subject_governed_review_action(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    review_status_label = _clean_text(payload.get("review_status_label"), default=REVIEW_STATUS_DEFERRED)
+    manual_action_label = _clean_text(
+        payload.get("manual_action_label"),
+        default=_manual_action_label_for_status(review_status_label),
+    )
+    reviewer_label = _clean_text(
+        payload.get("reviewer_label") or payload.get("recorded_by"),
+        default="scientist",
+    )
+    metadata = dict(payload.get("metadata") or {})
+    if not metadata.get("derived_context") and isinstance(payload.get("derived_context"), dict):
+        metadata["derived_context"] = payload.get("derived_context")
+    return record_subject_governed_review(
+        {
+            **payload,
+            "review_origin_label": REVIEW_ORIGIN_MANUAL,
+            "manual_action_label": manual_action_label,
+            "reviewer_label": reviewer_label,
+            "reviewer_user_id": payload.get("reviewer_user_id") or payload.get("actor_user_id", ""),
+            "recorded_by": reviewer_label,
+            "metadata": metadata,
+        }
+    )
+
+
 def build_governed_review_overlay(
     records: list[dict[str, Any]] | None,
     *,
@@ -897,34 +1106,81 @@ def build_governed_review_overlay(
     records = [record for record in (records or []) if isinstance(record, dict)]
     fallback_fields = fallback_fields if isinstance(fallback_fields, dict) else {}
     latest = _latest_record(records)
+    latest_derived = _latest_active_record(records, review_origin_label=REVIEW_ORIGIN_DERIVED)
+    latest_manual = _latest_active_record(records, review_origin_label=REVIEW_ORIGIN_MANUAL)
+    effective = latest_manual or latest_derived or latest
     history_count = len(records)
     active_count = sum(1 for record in records if bool(record.get("active")))
+    derived_count = sum(
+        1
+        for record in records
+        if _clean_text(record.get("review_origin_label"), default=REVIEW_ORIGIN_DERIVED) == REVIEW_ORIGIN_DERIVED
+    )
+    manual_count = sum(
+        1
+        for record in records
+        if _clean_text(record.get("review_origin_label"), default=REVIEW_ORIGIN_DERIVED) == REVIEW_ORIGIN_MANUAL
+    )
     source_class_label = _clean_text(
-        (latest or {}).get("source_class_label") or fallback_fields.get("source_class_label")
+        (latest_derived or effective or {}).get("source_class_label") or fallback_fields.get("source_class_label")
     )
     trust_tier_label = _clean_text(
-        (latest or {}).get("trust_tier_label") or fallback_fields.get("trust_tier_label")
+        (latest_derived or effective or {}).get("trust_tier_label") or fallback_fields.get("trust_tier_label")
     )
     provenance_confidence_label = _clean_text(
-        (latest or {}).get("provenance_confidence_label") or fallback_fields.get("provenance_confidence_label")
+        (latest_derived or effective or {}).get("provenance_confidence_label") or fallback_fields.get("provenance_confidence_label")
     )
     review_status_label = _clean_text(
-        (latest or {}).get("review_status_label") or fallback_fields.get("governed_review_status_label")
+        (effective or {}).get("review_status_label") or fallback_fields.get("governed_review_status_label")
     )
     review_reason_label = _clean_text(
-        (latest or {}).get("review_reason_label") or fallback_fields.get("governed_review_reason_label")
+        (effective or {}).get("review_reason_label") or fallback_fields.get("governed_review_reason_label")
     )
     review_reason_summary = _clean_text(
-        (latest or {}).get("review_reason_summary") or fallback_fields.get("governed_review_reason_summary")
+        (effective or {}).get("review_reason_summary") or fallback_fields.get("governed_review_reason_summary")
+    )
+    review_status_summary = _clean_text(
+        (effective or {}).get("decision_summary") or fallback_fields.get("governed_review_status_summary")
     )
     promotion_gate_status_label = _clean_text(
-        (latest or {}).get("promotion_gate_status_label") or fallback_fields.get("promotion_gate_status_label")
+        (effective or {}).get("promotion_gate_status_label") or fallback_fields.get("promotion_gate_status_label")
     )
     promotion_block_reason_label = _clean_text(
-        (latest or {}).get("promotion_block_reason_label") or fallback_fields.get("promotion_block_reason_label")
+        (effective or {}).get("promotion_block_reason_label") or fallback_fields.get("promotion_block_reason_label")
+    )
+    derived_review_status_label = _clean_text(
+        (latest_derived or {}).get("review_status_label") or fallback_fields.get("governed_review_status_label")
+    )
+    derived_review_reason_label = _clean_text(
+        (latest_derived or {}).get("review_reason_label") or fallback_fields.get("governed_review_reason_label")
+    )
+    derived_review_reason_summary = _clean_text(
+        (latest_derived or {}).get("review_reason_summary") or fallback_fields.get("governed_review_reason_summary")
+    )
+    derived_review_status_summary = _clean_text(
+        (latest_derived or {}).get("decision_summary") or fallback_fields.get("governed_review_status_summary")
+    )
+    manual_review_status_label = _clean_text((latest_manual or {}).get("review_status_label"))
+    manual_review_reason_label = _clean_text((latest_manual or {}).get("review_reason_label"))
+    manual_review_reason_summary = _clean_text((latest_manual or {}).get("review_reason_summary"))
+    manual_review_status_summary = _clean_text((latest_manual or {}).get("decision_summary"))
+    manual_review_action_label = _humanize_manual_action_label((latest_manual or {}).get("manual_action_label"))
+    manual_review_reviewer_label = _clean_text((latest_manual or {}).get("reviewer_label"))
+    manual_review_note = _governance_note(latest_manual)
+    effective_review_note = _governance_note(effective)
+    effective_review_origin_label = _clean_text(
+        (effective or {}).get("review_origin_label"),
+        default=REVIEW_ORIGIN_DERIVED if latest_derived or fallback_fields else "",
+    )
+    effective_review_origin_summary = _origin_summary(effective_review_origin_label) if effective_review_origin_label else ""
+    manual_superseded_count = sum(
+        1
+        for record in records
+        if _clean_text(record.get("review_origin_label"), default=REVIEW_ORIGIN_DERIVED) == REVIEW_ORIGIN_MANUAL
+        and not bool(record.get("active"))
     )
 
-    if latest:
+    if effective:
         history_summary = (
             f"{subject_label} has {history_count} governed review record"
             f"{'' if history_count == 1 else 's'}; latest posture is {review_status_label or 'not recorded'}"
@@ -932,6 +1188,10 @@ def build_governed_review_overlay(
         )
         if active_count <= 0:
             history_summary += " No active broader-influence posture remains current."
+        if latest_manual:
+            history_summary += (
+                f" Current effective posture is manually reviewed by {manual_review_reviewer_label or 'a reviewer'}."
+            )
     elif fallback_fields:
         history_summary = (
             f"{subject_label} does not yet have a persisted governed review record. "
@@ -940,8 +1200,8 @@ def build_governed_review_overlay(
     else:
         history_summary = ""
 
-    if latest:
-        decision_outcome = _clean_text(latest.get("decision_outcome"), default="local_only").replace("_", " ")
+    if effective:
+        decision_outcome = _clean_text(effective.get("decision_outcome"), default="local_only").replace("_", " ")
         promotion_audit_summary = (
             f"Latest promotion outcome is {decision_outcome}."
             f" Gate: {promotion_gate_status_label or 'not recorded'}."
@@ -961,10 +1221,79 @@ def build_governed_review_overlay(
     else:
         promotion_audit_summary = ""
 
+    if latest_manual:
+        manual_history_summary = (
+            f"{subject_label} has {manual_count} manual governed review record"
+            f"{'' if manual_count == 1 else 's'}; current manual posture is {manual_review_status_label or 'not recorded'}"
+            f" by {manual_review_reviewer_label or 'a reviewer'}."
+        )
+        if manual_review_note:
+            manual_history_summary += f" Latest reviewer note: {manual_review_note}"
+        if manual_superseded_count > 0:
+            manual_history_summary += (
+                f" {manual_superseded_count} earlier reviewed posture"
+                f"{'' if manual_superseded_count == 1 else 's'} {'was' if manual_superseded_count == 1 else 'were'} superseded."
+            )
+    elif manual_count > 0:
+        manual_history_summary = (
+            f"{subject_label} has {manual_count} historical manual governed review record"
+            f"{'' if manual_count == 1 else 's'}, but no active manual override currently governs this layer."
+        )
+    else:
+        manual_history_summary = (
+            f"{subject_label} does not yet have an active manual governed review record."
+            if fallback_fields or records
+            else ""
+        )
+
+    if latest_derived:
+        derived_history_summary = (
+            f"{subject_label} has {derived_count} derived governed review snapshot"
+            f"{'' if derived_count == 1 else 's'}; latest derived posture is {derived_review_status_label or 'not recorded'}."
+        )
+    elif fallback_fields:
+        derived_history_summary = (
+            f"{subject_label} is still using computed bridge-state review posture, but no persisted derived snapshot is recorded yet."
+        )
+    else:
+        derived_history_summary = ""
+
+    consistency_label, consistency_summary = _consistency_summary(
+        subject_label=subject_label,
+        latest_derived=latest_derived,
+        latest_manual=latest_manual,
+        effective=effective,
+        fallback_fields=fallback_fields,
+    )
+    effective_carryover_effect_summary = _carryover_effect_summary(
+        subject_label=subject_label,
+        review_status_label=review_status_label,
+        manual_action_label=_clean_text((effective or {}).get("manual_action_label")),
+    )
+    reopen_revise_records = [
+        record
+        for record in records
+        if _clean_text(record.get("manual_action_label")) in {MANUAL_ACTION_REOPENED, MANUAL_ACTION_REVISED}
+    ]
+    if reopen_revise_records:
+        latest_reopen_or_revise = reopen_revise_records[-1]
+        manual_reopen_revise_summary = (
+            f"{subject_label} has reopen/revise history. Latest transition was "
+            f"{_humanize_manual_action_label(latest_reopen_or_revise.get('manual_action_label')).lower()} "
+            f"into {_clean_text(latest_reopen_or_revise.get('review_status_label'), default='not recorded').lower()}."
+        )
+    else:
+        manual_reopen_revise_summary = (
+            f"{subject_label} does not yet have explicit reopen or revise history."
+            if manual_count > 0 or fallback_fields
+            else ""
+        )
+
     return {
         "source_class_label": source_class_label,
         "trust_tier_label": trust_tier_label,
         "provenance_confidence_label": provenance_confidence_label,
+        "governed_review_status_summary": review_status_summary,
         "governed_review_status_label": review_status_label,
         "governed_review_reason_label": review_reason_label,
         "governed_review_reason_summary": review_reason_summary,
@@ -973,7 +1302,47 @@ def build_governed_review_overlay(
         "governed_review_record_count": history_count,
         "governed_review_history_summary": history_summary,
         "promotion_audit_summary": promotion_audit_summary,
-        "latest_governed_review_record": latest,
+        "derived_governed_review_status_label": derived_review_status_label,
+        "derived_governed_review_status_summary": derived_review_status_summary,
+        "derived_governed_review_reason_label": derived_review_reason_label,
+        "derived_governed_review_reason_summary": derived_review_reason_summary,
+        "derived_governed_review_record_count": derived_count,
+        "derived_governed_review_history_summary": derived_history_summary,
+        "manual_governed_review_status_label": manual_review_status_label,
+        "manual_governed_review_status_summary": manual_review_status_summary,
+        "manual_governed_review_reason_label": manual_review_reason_label,
+        "manual_governed_review_reason_summary": manual_review_reason_summary,
+        "manual_governed_review_record_count": manual_count,
+        "manual_governed_review_history_summary": manual_history_summary,
+        "manual_governed_review_action_label": manual_review_action_label,
+        "manual_governed_review_reviewer_label": manual_review_reviewer_label,
+        "manual_governed_review_note": manual_review_note,
+        "manual_governed_review_note_summary": (
+            manual_review_note
+            or (
+                f"No bounded reviewer note is attached to the current manual posture for {subject_label.lower()}."
+                if latest_manual
+                else ""
+            )
+        ),
+        "manual_governed_review_reopen_revise_summary": manual_reopen_revise_summary,
+        "effective_governed_review_origin_label": effective_review_origin_label,
+        "effective_governed_review_origin_summary": effective_review_origin_summary,
+        "effective_governed_review_note": effective_review_note,
+        "effective_governed_review_note_summary": (
+            effective_review_note
+            or (
+                f"No bounded reviewer note is attached to the current effective posture for {subject_label.lower()}."
+                if effective_review_origin_label == REVIEW_ORIGIN_MANUAL
+                else ""
+            )
+        ),
+        "effective_carryover_effect_summary": effective_carryover_effect_summary,
+        "governed_review_consistency_label": consistency_label,
+        "governed_review_consistency_summary": consistency_summary,
+        "latest_governed_review_record": effective,
+        "latest_manual_governed_review_record": latest_manual,
+        "latest_derived_governed_review_record": latest_derived,
     }
 
 
@@ -989,5 +1358,15 @@ __all__ = [
     "latest_subject_governed_review",
     "list_subject_governed_reviews",
     "record_subject_governed_review",
+    "record_manual_subject_governed_review_action",
     "sync_subject_governed_review_snapshot",
+    "REVIEW_ORIGIN_DERIVED",
+    "REVIEW_ORIGIN_MANUAL",
+    "MANUAL_ACTION_APPROVED",
+    "MANUAL_ACTION_BLOCKED",
+    "MANUAL_ACTION_DEFERRED",
+    "MANUAL_ACTION_DOWNGRADED",
+    "MANUAL_ACTION_QUARANTINED",
+    "MANUAL_ACTION_REOPENED",
+    "MANUAL_ACTION_REVISED",
 ]

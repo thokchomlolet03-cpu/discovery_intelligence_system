@@ -647,6 +647,185 @@ class StatusSemantics(ContractBaseModel):
         return [_clean_text(item) for item in value if _clean_text(item)]
 
 
+class PredictiveTaskContract(ContractBaseModel):
+    schema_version: str = "predictive_task_contract.v1"
+    task_label: str = ""
+    task_summary: str = ""
+    prioritization_target: str = ""
+    predictive_score_label: str = ""
+    predictive_score_summary: str = ""
+    final_ordering_summary: str = ""
+    governance_interaction_summary: str = ""
+    bridge_state_limitations_summary: str = ""
+
+    @validator(
+        "schema_version",
+        "task_label",
+        "task_summary",
+        "prioritization_target",
+        "predictive_score_label",
+        "predictive_score_summary",
+        "final_ordering_summary",
+        "governance_interaction_summary",
+        "bridge_state_limitations_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_predictive_task_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+
+class PredictiveRepresentationSummary(ContractBaseModel):
+    schema_version: str = "predictive_representation_summary.v1"
+    feature_signature: str = ""
+    represented_inputs_summary: str = ""
+    representation_limitations_summary: str = ""
+    missing_structure_summary: str = ""
+
+    @validator(
+        "schema_version",
+        "feature_signature",
+        "represented_inputs_summary",
+        "representation_limitations_summary",
+        "missing_structure_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_predictive_representation_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+
+class PredictiveEvaluationContract(ContractBaseModel):
+    schema_version: str = "predictive_evaluation_contract.v3"
+    evaluation_ready: bool = False
+    evaluation_summary: str = ""
+    benchmark_summary: str = ""
+    ranking_metric_summary: str = ""
+    candidate_separation_summary: str = ""
+    ranking_stability_summary: str = ""
+    closeness_band_summary: str = ""
+    top_k_quality_summary: str = ""
+    heuristic_influence_summary: str = ""
+    sensitivity_summary: str = ""
+    calibration_awareness_summary: str = ""
+    calibration_band_summary: str = ""
+    comparison_cohort_summary: str = ""
+    cohort_diagnostic_summary: str = ""
+    evaluation_subset_summary: str = ""
+    session_variation_summary: str = ""
+    cross_session_comparison_summary: str = ""
+    version_comparison_summary: str = ""
+    representation_support_summary: str = ""
+    representation_evaluation_summary: str = ""
+    representation_condition_summary: str = ""
+    cross_run_comparison_summary: str = ""
+    engine_strength_summary: str = ""
+    engine_weakness_summary: str = ""
+    tracked_metrics: list[str] = Field(default_factory=list)
+    offline_ranking_evaluation: dict[str, Any] = Field(default_factory=dict)
+
+    @validator(
+        "schema_version",
+        "evaluation_summary",
+        "benchmark_summary",
+        "ranking_metric_summary",
+        "candidate_separation_summary",
+        "ranking_stability_summary",
+        "closeness_band_summary",
+        "top_k_quality_summary",
+        "heuristic_influence_summary",
+        "sensitivity_summary",
+        "calibration_awareness_summary",
+        "calibration_band_summary",
+        "comparison_cohort_summary",
+        "cohort_diagnostic_summary",
+        "evaluation_subset_summary",
+        "session_variation_summary",
+        "cross_session_comparison_summary",
+        "version_comparison_summary",
+        "representation_support_summary",
+        "representation_evaluation_summary",
+        "representation_condition_summary",
+        "cross_run_comparison_summary",
+        "engine_strength_summary",
+        "engine_weakness_summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_predictive_evaluation_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("tracked_metrics", pre=True)
+    def _clean_predictive_metrics(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+    @validator("offline_ranking_evaluation", pre=True)
+    def _clean_offline_ranking_evaluation(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class PredictiveFailureModeSummary(ContractBaseModel):
+    schema_version: str = "predictive_failure_mode_summary.v1"
+    summary_text: str = ""
+    dominant_failure_mode: str = ""
+    failure_modes: list[str] = Field(default_factory=list)
+
+    @validator("schema_version", "summary_text", "dominant_failure_mode", pre=True, always=True)
+    def _clean_predictive_failure_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("failure_modes", pre=True)
+    def _clean_predictive_failure_modes(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class PredictivePathSummary(ContractBaseModel):
+    schema_version: str = "predictive_path_summary.v1"
+    summary_text: str = ""
+    ranking_driver_summary: str = ""
+    model_logic_summary: str = ""
+    model_signal_summary: str = ""
+    heuristic_logic_summary: str = ""
+    governance_influence_summary: str = ""
+    final_ordering_summary: str = ""
+    representation_input_summary: str = ""
+    weakness_summary: str = ""
+    readiness_note: str = ""
+    next_phase_entry_criteria: list[str] = Field(default_factory=list)
+    task_contract: PredictiveTaskContract | None = None
+    representation_summary: PredictiveRepresentationSummary | None = None
+    evaluation_contract: PredictiveEvaluationContract | None = None
+    failure_mode_summary: PredictiveFailureModeSummary | None = None
+
+    @validator(
+        "schema_version",
+        "summary_text",
+        "ranking_driver_summary",
+        "model_logic_summary",
+        "model_signal_summary",
+        "heuristic_logic_summary",
+        "governance_influence_summary",
+        "final_ordering_summary",
+        "representation_input_summary",
+        "weakness_summary",
+        "readiness_note",
+        pre=True,
+        always=True,
+    )
+    def _clean_predictive_path_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("next_phase_entry_criteria", pre=True)
+    def _clean_predictive_path_entry_criteria(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
 class RunContract(ContractBaseModel):
     schema_version: str = "run_contract.v1"
     session_id: str = ""
@@ -670,6 +849,9 @@ class RunContract(ContractBaseModel):
     feature_signature: str = ""
     reference_basis: dict[str, str] = Field(default_factory=dict)
     contract_versions: dict[str, str] = Field(default_factory=dict)
+    predictive_task_contract: PredictiveTaskContract | None = None
+    predictive_representation_summary: PredictiveRepresentationSummary | None = None
+    predictive_evaluation_contract: PredictiveEvaluationContract | None = None
 
     @validator(
         "session_id",
@@ -1147,6 +1329,29 @@ class ClaimReference(ContractBaseModel):
     claim_governed_review_record_count: int = Field(default=0, ge=0)
     claim_governed_review_history_summary: str = ""
     claim_promotion_audit_summary: str = ""
+    claim_derived_governed_review_status_label: str = ""
+    claim_derived_governed_review_status_summary: str = ""
+    claim_derived_governed_review_reason_label: str = ""
+    claim_derived_governed_review_reason_summary: str = ""
+    claim_derived_governed_review_history_summary: str = ""
+    claim_manual_governed_review_status_label: str = ""
+    claim_manual_governed_review_status_summary: str = ""
+    claim_manual_governed_review_reason_label: str = ""
+    claim_manual_governed_review_reason_summary: str = ""
+    claim_manual_governed_review_record_count: int = Field(default=0, ge=0)
+    claim_manual_governed_review_history_summary: str = ""
+    claim_manual_governed_review_action_label: str = ""
+    claim_manual_governed_review_reviewer_label: str = ""
+    claim_manual_governed_review_note: str = ""
+    claim_manual_governed_review_note_summary: str = ""
+    claim_manual_governed_review_reopen_revise_summary: str = ""
+    claim_effective_governed_review_origin_label: str = ""
+    claim_effective_governed_review_origin_summary: str = ""
+    claim_effective_governed_review_note: str = ""
+    claim_effective_governed_review_note_summary: str = ""
+    claim_effective_carryover_effect_summary: str = ""
+    claim_governed_review_consistency_label: str = ""
+    claim_governed_review_consistency_summary: str = ""
     claim_read_across_label: str = ""
     claim_read_across_summary: str = ""
     claim_prior_context_count: int = Field(default=0, ge=0)
@@ -1208,6 +1413,28 @@ class ClaimReference(ContractBaseModel):
         "claim_governed_review_reason_summary",
         "claim_governed_review_history_summary",
         "claim_promotion_audit_summary",
+        "claim_derived_governed_review_status_label",
+        "claim_derived_governed_review_status_summary",
+        "claim_derived_governed_review_reason_label",
+        "claim_derived_governed_review_reason_summary",
+        "claim_derived_governed_review_history_summary",
+        "claim_manual_governed_review_status_label",
+        "claim_manual_governed_review_status_summary",
+        "claim_manual_governed_review_reason_label",
+        "claim_manual_governed_review_reason_summary",
+        "claim_manual_governed_review_history_summary",
+        "claim_manual_governed_review_action_label",
+        "claim_manual_governed_review_reviewer_label",
+        "claim_manual_governed_review_note",
+        "claim_manual_governed_review_note_summary",
+        "claim_manual_governed_review_reopen_revise_summary",
+        "claim_effective_governed_review_origin_label",
+        "claim_effective_governed_review_origin_summary",
+        "claim_effective_governed_review_note",
+        "claim_effective_governed_review_note_summary",
+        "claim_effective_carryover_effect_summary",
+        "claim_governed_review_consistency_label",
+        "claim_governed_review_consistency_summary",
         "claim_read_across_label",
         "claim_read_across_summary",
         "claim_prior_support_quality_label",
@@ -2069,6 +2296,8 @@ class BeliefStateReference(ContractBaseModel):
 
 
 class BeliefStateSummary(ContractBaseModel):
+    governed_review_subject_id: str = ""
+    continuity_cluster_review_subject_id: str = ""
     summary_text: str = ""
     support_distribution_summary: str = ""
     governance_scope_summary: str = ""
@@ -2133,6 +2362,29 @@ class BeliefStateSummary(ContractBaseModel):
     governed_review_record_count: int = Field(default=0, ge=0)
     governed_review_history_summary: str = ""
     promotion_audit_summary: str = ""
+    derived_governed_review_status_label: str = ""
+    derived_governed_review_status_summary: str = ""
+    derived_governed_review_reason_label: str = ""
+    derived_governed_review_reason_summary: str = ""
+    derived_governed_review_history_summary: str = ""
+    manual_governed_review_status_label: str = ""
+    manual_governed_review_status_summary: str = ""
+    manual_governed_review_reason_label: str = ""
+    manual_governed_review_reason_summary: str = ""
+    manual_governed_review_record_count: int = Field(default=0, ge=0)
+    manual_governed_review_history_summary: str = ""
+    manual_governed_review_action_label: str = ""
+    manual_governed_review_reviewer_label: str = ""
+    manual_governed_review_note: str = ""
+    manual_governed_review_note_summary: str = ""
+    manual_governed_review_reopen_revise_summary: str = ""
+    effective_governed_review_origin_label: str = ""
+    effective_governed_review_origin_summary: str = ""
+    effective_governed_review_note: str = ""
+    effective_governed_review_note_summary: str = ""
+    effective_carryover_effect_summary: str = ""
+    governed_review_consistency_label: str = ""
+    governed_review_consistency_summary: str = ""
     continuity_cluster_review_status_label: str = ""
     continuity_cluster_review_status_summary: str = ""
     continuity_cluster_review_reason_label: str = ""
@@ -2140,6 +2392,29 @@ class BeliefStateSummary(ContractBaseModel):
     continuity_cluster_review_record_count: int = Field(default=0, ge=0)
     continuity_cluster_review_history_summary: str = ""
     continuity_cluster_promotion_audit_summary: str = ""
+    continuity_cluster_derived_review_status_label: str = ""
+    continuity_cluster_derived_review_status_summary: str = ""
+    continuity_cluster_derived_review_reason_label: str = ""
+    continuity_cluster_derived_review_reason_summary: str = ""
+    continuity_cluster_derived_review_history_summary: str = ""
+    continuity_cluster_manual_review_status_label: str = ""
+    continuity_cluster_manual_review_status_summary: str = ""
+    continuity_cluster_manual_review_reason_label: str = ""
+    continuity_cluster_manual_review_reason_summary: str = ""
+    continuity_cluster_manual_review_record_count: int = Field(default=0, ge=0)
+    continuity_cluster_manual_review_history_summary: str = ""
+    continuity_cluster_manual_review_action_label: str = ""
+    continuity_cluster_manual_review_reviewer_label: str = ""
+    continuity_cluster_manual_review_note: str = ""
+    continuity_cluster_manual_review_note_summary: str = ""
+    continuity_cluster_manual_review_reopen_revise_summary: str = ""
+    continuity_cluster_effective_review_origin_label: str = ""
+    continuity_cluster_effective_review_origin_summary: str = ""
+    continuity_cluster_effective_review_note: str = ""
+    continuity_cluster_effective_review_note_summary: str = ""
+    continuity_cluster_effective_carryover_effect_summary: str = ""
+    continuity_cluster_governed_review_consistency_label: str = ""
+    continuity_cluster_governed_review_consistency_summary: str = ""
     carryover_guardrail_summary: str = ""
     contradiction_pressure_count: int = Field(default=0, ge=0)
     weakly_reusable_support_count: int = Field(default=0, ge=0)
@@ -2150,6 +2425,8 @@ class BeliefStateSummary(ContractBaseModel):
     last_update_source: str = ""
 
     @validator(
+        "governed_review_subject_id",
+        "continuity_cluster_review_subject_id",
         "summary_text",
         "support_distribution_summary",
         "governance_scope_summary",
@@ -2190,12 +2467,56 @@ class BeliefStateSummary(ContractBaseModel):
         "governed_review_reason_summary",
         "governed_review_history_summary",
         "promotion_audit_summary",
+        "derived_governed_review_status_label",
+        "derived_governed_review_status_summary",
+        "derived_governed_review_reason_label",
+        "derived_governed_review_reason_summary",
+        "derived_governed_review_history_summary",
+        "manual_governed_review_status_label",
+        "manual_governed_review_status_summary",
+        "manual_governed_review_reason_label",
+        "manual_governed_review_reason_summary",
+        "manual_governed_review_history_summary",
+        "manual_governed_review_action_label",
+        "manual_governed_review_reviewer_label",
+        "manual_governed_review_note",
+        "manual_governed_review_note_summary",
+        "manual_governed_review_reopen_revise_summary",
+        "effective_governed_review_origin_label",
+        "effective_governed_review_origin_summary",
+        "effective_governed_review_note",
+        "effective_governed_review_note_summary",
+        "effective_carryover_effect_summary",
+        "governed_review_consistency_label",
+        "governed_review_consistency_summary",
         "continuity_cluster_review_status_label",
         "continuity_cluster_review_status_summary",
         "continuity_cluster_review_reason_label",
         "continuity_cluster_review_reason_summary",
         "continuity_cluster_review_history_summary",
         "continuity_cluster_promotion_audit_summary",
+        "continuity_cluster_derived_review_status_label",
+        "continuity_cluster_derived_review_status_summary",
+        "continuity_cluster_derived_review_reason_label",
+        "continuity_cluster_derived_review_reason_summary",
+        "continuity_cluster_derived_review_history_summary",
+        "continuity_cluster_manual_review_status_label",
+        "continuity_cluster_manual_review_status_summary",
+        "continuity_cluster_manual_review_reason_label",
+        "continuity_cluster_manual_review_reason_summary",
+        "continuity_cluster_manual_review_history_summary",
+        "continuity_cluster_manual_review_action_label",
+        "continuity_cluster_manual_review_reviewer_label",
+        "continuity_cluster_manual_review_note",
+        "continuity_cluster_manual_review_note_summary",
+        "continuity_cluster_manual_review_reopen_revise_summary",
+        "continuity_cluster_effective_review_origin_label",
+        "continuity_cluster_effective_review_origin_summary",
+        "continuity_cluster_effective_review_note",
+        "continuity_cluster_effective_review_note_summary",
+        "continuity_cluster_effective_carryover_effect_summary",
+        "continuity_cluster_governed_review_consistency_label",
+        "continuity_cluster_governed_review_consistency_summary",
         "carryover_guardrail_summary",
         "belief_state_strength_summary",
         "belief_state_readiness_summary",
@@ -2215,6 +2536,7 @@ class BeliefStateSummary(ContractBaseModel):
 
 
 class ScientificDecisionSummary(ContractBaseModel):
+    session_family_review_subject_id: str = ""
     decision_status_label: str = ""
     decision_status_summary: str = ""
     current_support_quality_label: str = ""
@@ -2249,6 +2571,21 @@ class ScientificDecisionSummary(ContractBaseModel):
     governed_review_status_summary: str = ""
     governed_review_reason_label: str = ""
     governed_review_reason_summary: str = ""
+    derived_governed_review_status_label: str = ""
+    derived_governed_review_status_summary: str = ""
+    derived_governed_review_reason_label: str = ""
+    derived_governed_review_reason_summary: str = ""
+    derived_governed_review_history_summary: str = ""
+    manual_governed_review_status_label: str = ""
+    manual_governed_review_status_summary: str = ""
+    manual_governed_review_reason_label: str = ""
+    manual_governed_review_reason_summary: str = ""
+    manual_governed_review_record_count: int = Field(default=0, ge=0)
+    manual_governed_review_history_summary: str = ""
+    manual_governed_review_action_label: str = ""
+    manual_governed_review_reviewer_label: str = ""
+    effective_governed_review_origin_label: str = ""
+    effective_governed_review_origin_summary: str = ""
     session_family_review_status_label: str = ""
     session_family_review_status_summary: str = ""
     session_family_review_reason_label: str = ""
@@ -2256,6 +2593,29 @@ class ScientificDecisionSummary(ContractBaseModel):
     session_family_review_record_count: int = Field(default=0, ge=0)
     session_family_review_history_summary: str = ""
     session_family_promotion_audit_summary: str = ""
+    session_family_derived_review_status_label: str = ""
+    session_family_derived_review_status_summary: str = ""
+    session_family_derived_review_reason_label: str = ""
+    session_family_derived_review_reason_summary: str = ""
+    session_family_derived_review_history_summary: str = ""
+    session_family_manual_review_status_label: str = ""
+    session_family_manual_review_status_summary: str = ""
+    session_family_manual_review_reason_label: str = ""
+    session_family_manual_review_reason_summary: str = ""
+    session_family_manual_review_record_count: int = Field(default=0, ge=0)
+    session_family_manual_review_history_summary: str = ""
+    session_family_manual_review_action_label: str = ""
+    session_family_manual_review_reviewer_label: str = ""
+    session_family_manual_review_note: str = ""
+    session_family_manual_review_note_summary: str = ""
+    session_family_manual_review_reopen_revise_summary: str = ""
+    session_family_effective_review_origin_label: str = ""
+    session_family_effective_review_origin_summary: str = ""
+    session_family_effective_review_note: str = ""
+    session_family_effective_review_note_summary: str = ""
+    session_family_effective_carryover_effect_summary: str = ""
+    session_family_governed_review_consistency_label: str = ""
+    session_family_governed_review_consistency_summary: str = ""
     carryover_guardrail_summary: str = ""
     current_support_contested_flag: bool = False
     current_posture_degraded_flag: bool = False
@@ -2266,6 +2626,7 @@ class ScientificDecisionSummary(ContractBaseModel):
     result_state_summary: str = ""
 
     @validator(
+        "session_family_review_subject_id",
         "decision_status_label",
         "decision_status_summary",
         "current_support_quality_label",
@@ -2300,12 +2661,48 @@ class ScientificDecisionSummary(ContractBaseModel):
         "governed_review_status_summary",
         "governed_review_reason_label",
         "governed_review_reason_summary",
+        "derived_governed_review_status_label",
+        "derived_governed_review_status_summary",
+        "derived_governed_review_reason_label",
+        "derived_governed_review_reason_summary",
+        "derived_governed_review_history_summary",
+        "manual_governed_review_status_label",
+        "manual_governed_review_status_summary",
+        "manual_governed_review_reason_label",
+        "manual_governed_review_reason_summary",
+        "manual_governed_review_history_summary",
+        "manual_governed_review_action_label",
+        "manual_governed_review_reviewer_label",
+        "effective_governed_review_origin_label",
+        "effective_governed_review_origin_summary",
         "session_family_review_status_label",
         "session_family_review_status_summary",
         "session_family_review_reason_label",
         "session_family_review_reason_summary",
         "session_family_review_history_summary",
         "session_family_promotion_audit_summary",
+        "session_family_derived_review_status_label",
+        "session_family_derived_review_status_summary",
+        "session_family_derived_review_reason_label",
+        "session_family_derived_review_reason_summary",
+        "session_family_derived_review_history_summary",
+        "session_family_manual_review_status_label",
+        "session_family_manual_review_status_summary",
+        "session_family_manual_review_reason_label",
+        "session_family_manual_review_reason_summary",
+        "session_family_manual_review_history_summary",
+        "session_family_manual_review_action_label",
+        "session_family_manual_review_reviewer_label",
+        "session_family_manual_review_note",
+        "session_family_manual_review_note_summary",
+        "session_family_manual_review_reopen_revise_summary",
+        "session_family_effective_review_origin_label",
+        "session_family_effective_review_origin_summary",
+        "session_family_effective_review_note",
+        "session_family_effective_review_note_summary",
+        "session_family_effective_carryover_effect_summary",
+        "session_family_governed_review_consistency_label",
+        "session_family_governed_review_consistency_summary",
         "carryover_guardrail_summary",
         "next_step_label",
         "next_step_summary",
@@ -3035,6 +3432,9 @@ class GovernedReviewRecord(ContractBaseModel):
     source_class_label: str = ""
     provenance_confidence_label: str = ""
     trust_tier_label: str = ""
+    review_origin_label: str = "derived"
+    manual_action_label: str = ""
+    reviewer_label: str = ""
     review_status_label: str = ""
     review_reason_label: str = ""
     review_reason_summary: str = ""
@@ -3046,6 +3446,7 @@ class GovernedReviewRecord(ContractBaseModel):
     recorded_at: datetime
     recorded_by: str = "system"
     actor_user_id: str = ""
+    reviewer_user_id: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator(
@@ -3059,6 +3460,9 @@ class GovernedReviewRecord(ContractBaseModel):
         "source_class_label",
         "provenance_confidence_label",
         "trust_tier_label",
+        "review_origin_label",
+        "manual_action_label",
+        "reviewer_label",
         "review_status_label",
         "review_reason_label",
         "review_reason_summary",
@@ -3068,6 +3472,7 @@ class GovernedReviewRecord(ContractBaseModel):
         "decision_summary",
         "supersedes_review_record_id",
         "actor_user_id",
+        "reviewer_user_id",
         pre=True,
         always=True,
     )
@@ -3084,6 +3489,146 @@ class GovernedReviewRecord(ContractBaseModel):
 
     @validator("metadata", pre=True)
     def _clean_governed_review_metadata(cls, value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+
+class GovernanceInboxItem(ContractBaseModel):
+    item_id: str
+    workspace_id: str = ""
+    session_id: str = ""
+    session_label: str = ""
+    source_name: str = ""
+    subject_type: str = ""
+    subject_id: str = ""
+    layer_label: str = ""
+    target_key: str = ""
+    candidate_id: str = ""
+    candidate_label: str = ""
+    priority_rank: int = Field(default=0, ge=0)
+    priority_label: str = ""
+    attention_label: str = ""
+    attention_summary: str = ""
+    effective_review_status_label: str = ""
+    effective_review_status_summary: str = ""
+    effective_review_origin_label: str = "derived"
+    effective_review_origin_summary: str = ""
+    derived_review_status_label: str = ""
+    manual_review_status_label: str = ""
+    manual_review_action_label: str = ""
+    manual_review_reviewer_label: str = ""
+    manual_review_note: str = ""
+    manual_review_note_summary: str = ""
+    manual_review_reopen_revise_summary: str = ""
+    reviewer_attribution_summary: str = ""
+    trust_tier_label: str = ""
+    provenance_confidence_label: str = ""
+    source_class_label: str = ""
+    local_usefulness_summary: str = ""
+    broader_carryover_summary: str = ""
+    future_influence_summary: str = ""
+    contradiction_context_summary: str = ""
+    carryover_guardrail_summary: str = ""
+    carryover_effect_summary: str = ""
+    consistency_summary: str = ""
+    promotion_gate_status_label: str = ""
+    promotion_block_reason_label: str = ""
+    review_record_count: int = Field(default=0, ge=0)
+    manual_review_record_count: int = Field(default=0, ge=0)
+    related_session_count: int = Field(default=0, ge=0)
+    manual_mismatch_flag: bool = False
+    reason_tags: list[str] = Field(default_factory=list)
+    detail_url: str = ""
+    discovery_url: str = ""
+    dashboard_url: str = ""
+
+    @validator(
+        "item_id",
+        "workspace_id",
+        "session_id",
+        "session_label",
+        "source_name",
+        "subject_type",
+        "subject_id",
+        "layer_label",
+        "target_key",
+        "candidate_id",
+        "candidate_label",
+        "priority_label",
+        "attention_label",
+        "attention_summary",
+        "effective_review_status_label",
+        "effective_review_status_summary",
+        "effective_review_origin_label",
+        "effective_review_origin_summary",
+        "derived_review_status_label",
+        "manual_review_status_label",
+        "manual_review_action_label",
+        "manual_review_reviewer_label",
+        "manual_review_note",
+        "manual_review_note_summary",
+        "manual_review_reopen_revise_summary",
+        "reviewer_attribution_summary",
+        "trust_tier_label",
+        "provenance_confidence_label",
+        "source_class_label",
+        "local_usefulness_summary",
+        "broader_carryover_summary",
+        "future_influence_summary",
+        "contradiction_context_summary",
+        "carryover_guardrail_summary",
+        "carryover_effect_summary",
+        "consistency_summary",
+        "promotion_gate_status_label",
+        "promotion_block_reason_label",
+        "detail_url",
+        "discovery_url",
+        "dashboard_url",
+        pre=True,
+        always=True,
+    )
+    def _clean_governance_inbox_item_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("reason_tags", pre=True)
+    def _clean_governance_reason_tags(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
+
+
+class GovernanceInboxSummary(ContractBaseModel):
+    generated_at: datetime
+    item_count: int = Field(default=0, ge=0)
+    immediate_attention_count: int = Field(default=0, ge=0)
+    review_soon_count: int = Field(default=0, ge=0)
+    watch_list_count: int = Field(default=0, ge=0)
+    manual_override_count: int = Field(default=0, ge=0)
+    manual_mismatch_count: int = Field(default=0, ge=0)
+    blocked_or_quarantined_count: int = Field(default=0, ge=0)
+    session_family_count: int = Field(default=0, ge=0)
+    summary_text: str = ""
+
+    @validator("summary_text", pre=True, always=True)
+    def _clean_governance_inbox_summary_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator("generated_at", pre=True)
+    def _coerce_governance_inbox_datetime(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+
+class GovernanceInbox(ContractBaseModel):
+    generated_at: datetime
+    summary: GovernanceInboxSummary = Field(default_factory=GovernanceInboxSummary)
+    items: list[GovernanceInboxItem] = Field(default_factory=list)
+    groups: dict[str, list[GovernanceInboxItem]] = Field(default_factory=dict)
+
+    @validator("generated_at", pre=True)
+    def _coerce_governance_inbox_generated_at(cls, value: Any) -> Any:
+        return _coerce_datetime(value) or _now_utc()
+
+    @validator("groups", pre=True)
+    def _clean_governance_inbox_groups(cls, value: Any) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
 
 
@@ -3131,6 +3676,78 @@ class ScoreBreakdownItem(ContractBaseModel):
     @validator("key", "label", pre=True, always=True)
     def _clean_breakdown_text(cls, value: Any) -> str:
         return _clean_text(value)
+
+
+class CandidateScoreSemantics(ContractBaseModel):
+    schema_version: str = "candidate_score_semantics.v1"
+    raw_predictive_signal: float | None = Field(default=None, ge=0.0, le=1.0)
+    raw_predictive_signal_label: str = ""
+    heuristic_policy_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    heuristic_adjustment_delta: float | None = Field(default=None, ge=-1.0, le=1.0)
+    raw_signal_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    heuristic_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    blended_priority_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    representation_support_factor: float | None = Field(default=None, ge=0.0, le=1.0)
+    representation_adjustment: float | None = Field(default=None, ge=-1.0, le=1.0)
+    final_priority_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    bounded_uncertainty_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    fragility_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    neighbor_gap: float | None = Field(default=None, ge=0.0, le=1.0)
+    signal_status_label: str = ""
+    governance_effect_summary: str = ""
+    heuristic_summary: str = ""
+    representation_summary: str = ""
+    uncertainty_summary: str = ""
+    separation_summary: str = ""
+    caution_summary: str = ""
+    summary: str = ""
+    failure_modes: list[str] = Field(default_factory=list)
+
+    @validator(
+        "schema_version",
+        "raw_predictive_signal_label",
+        "signal_status_label",
+        "governance_effect_summary",
+        "heuristic_summary",
+        "representation_summary",
+        "uncertainty_summary",
+        "separation_summary",
+        "caution_summary",
+        "summary",
+        pre=True,
+        always=True,
+    )
+    def _clean_score_semantics_text(cls, value: Any) -> str:
+        return _clean_text(value)
+
+    @validator(
+        "raw_predictive_signal",
+        "heuristic_policy_score",
+        "heuristic_adjustment_delta",
+        "raw_signal_weight",
+        "heuristic_weight",
+        "blended_priority_score",
+        "representation_support_factor",
+        "representation_adjustment",
+        "final_priority_score",
+        "bounded_uncertainty_score",
+        "fragility_score",
+        "neighbor_gap",
+        pre=True,
+    )
+    def _coerce_score_semantics_float(cls, value: Any) -> Any:
+        if value in (None, "", "nan"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @validator("failure_modes", pre=True)
+    def _clean_score_semantics_failures(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [_clean_text(item) for item in value if _clean_text(item)]
 
 
 class CandidateRationale(ContractBaseModel):
@@ -3185,7 +3802,19 @@ class DecisionArtifactRow(ContractBaseModel):
     created_at: datetime
     model_metadata: ModelMetadata
     priority_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    raw_predictive_signal: float | None = Field(default=None, ge=0.0, le=1.0)
+    heuristic_policy_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    heuristic_adjustment_delta: float | None = Field(default=None, ge=-1.0, le=1.0)
+    raw_signal_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    heuristic_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    blended_priority_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    representation_support_factor: float | None = Field(default=None, ge=0.0, le=1.0)
+    representation_adjustment: float | None = Field(default=None, ge=-1.0, le=1.0)
+    score_decomposition_summary: str = ""
+    scoring_failure_mode_summary: str = ""
+    score_semantics: CandidateScoreSemantics | None = None
     max_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    support_density: float | None = Field(default=None, ge=0.0, le=1.0)
     observed_value: float | None = None
     assay: str = ""
     target: str = ""
@@ -3221,6 +3850,8 @@ class DecisionArtifactRow(ContractBaseModel):
         "domain_status",
         "domain_label",
         "domain_summary",
+        "score_decomposition_summary",
+        "scoring_failure_mode_summary",
         pre=True,
         always=True,
     )
@@ -3277,7 +3908,23 @@ class DecisionArtifactRow(ContractBaseModel):
     def _coerce_reviewed_at(cls, value: Any) -> Any:
         return _coerce_datetime(value)
 
-    @validator("confidence", "uncertainty", "priority_score", "max_similarity", "observed_value", pre=True)
+    @validator(
+        "confidence",
+        "uncertainty",
+        "priority_score",
+        "raw_predictive_signal",
+        "heuristic_policy_score",
+        "heuristic_adjustment_delta",
+        "raw_signal_weight",
+        "heuristic_weight",
+        "blended_priority_score",
+        "representation_support_factor",
+        "representation_adjustment",
+        "max_similarity",
+        "support_density",
+        "observed_value",
+        pre=True,
+    )
     def _coerce_optional_float(cls, value: Any) -> Any:
         if value in (None, "", "nan"):
             return None
@@ -3491,6 +4138,30 @@ def validate_status_semantics(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(StatusSemantics, payload))
 
 
+def validate_predictive_task_contract(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(PredictiveTaskContract, payload))
+
+
+def validate_predictive_representation_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(PredictiveRepresentationSummary, payload))
+
+
+def validate_predictive_evaluation_contract(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(PredictiveEvaluationContract, payload))
+
+
+def validate_predictive_failure_mode_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(PredictiveFailureModeSummary, payload))
+
+
+def validate_predictive_path_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(PredictivePathSummary, payload))
+
+
+def validate_candidate_score_semantics(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(CandidateScoreSemantics, payload))
+
+
 def validate_run_contract(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(RunContract, payload))
 
@@ -3649,6 +4320,18 @@ def validate_review_event_record(payload: Any) -> dict[str, Any]:
 
 def validate_governed_review_record(payload: Any) -> dict[str, Any]:
     return dump_contract_model(validate_contract_model(GovernedReviewRecord, payload))
+
+
+def validate_governance_inbox_item(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(GovernanceInboxItem, payload))
+
+
+def validate_governance_inbox_summary(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(GovernanceInboxSummary, payload))
+
+
+def validate_governance_inbox(payload: Any) -> dict[str, Any]:
+    return dump_contract_model(validate_contract_model(GovernanceInbox, payload))
 
 
 def validate_review_event_records(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:

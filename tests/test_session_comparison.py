@@ -1024,15 +1024,62 @@ class SessionComparisonServiceTest(unittest.TestCase):
     def test_build_session_comparison_matrix_surfaces_multi_layer_review_fields(self):
         session = {
             "session_id": "focus",
+            "governance_summary": {
+                "item_count": 3,
+                "priority_label": "Immediate attention",
+                "attention_summary": "Session-family carryover and belief-state posture both need reviewer attention.",
+                "manual_override_count": 2,
+                "manual_mismatch_count": 1,
+                "detail_url": "/governance?session_id=focus&item_id=session_family_carryover:focus::family",
+            },
+            "predictive_path_summary": {
+                "summary_text": "Current ranking is inspectable enough to enter the next phase.",
+                "task_contract": {
+                    "task_summary": "The current predictive task is local candidate prioritization for what to test next, not universal truth prediction.",
+                },
+                "model_signal_summary": "Raw predictive signal uses predicted value, normalized ranking compatibility, and prediction dispersion as bounded ordering inputs rather than as outcome truth.",
+                "heuristic_logic_summary": "Selection buckets and bounded score thresholds still shape the shortlist.",
+                "representation_summary": {
+                    "representation_limitations_summary": "The current representation does not explicitly encode richer assay mechanism.",
+                },
+                "evaluation_contract": {
+                    "evaluation_summary": "Saved regression evaluation currently centers on holdout rmse, holdout mae, holdout r2 for rf_regression.",
+                    "top_k_quality_summary": "Top-k quality is usable but still bounded: the lead band shows mean raw signal 0.612 and bounded uncertainty 0.338.",
+                    "calibration_band_summary": "Higher raw-signal bands do not yet map cleanly to stronger internal shortlist reliability, so score strength should stay bounded and relative.",
+                    "cohort_diagnostic_summary": "A reusable signal-led cohort is now available for later version comparison.",
+                    "evaluation_subset_summary": "3 reusable evaluation subsets are now recorded: Top shortlist, Signal-led cohort, Representation-supported cohort.",
+                    "cross_session_comparison_summary": "Cross-session evaluation is anchored by pIC50, regression ranking, prioritize experiments, regression, balanced, and session trained. Reusable subsets: top_shortlist, signal_led.",
+                    "representation_evaluation_summary": "Representation-aware evaluation suggests stronger chemistry coverage improves ranking quality in this run.",
+                    "representation_condition_summary": "Representation-conditioned evaluation suggests stronger-covered chemistry regions are more reliable in this run.",
+                    "cross_run_comparison_summary": "Cross-run comparison is anchored by regression ranking, session trained, extra trees, and rdkit descriptors 4 plus morgan fp 2048.",
+                    "engine_strength_summary": "Engine strengths are becoming more reusable: signal-led cohorts are now reusable across runs.",
+                    "engine_weakness_summary": "Engine weaknesses remain visible: representation-limited cohorts still degrade ranking quality.",
+                },
+                "failure_mode_summary": {
+                    "summary_text": "Current predictive failure modes remain inspectable: heuristic shortlist policy still shapes ordering alongside model signal.",
+                },
+            },
             "scientific_session_truth": {
                 "belief_state_summary": {
                     "governed_review_status_label": "Reviewed and blocked",
                     "governed_review_status_summary": "Belief-state broader review is blocked.",
                     "governed_review_history_summary": "This belief-state posture has 2 governed review records.",
+                    "effective_governed_review_origin_label": "manual",
+                    "effective_governed_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
+                    "derived_governed_review_status_label": "Reviewed and deferred",
+                    "manual_governed_review_status_label": "Reviewed and blocked",
+                    "manual_governed_review_action_label": "Blocked by reviewer",
+                    "manual_governed_review_reviewer_label": "Owner",
                     "promotion_audit_summary": "Latest promotion outcome is blocked.",
                     "continuity_cluster_review_status_label": "Reviewed and deferred",
                     "continuity_cluster_review_status_summary": "Continuity-cluster review remains deferred.",
                     "continuity_cluster_review_history_summary": "This continuity cluster has 2 governed review records.",
+                    "continuity_cluster_effective_review_origin_label": "manual",
+                    "continuity_cluster_effective_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
+                    "continuity_cluster_derived_review_status_label": "Review candidate",
+                    "continuity_cluster_manual_review_status_label": "Reviewed and deferred",
+                    "continuity_cluster_manual_review_action_label": "Deferred by reviewer",
+                    "continuity_cluster_manual_review_reviewer_label": "Owner",
                     "continuity_cluster_promotion_audit_summary": "Latest promotion outcome is deferred.",
                     "carryover_guardrail_summary": "Weak continuity multiplicity does not simulate stronger broader carryover.",
                 },
@@ -1040,6 +1087,12 @@ class SessionComparisonServiceTest(unittest.TestCase):
                     "session_family_review_status_label": "Reviewed and downgraded later",
                     "session_family_review_status_summary": "Session-family carryover was downgraded later.",
                     "session_family_review_history_summary": "This session-family carryover picture has 3 governed review records.",
+                    "session_family_effective_review_origin_label": "manual",
+                    "session_family_effective_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
+                    "session_family_derived_review_status_label": "Reviewed and approved",
+                    "session_family_manual_review_status_label": "Reviewed and downgraded later",
+                    "session_family_manual_review_action_label": "Downgraded by reviewer",
+                    "session_family_manual_review_reviewer_label": "Owner",
                     "session_family_promotion_audit_summary": "Latest promotion outcome is downgraded.",
                     "carryover_guardrail_summary": "Weak local multiplicity does not simulate approved session-family carryover.",
                 },
@@ -1055,9 +1108,40 @@ class SessionComparisonServiceTest(unittest.TestCase):
 
         row = matrix["rows"][0]
         self.assertEqual(row["belief_state_governed_review_status_label"], "Reviewed and blocked")
+        self.assertEqual(row["belief_state_effective_governed_review_origin_label"], "manual")
+        self.assertEqual(row["belief_state_manual_governed_review_action_label"], "Blocked by reviewer")
+        self.assertEqual(row["belief_state_manual_governed_review_reviewer_label"], "Owner")
         self.assertEqual(row["belief_state_continuity_cluster_review_status_label"], "Reviewed and deferred")
+        self.assertEqual(row["belief_state_continuity_cluster_effective_review_origin_label"], "manual")
+        self.assertEqual(row["belief_state_continuity_cluster_manual_governed_review_action_label"], "Deferred by reviewer")
         self.assertIn("belief-state posture", row["belief_state_governed_review_history_summary"].lower())
         self.assertEqual(row["scientific_decision_session_family_review_status_label"], "Reviewed and downgraded later")
+        self.assertEqual(row["scientific_decision_session_family_effective_review_origin_label"], "manual")
+        self.assertEqual(row["scientific_decision_session_family_manual_review_action_label"], "Downgraded by reviewer")
+        self.assertEqual(row["scientific_decision_session_family_manual_review_reviewer_label"], "Owner")
+        self.assertEqual(row["governance_attention_label"], "Immediate attention")
+        self.assertEqual(row["governance_item_count"], 3)
+        self.assertEqual(row["governance_manual_override_count"], 2)
+        self.assertEqual(row["governance_manual_mismatch_count"], 1)
+        self.assertIn("need reviewer attention", row["governance_attention_summary"].lower())
+        self.assertIn("/governance?", row["governance_detail_url"])
+        self.assertIn("next phase", row["predictive_path_summary"].lower())
+        self.assertIn("local candidate prioritization", row["predictive_task_summary"].lower())
+        self.assertIn("predicted value", row["predictive_model_signal_summary"].lower())
+        self.assertIn("selection buckets", row["predictive_path_heuristic_summary"].lower())
+        self.assertIn("assay mechanism", row["predictive_representation_summary"].lower())
+        self.assertIn("holdout rmse", row["predictive_evaluation_summary"].lower())
+        self.assertIn("top-k quality", row["predictive_top_k_quality_summary"].lower())
+        self.assertIn("higher raw-signal bands", row["predictive_calibration_band_summary"].lower())
+        self.assertIn("signal-led cohort", row["predictive_cohort_diagnostic_summary"].lower())
+        self.assertIn("reusable evaluation subsets", row["predictive_evaluation_subset_summary"].lower())
+        self.assertIn("cross-session evaluation", row["predictive_cross_session_summary"].lower())
+        self.assertIn("representation-aware evaluation", row["predictive_representation_evaluation_summary"].lower())
+        self.assertIn("representation-conditioned evaluation", row["predictive_representation_condition_summary"].lower())
+        self.assertIn("cross-run comparison", row["predictive_cross_run_summary"].lower())
+        self.assertIn("engine strengths", row["predictive_engine_strength_summary"].lower())
+        self.assertIn("engine weaknesses", row["predictive_engine_weakness_summary"].lower())
+        self.assertIn("heuristic shortlist policy", row["predictive_failure_mode_summary"].lower())
         self.assertIn("session-family carryover", row["scientific_decision_session_family_review_history_summary"].lower())
         self.assertIn(
             "does not simulate approved session-family carryover",

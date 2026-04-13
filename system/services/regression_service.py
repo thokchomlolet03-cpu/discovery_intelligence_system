@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
@@ -27,15 +27,22 @@ def ensure_regression_targets(y: pd.Series) -> None:
         raise ValueError("Regression requires at least 3 distinct measured target values.")
 
 
-def build_regression_model(config=None, random_state=None):
+def _build_regression_estimator(*, family="random_forest", config=None, random_state=None):
     cfg = resolve_system_config(config, seed=random_state)
-    model = RandomForestRegressor(
-        n_estimators=cfg.model.n_estimators,
-        random_state=cfg.model.random_state if random_state is None else random_state,
-        min_samples_leaf=cfg.model.min_samples_leaf,
-        n_jobs=-1,
-    )
-    return Pipeline([("scaler", StandardScaler()), ("regressor", model)])
+    common = {
+        "n_estimators": cfg.model.n_estimators,
+        "random_state": cfg.model.random_state if random_state is None else random_state,
+        "min_samples_leaf": cfg.model.min_samples_leaf,
+        "n_jobs": -1,
+    }
+    if family == "extra_trees":
+        return ExtraTreesRegressor(**common)
+    return RandomForestRegressor(**common)
+
+
+def build_regression_model(config=None, random_state=None, family="random_forest"):
+    estimator = _build_regression_estimator(family=family, config=config, random_state=random_state)
+    return Pipeline([("scaler", StandardScaler()), ("regressor", estimator)])
 
 
 def regression_metrics(y_true: pd.Series, predictions: np.ndarray) -> dict[str, Any]:
@@ -71,6 +78,32 @@ def regression_cv_metrics(model, X: pd.DataFrame, y: pd.Series, config=None) -> 
     }
 
 
+def benchmark_regression_candidates(X_train, y_train, X_test, y_test, config=None, random_state=42):
+    cfg = resolve_system_config(config, seed=random_state)
+    benchmark = []
+    for family in ("random_forest", "extra_trees"):
+        candidate_model = build_regression_model(config=cfg, random_state=random_state, family=family)
+        candidate_model.fit(X_train, y_train)
+        predictions = candidate_model.predict(X_test)
+        benchmark.append(
+            {
+                "name": f"{family}_regression",
+                "family": family,
+                "calibration_method": "",
+                "metrics": regression_metrics(y_test, predictions),
+                "model": candidate_model,
+            }
+        )
+    benchmark.sort(
+        key=lambda item: (
+            item["metrics"]["rmse"],
+            item["metrics"]["mae"],
+            -(item["metrics"].get("spearman_rank_correlation") or -1.0),
+        )
+    )
+    return benchmark
+
+
 def train_regression_model(df: pd.DataFrame, random_state=42, config=None):
     cfg = resolve_system_config(config, seed=random_state)
     measured = regression_subset(df)
@@ -88,18 +121,19 @@ def train_regression_model(df: pd.DataFrame, random_state=42, config=None):
         test_size=cfg.model.test_size,
         random_state=cfg.model.random_state,
     )
-    model = build_regression_model(config=cfg, random_state=random_state)
-    model.fit(X_train, y_train)
-    holdout_predictions = model.predict(X_test)
-    holdout = regression_metrics(y_test, holdout_predictions)
+    benchmark = benchmark_regression_candidates(X_train, y_train, X_test, y_test, config=cfg, random_state=random_state)
+    selected = benchmark[0]
+    selected_family = str(selected.get("family") or "random_forest")
+    holdout = selected["metrics"]
 
-    final_model = build_regression_model(config=cfg, random_state=random_state)
+    final_model = build_regression_model(config=cfg, random_state=random_state, family=selected_family)
     final_model.fit(X, y)
     final_model.feature_order_ = list(X.columns)
 
     return {
         "model": final_model,
         "model_kind": "regression",
+        "model_family": selected_family,
         "features": list(X.columns),
         "descriptor_features": list(DESCRIPTOR_COLUMNS),
         "fingerprint_bits": int(len(features) - len(DESCRIPTOR_COLUMNS)),
@@ -113,12 +147,25 @@ def train_regression_model(df: pd.DataFrame, random_state=42, config=None):
             "std": float(y.std(ddof=0)),
         },
         "selected_model": {
-            "name": "rf_regression",
+            "name": selected["name"],
             "calibration_method": "",
         },
-        "benchmark": [],
+        "benchmark": [
+            {
+                "name": candidate["name"],
+                "family": candidate.get("family") or "random_forest",
+                "calibration_method": "",
+                "metrics": candidate["metrics"],
+            }
+            for candidate in benchmark
+        ],
         "metrics": {
-            "cv": regression_cv_metrics(build_regression_model(config=cfg, random_state=random_state), X, y, config=cfg),
+            "cv": regression_cv_metrics(
+                build_regression_model(config=cfg, random_state=random_state, family=selected_family),
+                X,
+                y,
+                config=cfg,
+            ),
             "holdout": holdout,
         },
         "regression_metrics": holdout,
@@ -177,6 +224,7 @@ def predict_regression_with_model(bundle: dict[str, Any], df: pd.DataFrame, *, o
     scored["confidence"] = desirability
     scored["uncertainty"] = uncertainty
     scored["uncertainty_kind"] = "ensemble_prediction_std"
+    scored["signal_support"] = np.clip(1.0 - uncertainty, 0.0, 1.0)
     if "novelty" not in scored.columns:
         novelty_source = scored["novel_to_dataset"] if "novel_to_dataset" in scored.columns else pd.Series(0.0, index=scored.index)
         scored["novelty"] = pd.to_numeric(novelty_source, errors="coerce").fillna(0)
@@ -187,6 +235,7 @@ def predict_regression_with_model(bundle: dict[str, Any], df: pd.DataFrame, *, o
 
 __all__ = [
     "DEFAULT_REGRESSION_MODEL_PATH",
+    "benchmark_regression_candidates",
     "build_regression_model",
     "ensure_regression_targets",
     "predict_regression_with_model",

@@ -374,6 +374,9 @@ def _governed_review_payload(record: GovernedReviewRecordModel) -> dict[str, Any
             "source_class_label": record.source_class_label,
             "provenance_confidence_label": record.provenance_confidence_label,
             "trust_tier_label": record.trust_tier_label,
+            "review_origin_label": record.review_origin_label,
+            "manual_action_label": record.manual_action_label,
+            "reviewer_label": record.reviewer_label,
             "review_status_label": record.review_status_label,
             "review_reason_label": record.review_reason_label,
             "review_reason_summary": record.review_reason_summary,
@@ -385,6 +388,7 @@ def _governed_review_payload(record: GovernedReviewRecordModel) -> dict[str, Any
             "recorded_at": record.recorded_at,
             "recorded_by": record.recorded_by,
             "actor_user_id": record.actor_user_id or "",
+            "reviewer_user_id": record.reviewer_user_id or "",
             "metadata": record.metadata_json or {},
         }
     )
@@ -950,6 +954,7 @@ class GovernedReviewRepository:
         record_payload = validate_governed_review_record(payload)
         workspace_id = record_payload.get("workspace_id") or ""
         session_id = record_payload.get("session_id") or ""
+        review_origin_label = record_payload.get("review_origin_label") or "derived"
         if not workspace_id and session_id:
             try:
                 workspace_id = self.session_repository.get_session(session_id)["workspace_id"]
@@ -971,6 +976,7 @@ class GovernedReviewRepository:
                         GovernedReviewRecordModel.workspace_id == workspace_id,
                         GovernedReviewRecordModel.subject_type == record_payload["subject_type"],
                         GovernedReviewRecordModel.subject_id == record_payload["subject_id"],
+                        GovernedReviewRecordModel.review_origin_label == review_origin_label,
                         GovernedReviewRecordModel.active.is_(True),
                     )
                 ).scalar_one_or_none()
@@ -991,6 +997,9 @@ class GovernedReviewRepository:
                 source_class_label=record_payload.get("source_class_label", ""),
                 provenance_confidence_label=record_payload.get("provenance_confidence_label", ""),
                 trust_tier_label=record_payload.get("trust_tier_label", ""),
+                review_origin_label=review_origin_label,
+                manual_action_label=record_payload.get("manual_action_label", ""),
+                reviewer_label=record_payload.get("reviewer_label", ""),
                 review_status_label=record_payload.get("review_status_label", ""),
                 review_reason_label=record_payload.get("review_reason_label", ""),
                 review_reason_summary=record_payload.get("review_reason_summary", ""),
@@ -1002,6 +1011,7 @@ class GovernedReviewRepository:
                 recorded_at=_to_datetime(record_payload["recorded_at"]),
                 recorded_by=record_payload.get("recorded_by", "system") or "system",
                 actor_user_id=record_payload.get("actor_user_id") or None,
+                reviewer_user_id=record_payload.get("reviewer_user_id") or None,
                 metadata_json=record_payload.get("metadata", {}),
             )
             db.add(record)
@@ -1016,6 +1026,7 @@ class GovernedReviewRepository:
         subject_type: str | None = None,
         subject_id: str | None = None,
         session_id: str | None = None,
+        review_origin_label: str | None = None,
         active_only: bool = False,
     ) -> list[dict[str, Any]]:
         with session_scope() as db:
@@ -1031,6 +1042,8 @@ class GovernedReviewRepository:
                 statement = statement.where(GovernedReviewRecordModel.subject_id == subject_id)
             if session_id is not None:
                 statement = statement.where(GovernedReviewRecordModel.session_id == session_id)
+            if review_origin_label is not None:
+                statement = statement.where(GovernedReviewRecordModel.review_origin_label == review_origin_label)
             if active_only:
                 statement = statement.where(GovernedReviewRecordModel.active.is_(True))
             rows = db.execute(statement).scalars().all()
@@ -1042,6 +1055,7 @@ class GovernedReviewRepository:
         workspace_id: str,
         subject_type: str,
         subject_id: str,
+        review_origin_label: str | None = None,
     ) -> dict[str, Any] | None:
         with session_scope() as db:
             statement = (
@@ -1057,6 +1071,8 @@ class GovernedReviewRepository:
                     desc(GovernedReviewRecordModel.review_record_id),
                 )
             )
+            if review_origin_label is not None:
+                statement = statement.where(GovernedReviewRecordModel.review_origin_label == review_origin_label)
             record = db.execute(statement).scalars().first()
             if record is None:
                 return None

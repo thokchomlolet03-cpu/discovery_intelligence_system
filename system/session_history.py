@@ -4,6 +4,8 @@ from typing import Any, Callable
 
 from system.discovery_workbench import humanize_timestamp
 from system.services.run_metadata_service import comparison_anchor_summary, infer_comparison_anchors
+from system.services.governance_workflow_service import build_governance_inbox, build_session_governance_summary
+from system.services.predictive_path_service import build_predictive_path_summary
 from system.services.scientific_decision_service import build_scientific_decision_summary
 from system.services.scientific_session_truth_service import build_controlled_reuse_state, build_scientific_session_truth
 from system.services.belief_update_service import support_role_from_belief_update_summary
@@ -282,6 +284,19 @@ def build_session_history_context(
             decision_payload=decision_payload,
             current_job=latest_job,
         )
+        run_contract = (
+            scientific_truth.get("run_contract")
+            if isinstance(scientific_truth.get("run_contract"), dict)
+            else {}
+        ) or (
+            decision_payload.get("run_contract")
+            if isinstance(decision_payload.get("run_contract"), dict)
+            else {}
+        ) or (
+            analysis_report.get("run_contract")
+            if isinstance(analysis_report.get("run_contract"), dict)
+            else {}
+        )
         comparison_anchors = infer_comparison_anchors(
             session_record=session,
             upload_metadata=upload_metadata,
@@ -323,6 +338,17 @@ def build_session_history_context(
         )
         if not scientific_decision_summary and scientific_truth:
             scientific_decision_summary = build_scientific_decision_summary(scientific_truth)
+        predictive_path_summary = build_predictive_path_summary(
+            analysis_report=analysis_report if isinstance(analysis_report, dict) else {},
+            decision_payload=decision_payload if isinstance(decision_payload, dict) else {},
+            scientific_truth=scientific_truth if isinstance(scientific_truth, dict) else {},
+            ranking_policy=ranking_policy,
+            target_definition=scientific_truth.get("target_definition")
+            if isinstance(scientific_truth.get("target_definition"), dict)
+            else {},
+            modeling_mode=str(scientific_truth.get("modeling_mode") or "").strip(),
+            run_contract=run_contract if isinstance(run_contract, dict) else {},
+        )
         session_support_role_label, session_support_role_summary = support_role_from_belief_update_summary(
             belief_update_summary
         )
@@ -383,6 +409,7 @@ def build_session_history_context(
                 else {},
                 "belief_state_summary": belief_state_summary,
                 "scientific_decision_summary": scientific_decision_summary,
+                "predictive_path_summary": predictive_path_summary,
                 "belief_state_alignment_label": str(scientific_truth.get("belief_state_alignment_label") or "").strip(),
                 "belief_state_alignment_summary": str(scientific_truth.get("belief_state_alignment_summary") or "").strip(),
                 "session_support_role_label": session_support_role_label,
@@ -466,6 +493,7 @@ def build_session_history_context(
         item["controlled_reuse_summary"] = str(controlled_reuse.get("recommendation_reuse_summary") or "").strip()
         item["ranking_context_reuse_summary"] = str(controlled_reuse.get("ranking_context_reuse_summary") or "").strip()
         item["interpretation_support_summary"] = str(controlled_reuse.get("interpretation_support_summary") or "").strip()
+        item["governance_summary"] = build_session_governance_summary(item)
 
     continuation_items = [
         item
@@ -495,6 +523,7 @@ def build_session_history_context(
         review_events=workspace_reviews,
         session_labels=source_name_by_session_id,
     )
+    governance_inbox = build_governance_inbox(items)
 
     return {
         "items": items,
@@ -503,6 +532,7 @@ def build_session_history_context(
         "archive_items": archive_items,
         "comparison_overview": comparison_overview,
         "workspace_feedback": workspace_feedback,
+        "governance_inbox": governance_inbox,
         "comparison_matrix": build_session_comparison_matrix(
             focus_session=focus_session,
             items=items,

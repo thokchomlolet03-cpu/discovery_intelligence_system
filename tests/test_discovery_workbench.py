@@ -138,7 +138,7 @@ def canonical_decision_output() -> dict:
                         "This candidate is being prioritized mainly because confidence is carrying the shortlist position."
                     ],
                     "model_judgment_summary": "The model predicts a continuous value of 6.550 for target_a.",
-                    "uncertainty_summary": "Uncertainty is 0.100.",
+                    "uncertainty_summary": "Prediction dispersion is 0.100; higher values mean the regression estimate is less stable.",
                     "novelty_summary": "This candidate adds some structural novelty without leaving known chemistry entirely.",
                     "decision_policy_reason": "The decision policy is prioritizing this candidate for near-term testing based on current score stability.",
                     "recommended_followup": "Run the next confirmatory assay against this candidate.",
@@ -208,7 +208,7 @@ def canonical_decision_output() -> dict:
             "selected_model_family": "random_forest",
             "training_scope": "session_trained",
             "label_source": "continuous_measurement",
-            "feature_signature": "rdkit_descriptors_plus_morgan_fp_2048",
+            "feature_signature": "rdkit_descriptors_4_plus_morgan_fp_2048",
             "reference_basis": {
                 "novelty_reference": "reference_dataset_similarity",
                 "applicability_reference": "reference_dataset_similarity",

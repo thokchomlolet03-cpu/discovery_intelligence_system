@@ -1,0 +1,115 @@
+{% if predictive_path and predictive_path.summary_text %}
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>{{ panel_title or "Predictive-path inspection" }}</h2>
+        <p class="helper-copy">{{ panel_copy or "This keeps the current predictive task, ranking path, evaluation surface, and failure modes inspectable without pretending the engine is already mature." }}</p>
+      </div>
+    </div>
+    <div class="mini-callout">
+      <span class="panel-label">Current path</span>
+      <p>{{ predictive_path.summary_text }}</p>
+      {% if predictive_path.task_contract and predictive_path.task_contract.task_summary %}
+        <p class="helper-copy">{{ predictive_path.task_contract.task_summary }}</p>
+      {% endif %}
+      {% if predictive_path.ranking_driver_summary %}
+        <p class="helper-copy">{{ predictive_path.ranking_driver_summary }}</p>
+      {% endif %}
+      {% if predictive_path.model_signal_summary %}
+        <p class="helper-copy">{{ predictive_path.model_signal_summary }}</p>
+      {% endif %}
+      {% if predictive_path.heuristic_logic_summary %}
+        <p class="helper-copy">{{ predictive_path.heuristic_logic_summary }}</p>
+      {% endif %}
+      {% if predictive_path.governance_influence_summary %}
+        <p class="helper-copy">{{ predictive_path.governance_influence_summary }}</p>
+      {% endif %}
+      {% if predictive_path.final_ordering_summary %}
+        <p class="helper-copy">{{ predictive_path.final_ordering_summary }}</p>
+      {% endif %}
+    </div>
+    <div class="card-grid">
+      {% if predictive_path.representation_summary and predictive_path.representation_summary.representation_limitations_summary %}
+        <article class="mini-callout">
+          <span class="panel-label">Representation</span>
+          <p>{{ predictive_path.representation_summary.representation_limitations_summary }}</p>
+        </article>
+      {% endif %}
+      {% if predictive_path.evaluation_contract and predictive_path.evaluation_contract.evaluation_summary %}
+        <article class="mini-callout">
+          <span class="panel-label">Evaluation</span>
+          <p>{{ predictive_path.evaluation_contract.evaluation_summary }}</p>
+          {% if predictive_path.evaluation_contract.ranking_metric_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.ranking_metric_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.candidate_separation_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.candidate_separation_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.ranking_stability_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.ranking_stability_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.closeness_band_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.closeness_band_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.top_k_quality_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.top_k_quality_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.heuristic_influence_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.heuristic_influence_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.sensitivity_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.sensitivity_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.calibration_awareness_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.calibration_awareness_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.calibration_band_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.calibration_band_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.comparison_cohort_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.comparison_cohort_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.cohort_diagnostic_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.cohort_diagnostic_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.evaluation_subset_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.evaluation_subset_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.session_variation_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.session_variation_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.cross_session_comparison_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.cross_session_comparison_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.version_comparison_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.version_comparison_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.representation_support_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.representation_support_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.representation_evaluation_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.representation_evaluation_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.representation_condition_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.representation_condition_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.cross_run_comparison_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.cross_run_comparison_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.engine_strength_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.engine_strength_summary }}</p>
+          {% endif %}
+          {% if predictive_path.evaluation_contract.engine_weakness_summary %}
+            <p class="helper-copy">{{ predictive_path.evaluation_contract.engine_weakness_summary }}</p>
+          {% endif %}
+        </article>
+      {% endif %}
+      {% if predictive_path.failure_mode_summary and predictive_path.failure_mode_summary.summary_text %}
+        <article class="mini-callout">
+          <span class="panel-label">Failure mode</span>
+          <p>{{ predictive_path.failure_mode_summary.summary_text }}</p>
+        </article>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}

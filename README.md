@@ -93,6 +93,7 @@ For the current budget-based VM auto-stop setup, use [docs/cost-control.md](docs
 The repository also includes product-and-scientific philosophy notes that explain the intended reasoning stance behind Discovery Intelligence:
 
 - [Interactive documentation portal](docs/index.html)
+- [Media page](docs/media.html)
 - [Current system truth](docs/current_system_truth.md)
 - [System evolution progress](docs/system_evolution_progress.md)
 - [Trusted evidence, promotion gates, and anti-poisoning architecture](docs/01_philosophy/03_trusted_evidence_and_promotion.md)

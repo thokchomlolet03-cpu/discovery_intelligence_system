@@ -64,6 +64,7 @@ def decorate_candidates(
         scoring_mode=scoring_mode,
         target_definition=target_definition,
         modeling_mode=mode,
+        bundle=bundle,
     )
     decorated = add_candidate_explanations(decorated, target_definition=target_definition)
     decorated = add_candidate_provenance(decorated, mode=mode, source_name=source_name, bundle=bundle)

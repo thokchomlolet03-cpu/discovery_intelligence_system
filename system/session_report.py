@@ -6,6 +6,8 @@ from typing import Any
 import pandas as pd
 
 from system_config import SystemConfig
+from system.services.predictive_path_service import build_predictive_evaluation_contract
+from system.services.scoring_semantics_service import build_offline_ranking_evaluation, attach_candidate_score_semantics
 
 
 def apply_scoring_mode(config: SystemConfig, scoring_mode: str | None) -> tuple[str, SystemConfig]:
@@ -136,6 +138,7 @@ def apply_priority_scores(
     *,
     target_definition: dict[str, Any] | None = None,
     modeling_mode: str | None = None,
+    bundle: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
     prioritized = df.copy()
     for column in ("confidence", "uncertainty", "novelty", "experiment_value"):
@@ -160,11 +163,19 @@ def apply_priority_scores(
     prioritized["priority_component_uncertainty"] = prioritized["uncertainty"] * weights["uncertainty"]
     prioritized["priority_component_novelty"] = prioritized["novelty"] * weights["novelty"]
     prioritized["priority_component_experiment_value"] = prioritized["experiment_value"] * weights["experiment_value"]
-    prioritized["priority_score"] = (
+    prioritized["heuristic_policy_score"] = (
         prioritized["priority_component_confidence"]
         + prioritized["priority_component_uncertainty"]
         + prioritized["priority_component_novelty"]
         + prioritized["priority_component_experiment_value"]
+    )
+    prioritized["priority_score"] = prioritized["heuristic_policy_score"]
+    prioritized = attach_candidate_score_semantics(
+        prioritized,
+        ranking_policy=policy,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        bundle=bundle,
     )
 
     sort_order = list(policy["sort_order"])
@@ -439,7 +450,48 @@ def build_analysis_report(
     run_contract: dict[str, Any] | None = None,
     comparison_anchors: dict[str, Any] | None = None,
     contract_versions: dict[str, str] | None = None,
+    bundle: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    run_contract = run_contract if isinstance(run_contract, dict) else {}
+    policy = ranking_policy(
+        intent,
+        scoring_mode,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
+    offline_ranking_evaluation = build_offline_ranking_evaluation(
+        scored_frame,
+        ranking_policy=policy,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        bundle=bundle,
+        run_contract=run_contract,
+        comparison_anchors=comparison_anchors,
+    )
+    predictive_evaluation_contract = build_predictive_evaluation_contract(
+        target_definition=target_definition,
+        analysis_report={
+            "measurement_summary": _measurement_summary(validation),
+            "ranking_diagnostics": _ranking_diagnostics(
+                scored_frame,
+                intent=intent,
+                scoring_mode=scoring_mode,
+                target_definition=target_definition,
+                modeling_mode=modeling_mode,
+            ),
+            "offline_ranking_evaluation": offline_ranking_evaluation,
+        },
+        evaluation_summary=bundle if isinstance(bundle, dict) else {},
+        run_contract=run_contract,
+        modeling_mode=modeling_mode,
+    )
+    ranking_diagnostics = _ranking_diagnostics(
+        scored_frame,
+        intent=intent,
+        scoring_mode=scoring_mode,
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+    )
     return {
         "product_tier": product_tier,
         "uploaded_rows": int(validation.get("total_rows", 0)),
@@ -453,19 +505,12 @@ def build_analysis_report(
         "consent_learning": consent_learning,
         "top_candidates_returned": int(len(top_candidates)),
         "measurement_summary": _measurement_summary(validation),
-        "ranking_diagnostics": _ranking_diagnostics(
-            scored_frame,
-            intent=intent,
-            scoring_mode=scoring_mode,
-            target_definition=target_definition,
-            modeling_mode=modeling_mode,
-        ),
-        "ranking_policy": ranking_policy(
-            intent,
-            scoring_mode,
-            target_definition=target_definition,
-            modeling_mode=modeling_mode,
-        ),
+        "ranking_diagnostics": ranking_diagnostics,
+        "ranking_policy": policy,
+        "offline_ranking_evaluation": offline_ranking_evaluation,
+        "predictive_task_contract": run_contract.get("predictive_task_contract") if isinstance(run_contract.get("predictive_task_contract"), dict) else {},
+        "predictive_representation_summary": run_contract.get("predictive_representation_summary") if isinstance(run_contract.get("predictive_representation_summary"), dict) else {},
+        "predictive_evaluation_contract": predictive_evaluation_contract,
         "warnings": warnings,
         "top_level_recommendation_summary": recommendation_summary(
             top_candidates,
@@ -474,7 +519,7 @@ def build_analysis_report(
             modeling_mode=modeling_mode,
         ),
         "target_definition": target_definition or {},
-        "run_contract": run_contract or {},
+        "run_contract": run_contract,
         "comparison_anchors": comparison_anchors or {},
         "contract_versions": contract_versions or {},
     }

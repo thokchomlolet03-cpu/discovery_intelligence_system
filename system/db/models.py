@@ -215,6 +215,9 @@ class GovernedReviewRecordModel(Base):
     source_class_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     provenance_confidence_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     trust_tier_label: Mapped[str] = mapped_column(String(128), nullable=False, default="", index=True)
+    review_origin_label: Mapped[str] = mapped_column(String(32), nullable=False, default="derived", index=True)
+    manual_action_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    reviewer_label: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     review_status_label: Mapped[str] = mapped_column(String(128), nullable=False, default="", index=True)
     review_reason_label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     review_reason_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -226,6 +229,7 @@ class GovernedReviewRecordModel(Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, index=True)
     recorded_by: Mapped[str] = mapped_column(String(256), nullable=False, default="system")
     actor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"), nullable=True, index=True)
+    reviewer_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"), nullable=True, index=True)
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 

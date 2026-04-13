@@ -59,6 +59,49 @@
     </div>
   </section>
 
+  {% set governance_inbox = governance_workbench.inbox or {} %}
+  {% set governance_summary = governance_inbox.summary or {} %}
+  {% if governance_summary.item_count %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Reviewer workflow snapshot</h2>
+          <p class="helper-copy">Use this to see whether broader carryover or reviewer mismatch is affecting how you should read the current dashboard.</p>
+        </div>
+      </div>
+      <div class="card-grid metrics-grid">
+        <article class="stat-card">
+          <span class="panel-label">Inbox items</span>
+          <strong>{{ governance_summary.item_count }}</strong>
+          <p>{{ governance_summary.summary_text }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Immediate attention</span>
+          <strong>{{ governance_summary.immediate_attention_count or 0 }}</strong>
+          <p>{{ governance_summary.review_soon_count or 0 }} more items are marked review soon.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Manual overrides</span>
+          <strong>{{ governance_summary.manual_override_count or 0 }}</strong>
+          <p>{{ governance_summary.manual_mismatch_count or 0 }} item(s) still show manual-vs-derived mismatch.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Blocked or quarantined</span>
+          <strong>{{ governance_summary.blocked_or_quarantined_count or 0 }}</strong>
+          <p>{{ governance_summary.session_family_count or 0 }} session-family carryover item(s) are active in the inbox.</p>
+        </article>
+      </div>
+      <div class="cta-row">
+        <a class="button button-secondary" href="/governance?session_id={{ session_id }}">Open governance inbox</a>
+      </div>
+    </section>
+  {% endif %}
+
+  {% set predictive_path = dashboard.predictive_path_summary or {} %}
+  {% set panel_title = "Predictive-path inspection" %}
+  {% set panel_copy = "This keeps the current predictive task, evaluation surface, and bridge-state weaknesses explicit while you read the dashboard." %}
+  {% include "_predictive_path_panel.html" %}
+
   {% with session_identity=session_identity, section_title="Session Identity", section_copy="This card states what target the session is about, what kind of model was used, and how to frame trust before reading the dashboard." %}
     {% include "_session_identity_card.html" %}
   {% endwith %}
@@ -296,6 +339,27 @@
             <span class="panel-label">Session-family review</span>
             <strong>{{ scientific_decision_summary.session_family_review_status_label }}</strong>
             <p>{{ scientific_decision_summary.session_family_review_reason_summary or scientific_decision_summary.session_family_review_status_summary }}</p>
+            {% if scientific_decision_summary.session_family_effective_review_origin_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_effective_review_origin_label|replace("_", " ")|title }}: {{ scientific_decision_summary.session_family_effective_review_origin_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_derived_review_status_label %}
+              <p class="helper-copy">Derived posture: {{ scientific_decision_summary.session_family_derived_review_status_label }}{% if scientific_decision_summary.session_family_derived_review_status_summary %} — {{ scientific_decision_summary.session_family_derived_review_status_summary }}{% endif %}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_manual_review_status_label %}
+              <p class="helper-copy">Manual posture: {{ scientific_decision_summary.session_family_manual_review_status_label }}{% if scientific_decision_summary.session_family_manual_review_action_label %} — {{ scientific_decision_summary.session_family_manual_review_action_label }}{% endif %}{% if scientific_decision_summary.session_family_manual_review_reviewer_label %} by {{ scientific_decision_summary.session_family_manual_review_reviewer_label }}{% endif %}.</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_manual_review_note_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_manual_review_note_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_manual_review_reopen_revise_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_manual_review_reopen_revise_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_effective_carryover_effect_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_effective_carryover_effect_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_governed_review_consistency_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_governed_review_consistency_summary }}</p>
+            {% endif %}
           </article>
         {% endif %}
         {% if scientific_decision_summary.next_step_label %}
@@ -620,6 +684,27 @@
             {% if dashboard.belief_state_summary.governed_review_history_summary %}
               <p class="helper-copy">{{ dashboard.belief_state_summary.governed_review_history_summary }}</p>
             {% endif %}
+            {% if dashboard.belief_state_summary.effective_governed_review_origin_summary %}
+              <p class="helper-copy">{{ dashboard.belief_state_summary.effective_governed_review_origin_label|replace("_", " ")|title }}: {{ dashboard.belief_state_summary.effective_governed_review_origin_summary }}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.derived_governed_review_status_label %}
+              <p class="helper-copy">Derived posture: {{ dashboard.belief_state_summary.derived_governed_review_status_label }}{% if dashboard.belief_state_summary.derived_governed_review_status_summary %} — {{ dashboard.belief_state_summary.derived_governed_review_status_summary }}{% endif %}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.manual_governed_review_status_label %}
+              <p class="helper-copy">Manual posture: {{ dashboard.belief_state_summary.manual_governed_review_status_label }}{% if dashboard.belief_state_summary.manual_governed_review_action_label %} — {{ dashboard.belief_state_summary.manual_governed_review_action_label }}{% endif %}{% if dashboard.belief_state_summary.manual_governed_review_reviewer_label %} by {{ dashboard.belief_state_summary.manual_governed_review_reviewer_label }}{% endif %}.</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.manual_governed_review_note_summary %}
+              <p class="helper-copy">{{ dashboard.belief_state_summary.manual_governed_review_note_summary }}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.manual_governed_review_reopen_revise_summary %}
+              <p class="helper-copy">{{ dashboard.belief_state_summary.manual_governed_review_reopen_revise_summary }}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.effective_carryover_effect_summary %}
+              <p class="helper-copy">{{ dashboard.belief_state_summary.effective_carryover_effect_summary }}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.governed_review_consistency_summary %}
+              <p class="helper-copy">{{ dashboard.belief_state_summary.governed_review_consistency_summary }}</p>
+            {% endif %}
             {% if dashboard.belief_state_summary.promotion_audit_summary %}
               <p class="helper-copy">{{ dashboard.belief_state_summary.promotion_audit_summary }}</p>
             {% endif %}
@@ -631,6 +716,15 @@
             {% endif %}
             {% if dashboard.belief_state_summary.continuity_cluster_review_history_summary %}
               <p class="helper-copy">{{ dashboard.belief_state_summary.continuity_cluster_review_history_summary }}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.continuity_cluster_effective_review_origin_summary %}
+              <p class="helper-copy">{{ dashboard.belief_state_summary.continuity_cluster_effective_review_origin_label|replace("_", " ")|title }}: {{ dashboard.belief_state_summary.continuity_cluster_effective_review_origin_summary }}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.continuity_cluster_derived_review_status_label %}
+              <p class="helper-copy">Continuity derived posture: {{ dashboard.belief_state_summary.continuity_cluster_derived_review_status_label }}{% if dashboard.belief_state_summary.continuity_cluster_derived_review_status_summary %} — {{ dashboard.belief_state_summary.continuity_cluster_derived_review_status_summary }}{% endif %}</p>
+            {% endif %}
+            {% if dashboard.belief_state_summary.continuity_cluster_manual_review_status_label %}
+              <p class="helper-copy">Continuity manual posture: {{ dashboard.belief_state_summary.continuity_cluster_manual_review_status_label }}{% if dashboard.belief_state_summary.continuity_cluster_manual_review_action_label %} — {{ dashboard.belief_state_summary.continuity_cluster_manual_review_action_label }}{% endif %}{% if dashboard.belief_state_summary.continuity_cluster_manual_review_reviewer_label %} by {{ dashboard.belief_state_summary.continuity_cluster_manual_review_reviewer_label }}{% endif %}.</p>
             {% endif %}
             {% if dashboard.belief_state_summary.continuity_cluster_promotion_audit_summary %}
               <p class="helper-copy">{{ dashboard.belief_state_summary.continuity_cluster_promotion_audit_summary }}</p>
@@ -750,6 +844,9 @@
             </div>
             <div class="dashboard-shortlist-meta">
               <span class="data-chip">Policy priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
+              {% if candidate.raw_predictive_signal is not none %}
+                <span class="data-chip">{{ candidate.raw_predictive_signal_label or candidate.confidence_label or "Raw signal" }} {{ "%.3f"|format(candidate.raw_predictive_signal or 0) }}</span>
+              {% endif %}
               <span class="data-chip">Policy experiment value {{ "%.3f"|format(candidate.experiment_value or 0) }}</span>
               <span class="data-chip">Status {{ candidate.status }}</span>
               {% if candidate.trust_label %}
@@ -779,6 +876,12 @@
               Policy output: priority {{ "%.3f"|format(candidate.priority_score or 0) }},
               experiment value {{ "%.3f"|format(candidate.experiment_value or 0) }}.
             </p>
+            {% if candidate.score_decomposition_summary %}
+              <p class="helper-copy">{{ candidate.score_decomposition_summary }}</p>
+            {% endif %}
+            {% if candidate.scoring_failure_mode_summary %}
+              <p class="helper-copy">{{ candidate.scoring_failure_mode_summary }}</p>
+            {% endif %}
             {% if candidate.primary_driver or candidate.domain_label %}
               <p class="helper-copy">
                 {% if candidate.primary_driver %}Main driver: {{ candidate.primary_driver }}.{% endif %}

@@ -20,7 +20,7 @@ const elements = {
   readingProgress: document.getElementById("reading-progress"),
   articleStage: document.getElementById("article-stage"),
   sectionNav: document.getElementById("section-nav"),
-  sectionOrbit: document.getElementById("section-orbit"),
+  jumpListContainer: document.getElementById("jump-list-container"),
   docCategory: document.getElementById("doc-category"),
   docTitle: document.getElementById("doc-title"),
   docSummary: document.getElementById("doc-summary"),
@@ -30,6 +30,40 @@ const elements = {
   rawDocLink: document.getElementById("raw-doc-link"),
   backHome: document.getElementById("back-home"),
 };
+
+function setText(node, value) {
+  if (node) {
+    node.textContent = value;
+  }
+}
+
+function setHtml(node, value) {
+  if (node) {
+    node.innerHTML = value;
+  }
+}
+
+function setHref(node, value) {
+  if (node) {
+    node.href = value;
+  }
+}
+
+function documentUrl(path) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("doc", path);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function toggleHidden(node, hidden) {
+  if (node) {
+    node.classList.toggle("hidden", Boolean(hidden));
+  }
+}
+
+function setReaderMode(enabled) {
+  document.body.classList.toggle("reader-mode", Boolean(enabled));
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -197,23 +231,37 @@ function readTimeFromMarkdown(markdown) {
 }
 
 function buildLibrary() {
+  if (!elements.libraryGroups) return;
   elements.libraryGroups.innerHTML = "";
   const groups = groupByCategory(state.filteredDocuments);
+  const cardTemplate = document.getElementById("library-card-template");
   Object.entries(groups).forEach(([category, docs]) => {
     const group = document.createElement("section");
     group.className = "library-group";
     group.innerHTML = `<div class="group-title">${escapeHtml(category)}</div>`;
 
     docs.forEach((doc) => {
-      const button = document.getElementById("library-card-template").content.firstElementChild.cloneNode(true);
-      button.querySelector(".library-card-category").textContent = doc.category;
-      button.querySelector(".library-card-title").textContent = doc.title;
-      button.querySelector(".library-card-summary").textContent = doc.summary || "";
+      const button = cardTemplate?.content?.firstElementChild
+        ? cardTemplate.content.firstElementChild.cloneNode(true)
+        : document.createElement("a");
+      if (!button.classList.contains("library-card")) {
+        button.className = "library-card";
+        button.href = "#";
+        button.innerHTML =
+          '<span class="library-card-category"></span><strong class="library-card-title"></strong><span class="library-card-summary"></span>';
+      }
+      setText(button.querySelector(".library-card-category"), doc.category);
+      setText(button.querySelector(".library-card-title"), doc.title);
+      setText(button.querySelector(".library-card-summary"), doc.summary || "");
       button.dataset.path = doc.path;
+      button.href = documentUrl(doc.path);
       if (state.activeDocument && state.activeDocument.path === doc.path) {
         button.classList.add("active");
       }
-      button.addEventListener("click", () => openDocument(doc.path));
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        safeOpenDocument(doc.path);
+      });
       group.appendChild(button);
     });
     elements.libraryGroups.appendChild(group);
@@ -221,17 +269,21 @@ function buildLibrary() {
 }
 
 function buildFeatured() {
+  if (!elements.featuredGrid) return;
   elements.featuredGrid.innerHTML = "";
   state.documents.slice(0, 6).forEach((doc) => {
-    const card = document.createElement("button");
+    const card = document.createElement("a");
     card.className = "featured-card";
-    card.type = "button";
+    card.href = documentUrl(doc.path);
     card.innerHTML = `
       <p class="eyebrow">${escapeHtml(doc.category)}</p>
       <h4>${escapeHtml(doc.title)}</h4>
       <p>${escapeHtml(doc.summary || "")}</p>
     `;
-    card.addEventListener("click", () => openDocument(doc.path));
+    card.addEventListener("click", (event) => {
+      event.preventDefault();
+      safeOpenDocument(doc.path);
+    });
     elements.featuredGrid.appendChild(card);
   });
 }
@@ -245,6 +297,7 @@ function polarPosition(index, total, radiusX, radiusY, centerX, centerY) {
 }
 
 function renderConstellation() {
+  if (!elements.constellation) return;
   elements.constellation.innerHTML = "";
   const docs = state.documents.slice(0, 10);
   const width = elements.constellation.clientWidth || 600;
@@ -256,7 +309,7 @@ function renderConstellation() {
 
   const center = document.createElement("div");
   center.className = "constellation-center";
-  center.textContent = "Docs constellation";
+  center.textContent = "Docs map";
   elements.constellation.appendChild(center);
 
   docs.forEach((doc, index) => {
@@ -272,65 +325,31 @@ function renderConstellation() {
     line.style.transform = `translate(0, 0) rotate(${angle}deg)`;
     elements.constellation.appendChild(line);
 
-    const node = document.createElement("button");
+    const node = document.createElement("a");
     node.className = "constellation-node";
-    node.type = "button";
+    node.href = documentUrl(doc.path);
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
     node.style.transform = "translate(-50%, -50%)";
     node.textContent = doc.title;
-    node.addEventListener("click", () => openDocument(doc.path));
+    node.addEventListener("click", (event) => {
+      event.preventDefault();
+      safeOpenDocument(doc.path);
+    });
     elements.constellation.appendChild(node);
   });
 }
 
-function renderSectionOrbit(sections) {
-  elements.sectionOrbit.innerHTML = "";
+function renderSectionNav(sections) {
+  if (!elements.sectionNav) return;
+  elements.sectionNav.innerHTML = "";
   if (!sections.length) {
-    elements.sectionOrbit.innerHTML = "<p class='site-subtitle'>Section map becomes active when a document is open.</p>";
+    const note = document.createElement("p");
+    note.className = "helper-copy";
+    note.textContent = "Headings will appear here when the current document exposes a jump list.";
+    elements.sectionNav.appendChild(note);
     return;
   }
-
-  const width = elements.sectionOrbit.clientWidth || 280;
-  const height = 320;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const radiusX = Math.max(82, width * 0.3);
-  const radiusY = 108;
-  const primarySections = sections.filter((section) => section.level <= 2).slice(0, 8);
-
-  const center = document.createElement("div");
-  center.className = "orbit-center";
-  center.textContent = "Section flow";
-  elements.sectionOrbit.appendChild(center);
-
-  primarySections.forEach((section, index) => {
-    const { x, y } = polarPosition(index, primarySections.length, radiusX, radiusY, centerX, centerY);
-    const dx = x - centerX;
-    const dy = y - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-
-    const line = document.createElement("div");
-    line.className = "orbit-line";
-    line.style.width = `${distance}px`;
-    line.style.transform = `translate(0, 0) rotate(${angle}deg)`;
-    elements.sectionOrbit.appendChild(line);
-
-    const node = document.createElement("button");
-    node.className = "orbit-node";
-    node.type = "button";
-    node.style.left = `${x}px`;
-    node.style.top = `${y}px`;
-    node.style.transform = "translate(-50%, -50%)";
-    node.textContent = section.title;
-    node.addEventListener("click", () => jumpToSection(section.id));
-    elements.sectionOrbit.appendChild(node);
-  });
-}
-
-function renderSectionNav(sections) {
-  elements.sectionNav.innerHTML = "";
   sections.forEach((section) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -350,6 +369,7 @@ function jumpToSection(id) {
 }
 
 function updateSectionHighlight() {
+  if (!elements.sectionNav) return;
   const headings = state.activeSections
     .map((section) => ({ section, node: document.getElementById(section.id) }))
     .filter((entry) => entry.node);
@@ -365,17 +385,27 @@ function updateSectionHighlight() {
   elements.sectionNav.querySelectorAll("button").forEach((button) => {
     button.classList.toggle("active", button.dataset.target === activeId);
   });
+
+  const activeButton = activeId
+    ? elements.sectionNav.querySelector(`button[data-target="${activeId}"]`)
+    : null;
+  if (activeButton && elements.jumpListContainer) {
+    activeButton.scrollIntoView({ block: "nearest" });
+  }
 }
 
 function updateReadingProgress() {
   const doc = document.documentElement;
   const scrollable = doc.scrollHeight - window.innerHeight;
   const progress = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
-  elements.readingProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  if (elements.readingProgress) {
+    elements.readingProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  }
   updateSectionHighlight();
 }
 
 function observeArticleReveals() {
+  if (!elements.articleStage || typeof IntersectionObserver === "undefined") return;
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -393,42 +423,93 @@ function observeArticleReveals() {
 async function openDocument(path) {
   const doc = state.documents.find((item) => item.path === path);
   if (!doc) return;
+  if (!elements.homeView || !elements.docView || !elements.articleStage) {
+    throw new Error("Documentation reader shell is incomplete. Required reader elements are missing.");
+  }
   const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error(`Failed to load markdown: ${path}`);
+  }
   const markdown = await response.text();
   const rendered = markdownToHtml(markdown);
 
   state.activeDocument = doc;
   state.activeSections = rendered.sections;
+  setReaderMode(true);
 
-  elements.homeView.classList.add("hidden");
-  elements.docView.classList.remove("hidden");
-  elements.docCategory.textContent = doc.category;
-  elements.docTitle.textContent = doc.title;
-  elements.docSummary.textContent = doc.summary || "";
-  elements.docPathChip.textContent = doc.path;
-  elements.docSectionChip.textContent = `${rendered.sections.length} sections`;
-  elements.docReadtimeChip.textContent = `${readTimeFromMarkdown(markdown)} min read`;
-  elements.rawDocLink.href = doc.path;
+  toggleHidden(elements.homeView, true);
+  toggleHidden(elements.docView, false);
+  setText(elements.docCategory, doc.category);
+  setText(elements.docTitle, doc.title);
+  setText(elements.docSummary, doc.summary || "");
+  setText(elements.docPathChip, doc.path);
+  setText(elements.docSectionChip, `${rendered.sections.length} sections`);
+  setText(elements.docReadtimeChip, `${readTimeFromMarkdown(markdown)} min read`);
+  setHref(elements.rawDocLink, doc.path);
   elements.articleStage.innerHTML = rendered.html;
 
   renderSectionNav(rendered.sections);
-  renderSectionOrbit(rendered.sections);
   buildLibrary();
   observeArticleReveals();
+  if (elements.jumpListContainer) {
+    elements.jumpListContainer.scrollTop = 0;
+  }
 
-  const url = new URL(window.location.href);
-  url.searchParams.set("doc", path);
-  window.history.replaceState({}, "", url);
+  window.history.replaceState({}, "", documentUrl(path));
   window.scrollTo({ top: 0, behavior: "auto" });
   updateReadingProgress();
+}
+
+function showDocumentLoadError(path, error) {
+  const message = error?.message || `Unknown error while loading ${path}`;
+  console.error("Discovery Intelligence docs portal failed to open document.", path, error);
+
+  if (!elements.homeView || !elements.docView || !elements.articleStage) {
+    return;
+  }
+
+  setReaderMode(true);
+  toggleHidden(elements.homeView, true);
+  toggleHidden(elements.docView, false);
+  setText(elements.docCategory, "Document load error");
+  setText(elements.docTitle, state.activeDocument?.title || path);
+  setText(elements.docSummary, "The portal could not render this markdown file. You can still open the raw markdown directly.");
+  setText(elements.docPathChip, path);
+  setText(elements.docSectionChip, "0 sections");
+  setText(elements.docReadtimeChip, "Load failed");
+  setHref(elements.rawDocLink, path);
+  setHtml(
+    elements.articleStage,
+    `
+    <section class="hero-card">
+      <div class="hero-copy">
+        <p class="eyebrow">Document load error</p>
+        <h2>We could not open this article.</h2>
+        <p>${escapeHtml(message)}</p>
+      </div>
+    </section>
+  `
+  );
+  renderSectionNav([]);
+  if (elements.jumpListContainer) {
+    elements.jumpListContainer.scrollTop = 0;
+  }
+}
+
+async function safeOpenDocument(path) {
+  try {
+    await openDocument(path);
+  } catch (error) {
+    showDocumentLoadError(path, error);
+  }
 }
 
 function showHome() {
   state.activeDocument = null;
   state.activeSections = [];
-  elements.docView.classList.add("hidden");
-  elements.homeView.classList.remove("hidden");
-  renderSectionOrbit([]);
+  setReaderMode(false);
+  toggleHidden(elements.docView, true);
+  toggleHidden(elements.homeView, false);
   const url = new URL(window.location.href);
   url.searchParams.delete("doc");
   window.history.replaceState({}, "", url);
@@ -449,43 +530,53 @@ function filterDocuments(query) {
 
 async function initialize() {
   const response = await fetch("./assets/docs-manifest.json");
+  if (!response.ok) {
+    throw new Error("Failed to load docs manifest.");
+  }
   state.manifest = await response.json();
   state.documents = state.manifest.documents || [];
   state.filteredDocuments = [...state.documents];
 
-  elements.metricDocCount.textContent = String(state.documents.length);
-  elements.metricCategoryCount.textContent = String(new Set(state.documents.map((doc) => doc.category)).size);
+  setText(elements.metricDocCount, String(state.documents.length));
+  setText(elements.metricCategoryCount, String(new Set(state.documents.map((doc) => doc.category)).size));
 
   buildLibrary();
   buildFeatured();
   renderConstellation();
-  renderSectionOrbit([]);
+  setReaderMode(false);
 
   const requested = new URL(window.location.href).searchParams.get("doc");
   if (requested) {
-    await openDocument(requested);
+    await safeOpenDocument(requested);
   }
 }
 
-elements.search.addEventListener("input", (event) => {
-  filterDocuments(event.target.value);
-});
+if (elements.search) {
+  elements.search.addEventListener("input", (event) => {
+    filterDocuments(event.target.value);
+  });
+}
 
-elements.focusToggle.addEventListener("click", () => {
-  state.focusMode = !state.focusMode;
-  document.body.classList.toggle("focus-mode", state.focusMode);
-  elements.focusToggle.textContent = state.focusMode ? "Exit focus mode" : "Focus mode";
-});
+if (elements.focusToggle) {
+  elements.focusToggle.addEventListener("click", () => {
+    state.focusMode = !state.focusMode;
+    document.body.classList.toggle("focus-mode", state.focusMode);
+    setText(elements.focusToggle, state.focusMode ? "Exit focus mode" : "Focus mode");
+  });
+}
 
-elements.backHome.addEventListener("click", showHome);
+if (elements.backHome) {
+  elements.backHome.addEventListener("click", showHome);
+}
 window.addEventListener("scroll", updateReadingProgress, { passive: true });
 window.addEventListener("resize", () => {
   renderConstellation();
-  renderSectionOrbit(state.activeSections);
 });
 
 initialize().catch((error) => {
-  elements.homeView.innerHTML = `
+  setHtml(
+    elements.homeView,
+    `
     <section class="hero-card">
       <div class="hero-copy">
         <p class="eyebrow">Portal load error</p>
@@ -493,5 +584,7 @@ initialize().catch((error) => {
         <p>${escapeHtml(error?.message || "Unknown error")}</p>
       </div>
     </section>
-  `;
+  `
+  );
+  console.error("Discovery Intelligence docs portal failed to initialize.", error);
 });

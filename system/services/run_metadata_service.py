@@ -12,6 +12,12 @@ from system.contracts import (
     validate_comparison_anchors,
     validate_run_contract,
 )
+from system.services.predictive_path_service import (
+    build_predictive_evaluation_contract,
+    build_predictive_representation_summary,
+    build_predictive_task_contract,
+)
+from system.session_report import ranking_policy as build_ranking_policy
 from system.services.target_definition_service import (
     default_contract_versions,
     infer_target_definition,
@@ -68,9 +74,10 @@ def _feature_signature(bundle: dict[str, Any] | None) -> str:
     descriptor_features = bundle.get("descriptor_features")
     fingerprint_bits = bundle.get("fingerprint_bits")
     if isinstance(descriptor_features, list) and descriptor_features:
+        descriptor_count = len(descriptor_features)
         if fingerprint_bits:
-            return f"rdkit_descriptors_plus_morgan_fp_{int(fingerprint_bits)}"
-        return "rdkit_descriptors"
+            return f"rdkit_descriptors_{descriptor_count}_plus_morgan_fp_{int(fingerprint_bits)}"
+        return f"rdkit_descriptors_{descriptor_count}"
     return "not_recorded"
 
 
@@ -136,6 +143,12 @@ def build_run_contract(
     normalized_versions = default_contract_versions(contract_versions if isinstance(contract_versions, dict) else {})
     selected_model = _selected_model(bundle)
     normalized_mode = normalize_modeling_mode(modeling_mode, default=ModelingMode.ranking_only.value)
+    policy = build_ranking_policy(
+        requested_intent,
+        _clean_text(scoring_mode, default="balanced"),
+        target_definition=target_definition,
+        modeling_mode=normalized_mode,
+    )
     payload = {
         "session_id": session_id,
         "source_name": source_name,
@@ -161,6 +174,37 @@ def build_run_contract(
             "applicability_reference": "reference_dataset_similarity",
         },
         "contract_versions": normalized_versions,
+        "predictive_task_contract": build_predictive_task_contract(
+            target_definition=target_definition,
+            ranking_policy=policy,
+            run_contract={
+                "decision_intent": normalize_decision_intent(decision_intent),
+                "training_scope": _training_scope(bundle, normalized_mode),
+            },
+            scientific_truth={},
+            modeling_mode=normalized_mode,
+        ),
+        "predictive_representation_summary": build_predictive_representation_summary(
+            target_definition=target_definition,
+            run_contract={
+                "feature_signature": _feature_signature(bundle),
+                "training_scope": _training_scope(bundle, normalized_mode),
+                "label_source": _label_source(validation_summary, target_definition),
+                "selected_model_family": selected_model["family"],
+            },
+            analysis_report={"measurement_summary": validation_summary or {}},
+            modeling_mode=normalized_mode,
+        ),
+        "predictive_evaluation_contract": build_predictive_evaluation_contract(
+            target_definition=target_definition,
+            analysis_report={"measurement_summary": validation_summary or {}, "ranking_diagnostics": {}},
+            evaluation_summary=bundle if isinstance(bundle, dict) else {},
+            run_contract={
+                "training_scope": _training_scope(bundle, normalized_mode),
+                "selected_model_name": selected_model["name"],
+            },
+            modeling_mode=normalized_mode,
+        ),
     }
     return validate_run_contract(payload)
 

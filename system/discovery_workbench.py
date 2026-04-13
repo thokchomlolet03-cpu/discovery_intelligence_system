@@ -7,7 +7,9 @@ from typing import Any
 from system.contracts import ContractValidationError, validate_decision_artifact, validate_review_event_record
 from system.review_manager import STATUS_ORDER, normalize_status
 from system.services.belief_update_service import support_role_from_belief_update_summary
+from system.services.predictive_path_service import build_predictive_path_summary
 from system.services.run_metadata_service import build_run_provenance
+from system.services.scoring_semantics_service import build_candidate_score_semantics
 from system.services.scientific_decision_service import build_scientific_decision_summary
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context
 from system.services.workspace_feedback_service import build_candidate_controlled_reuse
@@ -685,6 +687,13 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
                         "summary": candidate.get("rationale_summary") or candidate.get("decision_summary") or candidate.get("explanation_short"),
                         "smiles": candidate.get("smiles"),
                         "priority_score": candidate.get("priority_score"),
+                        "raw_predictive_signal": candidate.get("raw_predictive_signal"),
+                        "raw_predictive_signal_label": candidate.get("raw_predictive_signal_label"),
+                        "raw_signal_weight": candidate.get("raw_signal_weight"),
+                        "heuristic_weight": candidate.get("heuristic_weight"),
+                        "blended_priority_score": candidate.get("blended_priority_score"),
+                        "support_density": candidate.get("support_density"),
+                        "score_decomposition_summary": candidate.get("score_decomposition_summary"),
                         "primary_score_value": candidate.get("primary_score_value"),
                         "suggested_next_action": candidate.get("suggested_next_action"),
                         "domain_label": candidate.get("domain_label"),
@@ -712,6 +721,13 @@ def decision_overview(candidates: list[dict[str, Any]]) -> dict[str, Any]:
             "rationale_summary": candidate.get("rationale_summary"),
             "suggested_next_action": candidate.get("suggested_next_action"),
             "priority_score": candidate.get("priority_score"),
+            "raw_predictive_signal": candidate.get("raw_predictive_signal"),
+            "raw_predictive_signal_label": candidate.get("raw_predictive_signal_label"),
+            "raw_signal_weight": candidate.get("raw_signal_weight"),
+            "heuristic_weight": candidate.get("heuristic_weight"),
+            "blended_priority_score": candidate.get("blended_priority_score"),
+            "support_density": candidate.get("support_density"),
+            "score_decomposition_summary": candidate.get("score_decomposition_summary"),
             "primary_score_label": candidate.get("primary_score_label"),
             "primary_score_value": candidate.get("primary_score_value"),
             "domain_label": candidate.get("domain_label"),
@@ -972,6 +988,24 @@ def normalize_candidate(
         }
         for item in breakdown
     ]
+    score_semantics = (
+        candidate.get("score_semantics") if isinstance(candidate.get("score_semantics"), dict) else {}
+    )
+    if not score_semantics:
+        score_semantics = build_candidate_score_semantics(
+            {
+                **candidate,
+                "priority_score": priority_score,
+                "heuristic_policy_score": candidate.get("heuristic_policy_score", priority_score),
+                "raw_predictive_signal": candidate.get("raw_predictive_signal", confidence),
+                "representation_support_factor": candidate.get("representation_support_factor"),
+                "representation_adjustment": candidate.get("representation_adjustment"),
+                "heuristic_adjustment_delta": candidate.get("heuristic_adjustment_delta"),
+            },
+            ranking_policy=ranking_policy,
+            target_definition=target_definition,
+            modeling_mode=target_kind,
+        )
     suggested_action = suggested_next_action(
         bucket,
         risk,
@@ -1042,6 +1076,14 @@ def normalize_candidate(
             final_recommendation["follow_up_experiment"] = (
                 f"Measure {target_name} experimentally to validate the shortlist ordering."
             )
+    uncertainty_summary_text = str(
+        score_semantics.get("uncertainty_summary")
+        or normalized_explanation.get("uncertainty_summary")
+        or ""
+    ).strip()
+    if uncertainty_summary_text:
+        normalized_explanation = dict(normalized_explanation)
+        normalized_explanation["uncertainty_summary"] = uncertainty_summary_text
 
     selective_evidence_context: list[str] = []
     workspace_memory_count = int(candidate.get("workspace_memory_count") or 0)
@@ -1131,7 +1173,30 @@ def normalize_candidate(
         "prediction_dispersion": prediction_dispersion,
         "acquisition_score": _clamp_score(candidate.get("acquisition_score")),
         "experiment_value": experiment_value,
-        "priority_score": priority_score,
+                "priority_score": priority_score,
+                "raw_predictive_signal": _safe_float(score_semantics.get("raw_predictive_signal"), confidence),
+                "raw_predictive_signal_label": str(score_semantics.get("raw_predictive_signal_label") or _score_label("confidence", target_kind=target_kind)),
+                "heuristic_policy_score": _safe_float(score_semantics.get("heuristic_policy_score"), priority_score),
+                "heuristic_adjustment_delta": _safe_float(score_semantics.get("heuristic_adjustment_delta"), 0.0),
+                "raw_signal_weight": _safe_float(score_semantics.get("raw_signal_weight"), 0.0),
+                "heuristic_weight": _safe_float(score_semantics.get("heuristic_weight"), 0.0),
+                "blended_priority_score": _safe_float(score_semantics.get("blended_priority_score"), priority_score),
+        "representation_support_factor": _safe_float(score_semantics.get("representation_support_factor"), 1.0),
+        "representation_adjustment": _safe_float(score_semantics.get("representation_adjustment"), 0.0),
+        "support_density": _safe_float(candidate.get("support_density")),
+        "bounded_uncertainty_score": _safe_float(score_semantics.get("bounded_uncertainty_score")),
+        "fragility_score": _safe_float(score_semantics.get("fragility_score")),
+        "neighbor_gap": _safe_float(score_semantics.get("neighbor_gap")),
+        "signal_status_label": str(score_semantics.get("signal_status_label") or "").strip(),
+        "uncertainty_summary": uncertainty_summary_text,
+        "separation_summary": str(score_semantics.get("separation_summary") or "").strip(),
+        "caution_summary": str(score_semantics.get("caution_summary") or "").strip(),
+        "score_decomposition_summary": str(score_semantics.get("summary") or candidate.get("score_decomposition_summary") or "").strip(),
+                "scoring_failure_mode_summary": (
+                    str(candidate.get("scoring_failure_mode_summary") or "").strip()
+                    or "; ".join(score_semantics.get("failure_modes", [])[:3])
+                ),
+        "score_semantics": score_semantics,
         "primary_score_name": primary_score,
         "primary_score_label": _score_label(primary_score, target_kind=target_kind),
         "primary_score_value": primary_score_value,
@@ -1537,6 +1602,19 @@ def build_discovery_workbench(
     )
     if not scientific_decision_summary and scientific_truth:
         scientific_decision_summary = build_scientific_decision_summary(scientific_truth)
+    predictive_path_summary = build_predictive_path_summary(
+        analysis_report=analysis_payload if isinstance(analysis_payload, dict) else {},
+        decision_payload=validated_output if isinstance(validated_output, dict) else {},
+        scientific_truth=scientific_truth if isinstance(scientific_truth, dict) else {},
+        ranking_policy=ranking_policy,
+        target_definition=scientific_truth.get("target_definition")
+        or validated_output.get("target_definition")
+        or analysis_payload.get("target_definition")
+        or {},
+        modeling_mode=modeling_mode,
+        run_contract=run_contract,
+        evaluation_summary=evaluation_summary if isinstance(evaluation_summary, dict) else {},
+    )
 
     return {
         "state": state,
@@ -1570,6 +1648,7 @@ def build_discovery_workbench(
         if isinstance(scientific_truth.get("belief_state_summary"), dict)
         else {},
         "scientific_decision_summary": scientific_decision_summary,
+        "predictive_path_summary": predictive_path_summary,
         "belief_state_alignment_label": str(scientific_truth.get("belief_state_alignment_label") or "").strip(),
         "belief_state_alignment_summary": str(scientific_truth.get("belief_state_alignment_summary") or "").strip(),
         "session_support_role_label": session_support_role_label,

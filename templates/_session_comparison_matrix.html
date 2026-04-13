@@ -82,6 +82,75 @@
                 {% if row.activation_policy_summary %}
                   <div class="helper-copy">{{ row.activation_policy_summary }}</div>
                 {% endif %}
+                {% if row.predictive_path_summary %}
+                  <div class="helper-copy">{{ row.predictive_path_summary }}</div>
+                {% endif %}
+                {% if row.predictive_task_summary %}
+                  <div class="helper-copy">{{ row.predictive_task_summary }}</div>
+                {% endif %}
+                {% if row.predictive_model_signal_summary %}
+                  <div class="helper-copy">{{ row.predictive_model_signal_summary }}</div>
+                {% endif %}
+                {% if row.predictive_path_heuristic_summary %}
+                  <div class="helper-copy">{{ row.predictive_path_heuristic_summary }}</div>
+                {% endif %}
+                {% if row.predictive_representation_summary %}
+                  <div class="helper-copy">{{ row.predictive_representation_summary }}</div>
+                {% endif %}
+                {% if row.predictive_evaluation_summary %}
+                  <div class="helper-copy">{{ row.predictive_evaluation_summary }}</div>
+                {% endif %}
+                {% if row.predictive_separation_summary %}
+                  <div class="helper-copy">{{ row.predictive_separation_summary }}</div>
+                {% endif %}
+                {% if row.predictive_stability_summary %}
+                  <div class="helper-copy">{{ row.predictive_stability_summary }}</div>
+                {% endif %}
+                {% if row.predictive_closeness_summary %}
+                  <div class="helper-copy">{{ row.predictive_closeness_summary }}</div>
+                {% endif %}
+                {% if row.predictive_top_k_quality_summary %}
+                  <div class="helper-copy">{{ row.predictive_top_k_quality_summary }}</div>
+                {% endif %}
+                {% if row.predictive_calibration_summary %}
+                  <div class="helper-copy">{{ row.predictive_calibration_summary }}</div>
+                {% endif %}
+                {% if row.predictive_calibration_band_summary %}
+                  <div class="helper-copy">{{ row.predictive_calibration_band_summary }}</div>
+                {% endif %}
+                {% if row.predictive_variation_summary %}
+                  <div class="helper-copy">{{ row.predictive_variation_summary }}</div>
+                {% endif %}
+                {% if row.predictive_cross_session_summary %}
+                  <div class="helper-copy">{{ row.predictive_cross_session_summary }}</div>
+                {% endif %}
+                {% if row.predictive_comparison_cohort_summary %}
+                  <div class="helper-copy">{{ row.predictive_comparison_cohort_summary }}</div>
+                {% endif %}
+                {% if row.predictive_cohort_diagnostic_summary %}
+                  <div class="helper-copy">{{ row.predictive_cohort_diagnostic_summary }}</div>
+                {% endif %}
+                {% if row.predictive_evaluation_subset_summary %}
+                  <div class="helper-copy">{{ row.predictive_evaluation_subset_summary }}</div>
+                {% endif %}
+                {% if row.predictive_representation_evaluation_summary %}
+                  <div class="helper-copy">{{ row.predictive_representation_evaluation_summary }}</div>
+                {% endif %}
+                {% if row.predictive_representation_condition_summary %}
+                  <div class="helper-copy">{{ row.predictive_representation_condition_summary }}</div>
+                {% endif %}
+                {% if row.predictive_cross_run_summary %}
+                  <div class="helper-copy">{{ row.predictive_cross_run_summary }}</div>
+                {% endif %}
+                {% if row.predictive_engine_strength_summary %}
+                  <div class="helper-copy">{{ row.predictive_engine_strength_summary }}</div>
+                {% endif %}
+                {% if row.predictive_engine_weakness_summary %}
+                  <div class="helper-copy">{{ row.predictive_engine_weakness_summary }}</div>
+                {% endif %}
+                {% if row.predictive_failure_mode_summary %}
+                  <div class="helper-copy">{{ row.predictive_failure_mode_summary }}</div>
+                {% endif %}
                 {% if row.recommendation_reuse_summary %}
                   <div class="helper-copy">{{ row.recommendation_reuse_summary }}</div>
                 {% endif %}
@@ -243,6 +312,15 @@
                 {% if row.belief_state_governed_review_history_summary %}
                   <div class="helper-copy">{{ row.belief_state_governed_review_history_summary }}</div>
                 {% endif %}
+                {% if row.belief_state_effective_governed_review_origin_summary %}
+                  <div class="helper-copy">{{ row.belief_state_effective_governed_review_origin_label|replace("_", " ")|title }}: {{ row.belief_state_effective_governed_review_origin_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_derived_governed_review_status_label %}
+                  <div class="helper-copy">Derived posture: {{ row.belief_state_derived_governed_review_status_label }}</div>
+                {% endif %}
+                {% if row.belief_state_manual_governed_review_status_label and row.belief_state_manual_governed_review_status_label != "Not recorded" %}
+                  <div class="helper-copy">Manual posture: {{ row.belief_state_manual_governed_review_status_label }}{% if row.belief_state_manual_governed_review_action_label %} — {{ row.belief_state_manual_governed_review_action_label }}{% endif %}{% if row.belief_state_manual_governed_review_reviewer_label %} by {{ row.belief_state_manual_governed_review_reviewer_label }}{% endif %}.</div>
+                {% endif %}
                 {% if row.belief_state_promotion_audit_summary %}
                   <div class="helper-copy">{{ row.belief_state_promotion_audit_summary }}</div>
                 {% endif %}
@@ -254,6 +332,15 @@
                 {% endif %}
                 {% if row.belief_state_continuity_cluster_review_history_summary %}
                   <div class="helper-copy">{{ row.belief_state_continuity_cluster_review_history_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_effective_review_origin_summary %}
+                  <div class="helper-copy">{{ row.belief_state_continuity_cluster_effective_review_origin_label|replace("_", " ")|title }}: {{ row.belief_state_continuity_cluster_effective_review_origin_summary }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_derived_review_status_label %}
+                  <div class="helper-copy">Continuity derived posture: {{ row.belief_state_continuity_cluster_derived_review_status_label }}</div>
+                {% endif %}
+                {% if row.belief_state_continuity_cluster_manual_review_status_label and row.belief_state_continuity_cluster_manual_review_status_label != "Not recorded" %}
+                  <div class="helper-copy">Continuity manual posture: {{ row.belief_state_continuity_cluster_manual_review_status_label }}{% if row.belief_state_continuity_cluster_manual_review_action_label %} — {{ row.belief_state_continuity_cluster_manual_review_action_label }}{% endif %}{% if row.belief_state_continuity_cluster_manual_review_reviewer_label %} by {{ row.belief_state_continuity_cluster_manual_review_reviewer_label }}{% endif %}.</div>
                 {% endif %}
                 {% if row.belief_state_continuity_cluster_promotion_audit_summary %}
                   <div class="helper-copy">{{ row.belief_state_continuity_cluster_promotion_audit_summary }}</div>
@@ -294,11 +381,31 @@
                 {% if row.scientific_decision_session_family_review_history_summary %}
                   <div class="helper-copy">{{ row.scientific_decision_session_family_review_history_summary }}</div>
                 {% endif %}
+                {% if row.scientific_decision_session_family_effective_review_origin_summary %}
+                  <div class="helper-copy">{{ row.scientific_decision_session_family_effective_review_origin_label|replace("_", " ")|title }}: {{ row.scientific_decision_session_family_effective_review_origin_summary }}</div>
+                {% endif %}
+                {% if row.scientific_decision_session_family_derived_review_status_label %}
+                  <div class="helper-copy">Derived posture: {{ row.scientific_decision_session_family_derived_review_status_label }}</div>
+                {% endif %}
+                {% if row.scientific_decision_session_family_manual_review_status_label and row.scientific_decision_session_family_manual_review_status_label != "Not recorded" %}
+                  <div class="helper-copy">Manual posture: {{ row.scientific_decision_session_family_manual_review_status_label }}{% if row.scientific_decision_session_family_manual_review_action_label %} — {{ row.scientific_decision_session_family_manual_review_action_label }}{% endif %}{% if row.scientific_decision_session_family_manual_review_reviewer_label %} by {{ row.scientific_decision_session_family_manual_review_reviewer_label }}{% endif %}.</div>
+                {% endif %}
                 {% if row.scientific_decision_session_family_promotion_audit_summary %}
                   <div class="helper-copy">{{ row.scientific_decision_session_family_promotion_audit_summary }}</div>
                 {% endif %}
                 {% if row.scientific_decision_carryover_guardrail_summary %}
                   <div class="helper-copy">{{ row.scientific_decision_carryover_guardrail_summary }}</div>
+                {% endif %}
+                {% if row.governance_attention_summary %}
+                  <div class="helper-copy">{{ row.governance_attention_label }}: {{ row.governance_attention_summary }}</div>
+                {% endif %}
+                {% if row.governance_item_count %}
+                  <div class="helper-copy">
+                    Governance inbox items: {{ row.governance_item_count }}{% if row.governance_manual_override_count %} · manual overrides {{ row.governance_manual_override_count }}{% endif %}{% if row.governance_manual_mismatch_count %} · manual mismatch {{ row.governance_manual_mismatch_count }}{% endif %}.
+                  </div>
+                {% endif %}
+                {% if row.governance_detail_url %}
+                  <div class="helper-copy"><a href="{{ row.governance_detail_url }}">Open governance inspection</a></div>
                 {% endif %}
                 {% if row.future_ranking_context_summary %}
                   <div class="helper-copy">{{ row.future_ranking_context_summary }}</div>

@@ -187,6 +187,8 @@ class BeliefStateServiceTest(unittest.TestCase):
         self.assertEqual(truth["belief_state_summary"]["promotion_block_reason_label"], "Local-only meaning")
         self.assertEqual(truth["belief_state_summary"]["governed_review_record_count"], 1)
         self.assertIn("belief-state posture has 1 governed review record", truth["belief_state_summary"]["governed_review_history_summary"].lower())
+        self.assertEqual(truth["belief_state_summary"]["effective_governed_review_origin_label"], "derived")
+        self.assertIn("derived from the bridge-state rules", truth["belief_state_summary"]["effective_governed_review_origin_summary"].lower())
         self.assertEqual(
             truth["belief_state_summary"]["continuity_cluster_review_status_label"],
             "Not reviewed for broader influence",
@@ -195,6 +197,7 @@ class BeliefStateServiceTest(unittest.TestCase):
             "local-only",
             truth["belief_state_summary"]["continuity_cluster_review_status_summary"].lower(),
         )
+        self.assertEqual(truth["belief_state_summary"]["continuity_cluster_effective_review_origin_label"], "derived")
         self.assertEqual(
             truth["scientific_decision_summary"]["session_family_review_status_label"],
             "Not reviewed for broader influence",
@@ -203,6 +206,7 @@ class BeliefStateServiceTest(unittest.TestCase):
             "local-only by default",
             truth["scientific_decision_summary"]["session_family_review_reason_summary"].lower(),
         )
+        self.assertEqual(truth["scientific_decision_summary"]["session_family_effective_review_origin_label"], "derived")
         self.assertEqual(truth["belief_state_summary"]["observed_label_support_count"], 1)
         self.assertIn("observed labels", truth["belief_state_summary"]["support_basis_mix_summary"].lower())
 

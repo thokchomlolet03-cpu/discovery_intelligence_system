@@ -365,6 +365,68 @@
     `;
   }
 
+  function scoreSemanticsHtml(candidate) {
+    const summary = candidate.score_decomposition_summary || candidate.score_semantics?.summary || "";
+    const failure = candidate.scoring_failure_mode_summary || "";
+    const rawLabel = candidate.raw_predictive_signal_label || signalLabel("confidence");
+    const rawValue = candidate.raw_predictive_signal;
+    const heuristicValue = candidate.heuristic_policy_score;
+    const rawWeight = candidate.raw_signal_weight;
+    const heuristicWeight = candidate.heuristic_weight;
+    const blendedPriority = candidate.blended_priority_score;
+    const representationFactor = candidate.representation_support_factor;
+    const supportDensity = candidate.support_density;
+    const uncertaintySummary = candidate.uncertainty_summary || candidate.score_semantics?.uncertainty_summary || "";
+    const separationSummary = candidate.separation_summary || candidate.score_semantics?.separation_summary || "";
+    const cautionSummary = candidate.caution_summary || candidate.score_semantics?.caution_summary || "";
+    const signalStatus = candidate.signal_status_label || candidate.score_semantics?.signal_status_label || "";
+    const boundedUncertainty = candidate.bounded_uncertainty_score ?? candidate.score_semantics?.bounded_uncertainty_score;
+    const fragility = candidate.fragility_score ?? candidate.score_semantics?.fragility_score;
+    if (!summary && rawValue == null && heuristicValue == null && representationFactor == null && blendedPriority == null) {
+      return "";
+    }
+    return `
+      <section class="detail-section">
+        <span class="panel-label">Score semantics</span>
+        <div class="detail-grid">
+          <article class="detail-item">
+            <span class="panel-label">Raw predictive signal</span>
+            <strong>${escapeHtml(rawLabel)}${rawValue == null ? "" : ` ${escapeHtml(formatNumber(rawValue))}`}</strong>
+            ${signalStatus ? `<p class="helper-copy">Signal status: ${escapeHtml(signalStatus)}.</p>` : ""}
+            <p>${escapeHtml(summary || "Current score semantics are available for this candidate.")}</p>
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Heuristic policy score</span>
+            <strong>${heuristicValue == null ? "Not available" : escapeHtml(formatNumber(heuristicValue))}</strong>
+            <p>${escapeHtml(candidate.score_semantics?.heuristic_summary || "Heuristic shortlist policy still shapes ordering beyond the raw model signal.")}</p>
+            ${(rawWeight == null && heuristicWeight == null && blendedPriority == null)
+              ? ""
+              : `<p class="helper-copy">Blend: raw weight ${escapeHtml(formatNumber(rawWeight ?? 0))}, heuristic weight ${escapeHtml(formatNumber(heuristicWeight ?? 0))}, blended priority ${escapeHtml(formatNumber(blendedPriority ?? 0))}.</p>`}
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Representation support</span>
+            <strong>${representationFactor == null ? "Not recorded" : escapeHtml(formatNumber(representationFactor))}</strong>
+            <p>${escapeHtml(candidate.score_semantics?.representation_summary || "Representation support limits are not explicitly recorded for this candidate.")}</p>
+            ${supportDensity == null ? "" : `<p class="helper-copy">Local support density ${escapeHtml(formatNumber(supportDensity))} helps show whether the candidate sits inside thicker or thinner represented chemistry neighborhoods.</p>`}
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Bounded uncertainty</span>
+            <strong>${boundedUncertainty == null ? "Not recorded" : escapeHtml(formatNumber(boundedUncertainty))}</strong>
+            <p>${escapeHtml(uncertaintySummary || "Bounded uncertainty was not explicitly recorded for this candidate.")}</p>
+            ${fragility == null ? "" : `<p class="helper-copy">Fragility score ${escapeHtml(formatNumber(fragility))}.${separationSummary ? ` ${escapeHtml(separationSummary)}` : ""}</p>`}
+            ${cautionSummary ? `<p class="helper-copy">${escapeHtml(cautionSummary)}</p>` : ""}
+          </article>
+          <article class="detail-item">
+            <span class="panel-label">Governance boundary</span>
+            <strong>Separate gate</strong>
+            <p>${escapeHtml(candidate.score_semantics?.governance_effect_summary || "Governance is applied after bounded candidate scoring.")}</p>
+          </article>
+        </div>
+        ${failure ? `<p class="helper-copy">${escapeHtml(failure)}</p>` : ""}
+      </section>
+    `;
+  }
+
   function buildStatusSelect(candidate) {
     return `
       <select data-status-select="${escapeHtml(candidate.candidate_id)}">
@@ -1014,6 +1076,8 @@
           <article class="detail-item">${metricHtml(signalLabel("experiment_value"), candidate.experiment_value, "experiment")}</article>
         </div>
       </section>
+
+      ${scoreSemanticsHtml(candidate)}
 
       <section class="detail-section">
         <span class="panel-label">What to do with this candidate</span>

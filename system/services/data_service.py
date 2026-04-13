@@ -6,14 +6,25 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from rdkit import Chem, DataStructs, RDLogger
-from rdkit.Chem import AllChem, Descriptors
+from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
 
 from core.constants import preferred_data_path
 from system.services.target_definition_service import infer_target_definition
 from system.services.runtime_config import resolve_system_config
 
 
-DESCRIPTOR_COLUMNS = ["mw", "rdkit_logp", "h_donors", "h_acceptors"]
+DESCRIPTOR_COLUMNS = [
+    "mw",
+    "rdkit_logp",
+    "h_donors",
+    "h_acceptors",
+    "tpsa",
+    "rotatable_bonds",
+    "ring_count",
+    "aromatic_ring_count",
+    "heavy_atoms",
+    "fraction_csp3",
+]
 DEFAULT_FINGERPRINT_BITS = 2048
 DEFAULT_FINGERPRINT_COLUMNS = [f"fp_{idx}" for idx in range(DEFAULT_FINGERPRINT_BITS)]
 FINGERPRINT_BITS = DEFAULT_FINGERPRINT_BITS
@@ -58,6 +69,12 @@ def compute_descriptors(mol):
         "rdkit_logp": float(Descriptors.MolLogP(mol)),
         "h_donors": int(Descriptors.NumHDonors(mol)),
         "h_acceptors": int(Descriptors.NumHAcceptors(mol)),
+        "tpsa": float(rdMolDescriptors.CalcTPSA(mol)),
+        "rotatable_bonds": int(rdMolDescriptors.CalcNumRotatableBonds(mol)),
+        "ring_count": int(rdMolDescriptors.CalcNumRings(mol)),
+        "aromatic_ring_count": int(rdMolDescriptors.CalcNumAromaticRings(mol)),
+        "heavy_atoms": int(mol.GetNumHeavyAtoms()),
+        "fraction_csp3": float(rdMolDescriptors.CalcFractionCSP3(mol)),
     }
 
 

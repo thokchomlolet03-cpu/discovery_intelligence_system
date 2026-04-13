@@ -5,6 +5,7 @@ from system.contracts import (
     validate_belief_state_record,
     validate_belief_state_summary,
     validate_belief_update_record,
+    validate_candidate_score_semantics,
     ContractValidationError,
     validate_claim_reference,
     validate_claim_record,
@@ -13,11 +14,16 @@ from system.contracts import (
     validate_experiment_result_record,
     validate_experiment_request_record,
     validate_label_builder_config,
+    validate_predictive_evaluation_contract,
     validate_review_event_record,
     validate_run_contract,
     validate_scientific_decision_summary,
     validate_session_identity,
     validate_target_definition,
+    validate_governed_review_record,
+    validate_governance_inbox,
+    validate_governance_inbox_item,
+    validate_governance_inbox_summary,
 )
 
 
@@ -131,6 +137,172 @@ class ContractValidationTest(unittest.TestCase):
         self.assertEqual(review["status"], "approved")
         self.assertEqual(review["previous_status"], "suggested")
         self.assertEqual(review["reviewer"], "qa")
+
+    def test_governed_review_record_validates_manual_review_fields(self):
+        review = validate_governed_review_record(
+            {
+                "workspace_id": "workspace_1",
+                "session_id": "session_1",
+                "subject_type": "belief_state",
+                "subject_id": "belief::target_1",
+                "review_origin_label": "manual",
+                "manual_action_label": "blocked_by_reviewer",
+                "reviewer_label": "Owner",
+                "review_status_label": "Reviewed and blocked",
+                "review_reason_label": "Contradiction-heavy current posture",
+                "review_reason_summary": "Owner manually blocked broader carryover after reviewing contradiction-heavy current posture.",
+                "decision_summary": "Belief-state broader carryover is manually blocked under bounded human review.",
+                "recorded_at": "2026-04-10T12:00:00+00:00",
+                "recorded_by": "Owner",
+            }
+        )
+
+        self.assertEqual(review["review_origin_label"], "manual")
+        self.assertEqual(review["manual_action_label"], "blocked_by_reviewer")
+        self.assertEqual(review["reviewer_label"], "Owner")
+
+    def test_candidate_score_semantics_contract_validates_bounded_score_layers(self):
+        semantics = validate_candidate_score_semantics(
+            {
+                "raw_predictive_signal": 0.72,
+                "raw_predictive_signal_label": "Confidence",
+                "heuristic_policy_score": 0.66,
+                "heuristic_adjustment_delta": -0.06,
+                "raw_signal_weight": 0.62,
+                "heuristic_weight": 0.38,
+                "blended_priority_score": 0.698,
+                "representation_support_factor": 0.93,
+                "representation_adjustment": -0.046,
+                "final_priority_score": 0.614,
+                "governance_effect_summary": "Governance is applied after candidate scoring.",
+                "heuristic_summary": "Heuristic shortlist policy is only moderately adjusting the raw predictive signal.",
+                "representation_summary": "Representation support is mildly reduced because the candidate is near the edge of current chemistry coverage.",
+                "summary": "Raw predictive signal is confidence 0.720. Heuristic shortlist policy moves that to 0.660, and representation support adjusts the final priority to 0.614.",
+                "failure_modes": ["representation_edge_of_domain"],
+            }
+        )
+
+        self.assertEqual(semantics["raw_predictive_signal_label"], "Confidence")
+        self.assertAlmostEqual(semantics["representation_support_factor"], 0.93)
+        self.assertAlmostEqual(semantics["raw_signal_weight"], 0.62)
+
+    def test_predictive_evaluation_contract_validates_reusable_evaluation_foundation_fields(self):
+        contract = validate_predictive_evaluation_contract(
+            {
+                "evaluation_ready": True,
+                "evaluation_summary": "Offline ranking evaluation now records candidate-level separation and reusable comparison cohorts.",
+                "benchmark_summary": "2 benchmark candidate configuration(s) were saved for model selection.",
+                "ranking_metric_summary": "Saved shortlist rank alignment is Spearman 0.410.",
+                "candidate_separation_summary": "Candidate separation is usable but still bounded.",
+                "ranking_stability_summary": "Top-of-shortlist stability is bounded.",
+                "closeness_band_summary": "The shortlist contains a noticeable weak-separation band where nearby candidates are difficult to distinguish confidently.",
+                "top_k_quality_summary": "Top-k quality is usable but still bounded.",
+                "heuristic_influence_summary": "Heuristic shortlist policy is still doing substantial ranking work relative to the raw predictive signal.",
+                "sensitivity_summary": "Some candidates are still being downweighted by thin representation support.",
+                "calibration_awareness_summary": "Confidence should still be read as signal-relative rather than calibrated certainty.",
+                "calibration_band_summary": "Higher raw-signal bands do not yet map cleanly to stronger internal shortlist reliability.",
+                "comparison_cohort_summary": "Comparison cohort for this run is bounded by regression ranking, session trained, extra trees, and rdkit descriptors 4 plus morgan fp 2048.",
+                "cohort_diagnostic_summary": "A reusable signal-led cohort is now available for later version comparison.",
+                "evaluation_subset_summary": "3 reusable evaluation subsets are now recorded: Top shortlist, Signal-led cohort, Representation-supported cohort.",
+                "session_variation_summary": "Cross-session comparison is possible, but ranking reliability across session variation remains only partly established.",
+                "cross_session_comparison_summary": "Cross-session evaluation is anchored by pIC50, regression ranking, prioritize experiments, regression, balanced, and session trained.",
+                "version_comparison_summary": "Offline model comparison selected extra trees ahead of random forest for this run.",
+                "representation_support_summary": "Representation support still limits part of the shortlist, but most candidates remain within stronger chemistry coverage.",
+                "representation_evaluation_summary": "Representation-aware evaluation suggests stronger chemistry coverage improves ranking quality in this run.",
+                "representation_condition_summary": "Representation-conditioned evaluation suggests stronger-covered chemistry regions are more reliable in this run.",
+                "cross_run_comparison_summary": "Cross-run comparison remains bounded by saved target, training-scope, and feature-contract anchors.",
+                "engine_strength_summary": "Engine strengths are becoming more reusable: signal-led cohorts are now reusable across runs.",
+                "engine_weakness_summary": "Engine weaknesses remain visible: representation-limited cohorts still degrade ranking quality.",
+                "tracked_metrics": ["holdout_rmse", "holdout_mae"],
+                "offline_ranking_evaluation": {
+                    "schema_version": "offline_ranking_evaluation.v3",
+                    "comparison_cohorts": [],
+                    "evaluation_subsets": [],
+                },
+            }
+        )
+
+        self.assertEqual(contract["schema_version"], "predictive_evaluation_contract.v3")
+        self.assertIn("reusable evaluation subsets", contract["evaluation_subset_summary"].lower())
+        self.assertIn("cross-session evaluation", contract["cross_session_comparison_summary"].lower())
+        self.assertIn("representation-conditioned evaluation", contract["representation_condition_summary"].lower())
+
+    def test_governance_inbox_contracts_validate_bounded_workflow_payloads(self):
+        item = validate_governance_inbox_item(
+            {
+                "item_id": "belief_state:belief::target_1",
+                "workspace_id": "workspace_1",
+                "session_id": "session_1",
+                "session_label": "session_1",
+                "source_name": "upload.csv",
+                "subject_type": "belief_state",
+                "subject_id": "belief::target_1",
+                "layer_label": "Belief-state",
+                "priority_rank": 1,
+                "priority_label": "Immediate attention",
+                "attention_label": "Needs review",
+                "attention_summary": "Belief-state needs attention because derived posture suggests reviewed and deferred, but the current manual posture is reviewed and blocked.",
+                "effective_review_status_label": "Reviewed and blocked",
+                "effective_review_status_summary": "Belief-state broader carryover is blocked under the current effective reviewed posture.",
+                "effective_review_origin_label": "manual",
+                "effective_review_origin_summary": "Current effective posture is explicitly controlled by explicit human review.",
+                "derived_review_status_label": "Reviewed and deferred",
+                "manual_review_status_label": "Reviewed and blocked",
+                "manual_review_action_label": "blocked_by_reviewer",
+                "manual_review_reviewer_label": "Owner",
+                "manual_review_note": "Blocked until provenance is stronger.",
+                "manual_review_note_summary": "Blocked until provenance is stronger.",
+                "manual_review_reopen_revise_summary": "This layer has reopen/revise history.",
+                "reviewer_attribution_summary": "Manual review currently governs this layer through Owner.",
+                "trust_tier_label": "Governed-trusted evidence",
+                "provenance_confidence_label": "Strong provenance",
+                "source_class_label": "Internal governed experimental source",
+                "local_usefulness_summary": "Locally useful belief-state posture remains available.",
+                "broader_carryover_summary": "Broader carryover is blocked at belief-state level.",
+                "future_influence_summary": "Future broader influence remains bounded until stronger review support exists.",
+                "contradiction_context_summary": "Contradiction-heavy current posture is limiting broader carryover.",
+                "carryover_guardrail_summary": "Weak multiplicity does not simulate stronger broader carryover.",
+                "carryover_effect_summary": "Broader carryover remains blocked until review changes.",
+                "consistency_summary": "Manual override remains visible while derived posture stays inspectable.",
+                "promotion_gate_status_label": "Promotable under bounded governed rules",
+                "promotion_block_reason_label": "Contradiction-heavy current posture",
+                "review_record_count": 3,
+                "manual_review_record_count": 2,
+                "related_session_count": 1,
+                "manual_mismatch_flag": True,
+                "reason_tags": ["manual_governance", "manual_vs_derived_mismatch"],
+                "detail_url": "/governance?session_id=session_1&item_id=belief_state:belief::target_1",
+                "discovery_url": "/discovery?session_id=session_1",
+                "dashboard_url": "/dashboard?session_id=session_1",
+            }
+        )
+        summary = validate_governance_inbox_summary(
+            {
+                "generated_at": "2026-04-10T12:00:00+00:00",
+                "item_count": 1,
+                "immediate_attention_count": 1,
+                "review_soon_count": 0,
+                "watch_list_count": 0,
+                "manual_override_count": 1,
+                "manual_mismatch_count": 1,
+                "blocked_or_quarantined_count": 1,
+                "session_family_count": 0,
+                "summary_text": "1 governance inbox item; 1 immediate, 0 review soon, 0 watch list.",
+            }
+        )
+        inbox = validate_governance_inbox(
+            {
+                "generated_at": "2026-04-10T12:00:00+00:00",
+                "summary": summary,
+                "items": [item],
+                "groups": {"immediate_attention": [item], "review_soon": [], "watch_list": []},
+            }
+        )
+
+        self.assertEqual(item["effective_review_origin_label"], "manual")
+        self.assertIn("blocked until provenance is stronger", item["manual_review_note_summary"].lower())
+        self.assertEqual(summary["manual_mismatch_count"], 1)
+        self.assertEqual(inbox["items"][0]["item_id"], "belief_state:belief::target_1")
 
     def test_claim_record_validates_bounded_recommendation_assertion(self):
         claim = validate_claim_record(
@@ -433,11 +605,29 @@ class ContractValidationTest(unittest.TestCase):
                 "governed_review_reason_label": "Local-only by default",
                 "governed_review_record_count": 1,
                 "governed_review_history_summary": "This belief-state posture has 1 governed review record; latest posture is not reviewed for broader influence under local-only evidence.",
+                "derived_governed_review_status_label": "Not reviewed for broader influence",
+                "derived_governed_review_status_summary": "This belief-state posture remains local-only by default until broader carryover is earned.",
+                "manual_governed_review_status_label": "Reviewed and deferred",
+                "manual_governed_review_status_summary": "Belief-state broader carryover remains manually deferred under bounded review.",
+                "manual_governed_review_reason_label": "Stronger trust still needed",
+                "manual_governed_review_reason_summary": "A reviewer deferred broader carryover pending stronger trust and continuity.",
+                "manual_governed_review_record_count": 1,
+                "manual_governed_review_history_summary": "This belief-state posture has 1 manual governed review record; current manual posture is reviewed and deferred by Owner.",
+                "manual_governed_review_action_label": "Deferred by reviewer",
+                "manual_governed_review_reviewer_label": "Owner",
+                "effective_governed_review_origin_label": "manual",
+                "effective_governed_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
                 "promotion_audit_summary": "Latest promotion outcome is local only.",
                 "continuity_cluster_review_status_label": "Not reviewed for broader influence",
                 "continuity_cluster_review_reason_label": "Local-only by default",
                 "continuity_cluster_review_record_count": 1,
                 "continuity_cluster_review_history_summary": "This continuity cluster has 1 governed review record.",
+                "continuity_cluster_derived_review_status_label": "Not reviewed for broader influence",
+                "continuity_cluster_manual_review_status_label": "Reviewed and blocked",
+                "continuity_cluster_manual_review_action_label": "Blocked by reviewer",
+                "continuity_cluster_manual_review_reviewer_label": "Owner",
+                "continuity_cluster_effective_review_origin_label": "manual",
+                "continuity_cluster_effective_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
                 "continuity_cluster_promotion_audit_summary": "Latest promotion outcome is local only.",
                 "carryover_guardrail_summary": "Weak multiplicity does not create stronger broader carryover.",
             }
@@ -460,14 +650,39 @@ class ContractValidationTest(unittest.TestCase):
                 "session_family_review_reason_label": "Local-only by default",
                 "session_family_review_record_count": 1,
                 "session_family_review_history_summary": "This session-family carryover picture has 1 governed review record.",
+                "derived_governed_review_status_label": "Not reviewed for broader influence",
+                "manual_governed_review_status_label": "Reviewed and blocked",
+                "manual_governed_review_status_summary": "Session-family carryover is manually blocked under bounded review.",
+                "manual_governed_review_reason_label": "Contradiction-heavy current posture",
+                "manual_governed_review_reason_summary": "A reviewer blocked broader carryover because contradiction-heavy history makes it unsafe to travel further.",
+                "manual_governed_review_record_count": 1,
+                "manual_governed_review_history_summary": "This session-family carryover picture has 1 manual governed review record; current manual posture is reviewed and blocked by Owner.",
+                "manual_governed_review_action_label": "Blocked by reviewer",
+                "manual_governed_review_reviewer_label": "Owner",
+                "effective_governed_review_origin_label": "manual",
+                "effective_governed_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
+                "session_family_derived_review_status_label": "Not reviewed for broader influence",
+                "session_family_manual_review_status_label": "Reviewed and blocked",
+                "session_family_manual_review_status_summary": "Session-family carryover is manually blocked under bounded review.",
+                "session_family_manual_review_reason_label": "Contradiction-heavy current posture",
+                "session_family_manual_review_reason_summary": "A reviewer blocked broader carryover because contradiction-heavy history makes it unsafe to travel further.",
+                "session_family_manual_review_record_count": 1,
+                "session_family_manual_review_history_summary": "This session-family carryover picture has 1 manual governed review record; current manual posture is reviewed and blocked by Owner.",
+                "session_family_manual_review_action_label": "Blocked by reviewer",
+                "session_family_manual_review_reviewer_label": "Owner",
+                "session_family_effective_review_origin_label": "manual",
+                "session_family_effective_review_origin_summary": "Current effective governance posture is controlled by explicit human review rather than by derived posture alone.",
                 "session_family_promotion_audit_summary": "Latest promotion outcome is local only.",
                 "carryover_guardrail_summary": "Weak local multiplicity does not simulate approved session-family carryover.",
             }
         )
 
         self.assertEqual(belief_state_summary["governed_review_record_count"], 1)
+        self.assertEqual(belief_state_summary["manual_governed_review_action_label"], "Deferred by reviewer")
         self.assertEqual(belief_state_summary["continuity_cluster_review_record_count"], 1)
+        self.assertEqual(belief_state_summary["effective_governed_review_origin_label"], "manual")
         self.assertEqual(decision_summary["session_family_review_record_count"], 1)
+        self.assertEqual(decision_summary["session_family_manual_review_action_label"], "Blocked by reviewer")
         self.assertIn("session-family carryover", decision_summary["session_family_review_history_summary"].lower())
 
     def test_belief_update_record_validates_bounded_support_change(self):
@@ -708,7 +923,7 @@ class ContractValidationTest(unittest.TestCase):
                 "selected_model_family": "random_forest",
                 "training_scope": "session_trained",
                 "label_source": "continuous_measurement",
-                "feature_signature": "rdkit_descriptors_plus_morgan_fp_2048",
+                "feature_signature": "rdkit_descriptors_4_plus_morgan_fp_2048",
                 "reference_basis": {
                     "novelty_reference": "reference_dataset_similarity",
                     "applicability_reference": "reference_dataset_similarity",
@@ -718,12 +933,49 @@ class ContractValidationTest(unittest.TestCase):
                     "model_contract_version": "model_contract.v1",
                     "run_contract_version": "run_contract.v1",
                 },
+                "predictive_task_contract": {
+                    "task_label": "Bounded measurement-oriented candidate prioritization",
+                    "task_summary": "The current predictive task is local candidate prioritization for what to test next, not universal truth prediction.",
+                    "prioritization_target": "Prioritize molecules worth testing next for pIC50 under a continuous-target ranking workflow.",
+                    "predictive_score_label": "Priority score",
+                    "predictive_score_summary": "Raw predictive signal uses predicted value, normalized ranking compatibility, and prediction dispersion as bounded ordering inputs rather than as outcome truth.",
+                    "final_ordering_summary": "Final user-facing ordering starts from priority score and then remains subject to heuristic shortlist policy, trust posture, and broader carryover boundaries.",
+                    "governance_interaction_summary": "Trust, review, and carryover posture can still constrain how far a strong-ranked candidate should travel.",
+                    "bridge_state_limitations_summary": "This predictive task is explicit enough to inspect, but current shortlist behavior still mixes model signal with bounded heuristic policy.",
+                },
+                "predictive_representation_summary": {
+                    "feature_signature": "rdkit_descriptors_4_plus_morgan_fp_2048",
+                    "represented_inputs_summary": "Feature contract currently uses rdkit descriptors 4 plus morgan fp 2048.",
+                    "representation_limitations_summary": "The current representation does not explicitly encode richer assay mechanism, protocol nuance, causal structure, or stronger cross-session scientific state.",
+                    "missing_structure_summary": "Missing structure still includes deeper assay context, mechanism-level representation, richer provenance-aware scientific state, and explicit independence structure between evidence sources.",
+                },
+                "predictive_evaluation_contract": {
+                    "evaluation_ready": True,
+                    "evaluation_summary": "Saved regression evaluation currently centers on holdout rmse, holdout mae, holdout r2 for rf_regression.",
+                    "benchmark_summary": "No saved benchmark sweep is available yet.",
+                    "ranking_metric_summary": "Saved ranking diagnostics are still limited, so future evaluation work should expand beyond current shortlist-level readouts.",
+                    "closeness_band_summary": "No closeness-band diagnostics are available yet.",
+                    "calibration_awareness_summary": "Regression ranking compatibility is not a calibrated probability. It is a bounded ordering signal and should be read together with dispersion and representation support.",
+                    "comparison_cohort_summary": "Comparison cohort for this run is bounded by regression ranking, session trained, extra trees, and rdkit descriptors 4 plus morgan fp 2048.",
+                    "cohort_diagnostic_summary": "A reusable signal-led cohort is now available for later version comparison.",
+                    "session_variation_summary": "Cross-session comparison is possible, but ranking reliability across session variation remains only partly established.",
+                    "cross_run_comparison_summary": "Cross-run comparison is anchored by regression ranking, session trained, extra trees, and rdkit descriptors 4 plus morgan fp 2048.",
+                    "representation_evaluation_summary": "Representation-aware evaluation suggests stronger chemistry coverage improves ranking quality in this run.",
+                    "engine_strength_summary": "Engine strengths are becoming more reusable: signal-led cohorts are now reusable across runs.",
+                    "engine_weakness_summary": "Engine weaknesses remain visible: representation-limited cohorts still degrade ranking quality.",
+                    "tracked_metrics": ["holdout_rmse", "holdout_mae", "holdout_r2"],
+                },
             }
         )
 
         self.assertEqual(validated["modeling_mode"], "regression")
         self.assertEqual(validated["training_scope"], "session_trained")
         self.assertEqual(validated["contract_versions"]["run_contract_version"], "run_contract.v1")
+        self.assertEqual(
+            validated["predictive_task_contract"]["predictive_score_label"],
+            "Priority score",
+        )
+        self.assertTrue(validated["predictive_evaluation_contract"]["evaluation_ready"])
 
     def test_comparison_anchors_validate_session_basis(self):
         validated = validate_comparison_anchors(

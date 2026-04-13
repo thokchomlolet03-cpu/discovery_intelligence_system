@@ -12,6 +12,7 @@ from system.db import resolve_artifact_path
 from system.db.repositories import SessionRepository
 from system.review_manager import build_review_queue
 from system.services.run_metadata_service import build_run_provenance
+from system.services.predictive_path_service import build_predictive_path_summary
 from system.services.scientific_session_truth_service import build_scientific_session_truth
 from system.services.scientific_decision_service import build_scientific_decision_summary
 from system.services.data_service import canonical_label_column
@@ -151,6 +152,7 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         observed_value = _safe_float(row.get("observed_value", row.get("value")))
         rationale = row.get("rationale") if isinstance(row.get("rationale"), dict) else {}
         score_breakdown = row.get("score_breakdown") if isinstance(row.get("score_breakdown"), list) else []
+        score_semantics = row.get("score_semantics") if isinstance(row.get("score_semantics"), dict) else {}
         target_definition = row.get("target_definition") if isinstance(row.get("target_definition"), dict) else {}
         target_kind = str(target_definition.get("target_kind") or "classification").strip().lower()
         primary_driver = ""
@@ -181,6 +183,23 @@ def _shortlist_preview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "predicted_value": _safe_float(row.get("predicted_value")),
                 "prediction_dispersion": _safe_float(row.get("prediction_dispersion")),
                 "priority_score": float(_safe_float(row.get("priority_score"), 0.0) or 0.0),
+                "raw_predictive_signal": _safe_float(row.get("raw_predictive_signal")),
+                "raw_predictive_signal_label": str(score_semantics.get("raw_predictive_signal_label") or row.get("raw_predictive_signal_label") or "").strip(),
+                "heuristic_policy_score": _safe_float(row.get("heuristic_policy_score")),
+                "raw_signal_weight": _safe_float(row.get("raw_signal_weight")),
+                "heuristic_weight": _safe_float(row.get("heuristic_weight")),
+                "blended_priority_score": _safe_float(row.get("blended_priority_score")),
+                "representation_support_factor": _safe_float(row.get("representation_support_factor")),
+                "support_density": _safe_float(row.get("support_density")),
+                "bounded_uncertainty_score": _safe_float(score_semantics.get("bounded_uncertainty_score")),
+                "fragility_score": _safe_float(score_semantics.get("fragility_score")),
+                "neighbor_gap": _safe_float(score_semantics.get("neighbor_gap")),
+                "signal_status_label": str(score_semantics.get("signal_status_label") or "").strip(),
+                "uncertainty_summary": str(score_semantics.get("uncertainty_summary") or "").strip(),
+                "separation_summary": str(score_semantics.get("separation_summary") or "").strip(),
+                "caution_summary": str(score_semantics.get("caution_summary") or "").strip(),
+                "score_decomposition_summary": str(row.get("score_decomposition_summary") or score_semantics.get("summary") or "").strip(),
+                "scoring_failure_mode_summary": str(row.get("scoring_failure_mode_summary") or "").strip(),
                 "experiment_value": float(_safe_float(row.get("experiment_value"), 0.0) or 0.0),
                 "observed_value": observed_value,
                 "context": " / ".join(part for part in (assay, target) if part),
@@ -552,6 +571,16 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
     if not scientific_decision_summary and scientific_truth:
         scientific_decision_summary = build_scientific_decision_summary(scientific_truth)
     session_support_role_label, session_support_role_summary = support_role_from_belief_update_summary(belief_update_summary)
+    predictive_path_summary = build_predictive_path_summary(
+        analysis_report=analysis_report if isinstance(analysis_report, dict) else {},
+        decision_payload=decision_payload if isinstance(decision_payload, dict) else {},
+        scientific_truth=scientific_truth if isinstance(scientific_truth, dict) else {},
+        ranking_policy=analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {},
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        run_contract=run_contract,
+        evaluation_summary=evaluation_summary if isinstance(evaluation_summary, dict) else {},
+    )
     if belief_state_summary.get("active_claim_count"):
         cards.append({"label": "Belief state claims", "value": int(belief_state_summary.get("active_claim_count") or 0)})
     alignment_summary = str(scientific_truth.get("belief_state_alignment_summary") or "").strip()
@@ -737,6 +766,7 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         else {},
         "belief_state_summary": belief_state_summary,
         "scientific_decision_summary": scientific_decision_summary,
+        "predictive_path_summary": predictive_path_summary,
         "belief_state_alignment_label": alignment_label,
         "belief_state_alignment_summary": alignment_summary,
         "target_definition": target_definition,

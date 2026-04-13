@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% set inbox = governance_workbench.inbox or {} %}
+  {% set summary = inbox.summary or {} %}
+  {% set selected_item = governance_workbench.selected_item or {} %}
+  {% set selected_session = governance_workbench.selected_session or {} %}
+
+  <section class="hero hero-showcase hero-compact">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow-row">
+          <span class="eyebrow">Governance inbox</span>
+          <span class="context-chip">Bounded reviewer workflow</span>
+        </div>
+        <h1>Work through reviewer decisions without losing the derived scientific picture.</h1>
+        <p class="hero-copy">
+          This inbox is a bounded reviewer worklist. It keeps claim, belief-state, continuity-cluster, and session-family
+          carryover items inspectable without turning Discovery Intelligence into a heavyweight governance suite.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="/sessions">Open Sessions</a>
+          {% if selected_session.session_id %}
+            <a class="button button-secondary" href="/discovery?session_id={{ selected_session.session_id }}">Open selected Discovery</a>
+            <a class="button button-secondary" href="/dashboard?session_id={{ selected_session.session_id }}">Open selected Dashboard</a>
+          {% endif %}
+        </div>
+      </div>
+      <aside class="hero-stat-stack">
+        <article class="stat-card">
+          <span class="panel-label">Inbox items</span>
+          <strong>{{ summary.item_count or 0 }}</strong>
+          <p>{{ summary.summary_text or "No governance inbox items currently need reviewer attention." }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Immediate attention</span>
+          <strong>{{ summary.immediate_attention_count or 0 }}</strong>
+          <p>Highest-priority items where broader carryover, manual mismatch, or reviewer action needs close inspection.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Manual overrides</span>
+          <strong>{{ summary.manual_override_count or 0 }}</strong>
+          <p>Items whose current effective posture is controlled by explicit human review.</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Blocked or quarantined</span>
+          <strong>{{ summary.blocked_or_quarantined_count or 0 }}</strong>
+          <p>Items where broader carryover is materially limited right now.</p>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  {% if governance_workbench.selection_summary %}
+    <section class="panel">
+      <div class="state-icon">Reviewer focus</div>
+      <h2>Current inspection focus</h2>
+      <p>{{ governance_workbench.selection_summary }}</p>
+      {% if selected_item.effective_review_origin_summary %}
+        <p class="helper-copy">{{ selected_item.effective_review_origin_summary }}</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% set predictive_path = (selected_session.predictive_path_summary if selected_session else {}) or {} %}
+  {% set panel_title = "Predictive-path inspection" %}
+  {% set panel_copy = "Governance decisions now sit next to a compact view of the current predictive task, policy layer, and failure modes so reviewer actions do not lose scientific context." %}
+  {% include "_predictive_path_panel.html" %}
+
+  <section class="panel">
+    <div class="section-header">
+      <div>
+        <h2>Governance queue</h2>
+        <p class="helper-copy">Items are ordered so the most reviewer-relevant broader carryover boundaries appear first.</p>
+      </div>
+    </div>
+    {% if inbox.items %}
+      <div class="card-grid">
+        {% for item in inbox.items %}
+          <article class="stat-card">
+            <span class="panel-label">{{ item.priority_label }}</span>
+            <strong>{{ item.layer_label }}</strong>
+            <p>{{ item.attention_summary }}</p>
+            <p class="helper-copy">
+              Session {{ item.session_id }}{% if item.candidate_label %} · {{ item.candidate_label }}{% endif %}
+            </p>
+            <p class="helper-copy">
+              Effective: {{ item.effective_review_status_label }} ·
+              {{ item.effective_review_origin_label|replace("_", " ")|title }}
+            </p>
+            {% if item.manual_review_status_label %}
+              <p class="helper-copy">
+                Manual: {{ item.manual_review_status_label }}{% if item.manual_review_reviewer_label %} by {{ item.manual_review_reviewer_label }}{% endif %}
+              </p>
+            {% endif %}
+            {% if item.reason_tags %}
+              <p class="helper-copy">{{ item.reason_tags|join(", ")|replace("_", " ") }}</p>
+            {% endif %}
+            <div class="cta-row">
+              <a class="button button-secondary" href="{{ item.detail_url }}">Inspect</a>
+              <a class="button button-secondary" href="{{ item.discovery_url }}">Discovery</a>
+              <a class="button button-secondary" href="{{ item.dashboard_url }}">Dashboard</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="helper-copy">No governance inbox items currently need reviewer attention.</p>
+    {% endif %}
+  </section>
+
+  {% if selected_item.item_id %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Inspection detail</h2>
+          <p class="helper-copy">This keeps derived, manual, and effective posture visible together before a reviewer acts.</p>
+        </div>
+      </div>
+      <div class="card-grid metrics-grid">
+        <article class="stat-card">
+          <span class="panel-label">Layer</span>
+          <strong>{{ selected_item.layer_label }}</strong>
+          <p>{{ selected_item.session_label }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Effective posture</span>
+          <strong>{{ selected_item.effective_review_status_label }}</strong>
+          <p>{{ selected_item.effective_review_status_summary or selected_item.broader_carryover_summary }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Derived posture</span>
+          <strong>{{ selected_item.derived_review_status_label or "Not recorded" }}</strong>
+          <p>{{ selected_item.contradiction_context_summary or selected_item.future_influence_summary }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Manual posture</span>
+          <strong>{{ selected_item.manual_review_status_label or "Not recorded" }}</strong>
+          <p>{{ selected_item.reviewer_attribution_summary }}</p>
+        </article>
+      </div>
+
+      <div class="card-grid">
+        {% if selected_item.local_usefulness_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Local usefulness</span>
+            <p>{{ selected_item.local_usefulness_summary }}</p>
+          </article>
+        {% endif %}
+        {% if selected_item.broader_carryover_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Broader carryover</span>
+            <p>{{ selected_item.broader_carryover_summary }}</p>
+          </article>
+        {% endif %}
+        {% if selected_item.future_influence_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Future broader influence</span>
+            <p>{{ selected_item.future_influence_summary }}</p>
+          </article>
+        {% endif %}
+        {% if selected_item.carryover_effect_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Carryover effect</span>
+            <p>{{ selected_item.carryover_effect_summary }}</p>
+          </article>
+        {% endif %}
+        {% if selected_item.carryover_guardrail_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Carryover guardrail</span>
+            <p>{{ selected_item.carryover_guardrail_summary }}</p>
+          </article>
+        {% endif %}
+      </div>
+
+      <div class="card-grid">
+        <article class="stat-card">
+          <span class="panel-label">Trust tier</span>
+          <strong>{{ selected_item.trust_tier_label or "Not recorded" }}</strong>
+          <p>{{ selected_item.source_class_label or "Source class not recorded" }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Provenance confidence</span>
+          <strong>{{ selected_item.provenance_confidence_label or "Not recorded" }}</strong>
+          <p>{{ selected_item.promotion_gate_status_label or "No promotion gate recorded" }}</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Review history</span>
+          <strong>{{ selected_item.review_record_count or 0 }}</strong>
+          <p>{{ selected_item.manual_review_record_count or 0 }} manual record(s); {{ selected_item.related_session_count or 0 }} related item(s).</p>
+        </article>
+        <article class="stat-card">
+          <span class="panel-label">Attention reason</span>
+          <strong>{{ selected_item.priority_label }}</strong>
+          <p>{{ selected_item.attention_summary }}</p>
+        </article>
+      </div>
+
+      <div class="card-grid">
+        {% if selected_item.manual_review_note_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Reviewer note</span>
+            <p>{{ selected_item.manual_review_note_summary }}</p>
+          </article>
+        {% endif %}
+        {% if selected_item.manual_review_reopen_revise_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Reopen / revise history</span>
+            <p>{{ selected_item.manual_review_reopen_revise_summary }}</p>
+          </article>
+        {% endif %}
+        {% if selected_item.consistency_summary %}
+          <article class="mini-callout">
+            <span class="panel-label">Consistency check</span>
+            <p>{{ selected_item.consistency_summary }}</p>
+          </article>
+        {% endif %}
+      </div>
+
+      <div class="card-grid">
+        <article class="panel">
+          <div class="section-header">
+            <div>
+              <h3>Manual action</h3>
+              <p class="helper-copy">Use a bounded reviewer action when the derived posture should not be the effective current posture.</p>
+            </div>
+          </div>
+          <form method="post" action="/governed-review/manual-action" class="workspace-switcher-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input type="hidden" name="session_id" value="{{ selected_item.session_id }}" />
+            <input type="hidden" name="subject_type" value="{{ selected_item.subject_type }}" />
+            <input type="hidden" name="subject_id" value="{{ selected_item.subject_id }}" />
+            <input type="hidden" name="next" value="/governance?session_id={{ selected_item.session_id }}&item_id={{ selected_item.item_id }}" />
+            <label>
+              Manual action
+              <select name="manual_action">
+                <option value="approved">Approve</option>
+                <option value="blocked">Block</option>
+                <option value="deferred">Defer</option>
+                <option value="downgraded">Downgrade</option>
+                <option value="quarantined">Quarantine</option>
+                <option value="reopened">Reopen for review</option>
+                <option value="revised">Revise posture</option>
+              </select>
+            </label>
+            <label>
+              Revised posture target
+              <select name="review_status_override">
+                <option value="">Use action default</option>
+                <option value="approved">Reviewed and approved</option>
+                <option value="blocked">Reviewed and blocked</option>
+                <option value="deferred">Reviewed and deferred</option>
+                <option value="downgraded">Reviewed and downgraded later</option>
+                <option value="quarantined">Reviewed and quarantined later</option>
+              </select>
+            </label>
+            <label>
+              Reviewer note
+              <input type="text" name="governance_note" placeholder="bounded reviewer note" />
+            </label>
+            <button type="submit" class="button button-primary">Record review action</button>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="section-header">
+            <div>
+              <h3>Selected session context</h3>
+              <p class="helper-copy">Move directly into the underlying session surfaces if you need deeper scientific inspection before acting.</p>
+            </div>
+          </div>
+          {% if selected_session.session_id %}
+            <p><strong>{{ selected_session.source_name }}</strong></p>
+            {% if selected_session.recommendation_summary %}
+              <p>{{ selected_session.recommendation_summary }}</p>
+            {% endif %}
+            {% if selected_session.governance_summary and selected_session.governance_summary.summary_text %}
+              <p class="helper-copy">{{ selected_session.governance_summary.summary_text }}</p>
+            {% endif %}
+            <div class="cta-row">
+              <a class="button button-secondary" href="/discovery?session_id={{ selected_session.session_id }}">Open Discovery</a>
+              <a class="button button-secondary" href="/dashboard?session_id={{ selected_session.session_id }}">Open Dashboard</a>
+              <a class="button button-secondary" href="/sessions?session_id={{ selected_session.session_id }}">Open Sessions</a>
+            </div>
+          {% else %}
+            <p class="helper-copy">No session context is selected.</p>
+          {% endif %}
+        </article>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if governance_workbench.related_items %}
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <h2>Related governance items</h2>
+          <p class="helper-copy">These items share the same session or target-scoped carryover context as the current inspection focus.</p>
+        </div>
+      </div>
+      <div class="card-grid">
+        {% for item in governance_workbench.related_items %}
+          <article class="mini-callout">
+            <span class="panel-label">{{ item.layer_label }}</span>
+            <p>{{ item.attention_summary }}</p>
+            <p class="helper-copy">{{ item.session_label }} · {{ item.effective_review_status_label }}</p>
+            <a class="button button-secondary" href="{{ item.detail_url }}">Inspect</a>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

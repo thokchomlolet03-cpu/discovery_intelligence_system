@@ -50,6 +50,17 @@ from system.review_manager import (
     record_review_action,
     record_review_actions,
 )
+from system.services.governed_review_service import (
+    SUBJECT_TYPE_BELIEF_STATE,
+    SUBJECT_TYPE_CLAIM,
+    SUBJECT_TYPE_CONTINUITY_CLUSTER,
+    SUBJECT_TYPE_SESSION_FAMILY_CARRYOVER,
+    record_manual_subject_governed_review_action,
+)
+from system.services.governance_workflow_service import (
+    build_governance_workbench,
+    resolve_governance_subject_context,
+)
 from system.upload_parser import (
     create_upload_session,
     infer_column_mapping,
@@ -71,6 +82,19 @@ from system.services.experiment_result_service import ingest_experiment_result
 from system.services.scientific_session_truth_service import build_scientific_session_truth, persist_scientific_session_truth
 from system.services.session_identity_service import build_session_identity
 from system.services.status_semantics_service import build_status_semantics, persisted_status_snapshot
+from system.services.support_quality_service import (
+    REVIEW_REASON_APPROVED,
+    REVIEW_REASON_CONTRADICTION,
+    REVIEW_REASON_DOWNGRADED,
+    REVIEW_REASON_QUARANTINED,
+    REVIEW_REASON_SELECTIVE,
+    REVIEW_REASON_STRONGER_TRUST_NEEDED,
+    REVIEW_STATUS_APPROVED,
+    REVIEW_STATUS_BLOCKED,
+    REVIEW_STATUS_DEFERRED,
+    REVIEW_STATUS_DOWNGRADED,
+    REVIEW_STATUS_QUARANTINED,
+)
 from system.services.workspace_feedback_service import annotate_candidates_with_workspace_memory, build_session_workspace_memory
 from system.session_history import build_session_history_context
 from system.session_artifacts import (
@@ -141,6 +165,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "nav_sessions_url": "/sessions",
         "nav_discovery_url": f"/discovery?session_id={active_session_id}" if active_session_id else "/discovery",
         "nav_dashboard_url": f"/dashboard?session_id={active_session_id}" if active_session_id else "/dashboard",
+        "nav_governance_url": f"/governance?session_id={active_session_id}" if active_session_id else "/governance",
         **extra,
     }
 
@@ -497,6 +522,186 @@ def _ensure_session_access(session_id: str | None, workspace_id: str) -> None:
         session_repository.get_session(session_id, workspace_id=workspace_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Requested session was not found.") from exc
+
+
+MANUAL_GOVERNANCE_ACTIONS: dict[str, tuple[str, str]] = {
+    "approved": (REVIEW_STATUS_APPROVED, REVIEW_REASON_APPROVED),
+    "blocked": (REVIEW_STATUS_BLOCKED, REVIEW_REASON_CONTRADICTION),
+    "deferred": (REVIEW_STATUS_DEFERRED, REVIEW_REASON_SELECTIVE),
+    "downgraded": (REVIEW_STATUS_DOWNGRADED, REVIEW_REASON_DOWNGRADED),
+    "quarantined": (REVIEW_STATUS_QUARANTINED, REVIEW_REASON_QUARANTINED),
+    "reopened": (REVIEW_STATUS_DEFERRED, REVIEW_REASON_STRONGER_TRUST_NEEDED),
+    "revised": (REVIEW_STATUS_DEFERRED, REVIEW_REASON_SELECTIVE),
+}
+
+MANUAL_GOVERNANCE_STATUS_CODES: dict[str, tuple[str, str]] = {
+    "approved": (REVIEW_STATUS_APPROVED, REVIEW_REASON_APPROVED),
+    "blocked": (REVIEW_STATUS_BLOCKED, REVIEW_REASON_CONTRADICTION),
+    "deferred": (REVIEW_STATUS_DEFERRED, REVIEW_REASON_SELECTIVE),
+    "downgraded": (REVIEW_STATUS_DOWNGRADED, REVIEW_REASON_DOWNGRADED),
+    "quarantined": (REVIEW_STATUS_QUARANTINED, REVIEW_REASON_QUARANTINED),
+}
+
+MANUAL_GOVERNANCE_ACTION_LABELS: dict[str, str] = {
+    "approved": "approved_by_reviewer",
+    "blocked": "blocked_by_reviewer",
+    "deferred": "deferred_by_reviewer",
+    "downgraded": "downgraded_by_reviewer",
+    "quarantined": "quarantined_by_reviewer",
+    "reopened": "reopened_for_review",
+    "revised": "revised_by_reviewer",
+}
+
+GOVERNANCE_LAYER_LABELS = {
+    SUBJECT_TYPE_CLAIM: "Claim governance",
+    SUBJECT_TYPE_BELIEF_STATE: "Belief-state governance",
+    SUBJECT_TYPE_CONTINUITY_CLUSTER: "Continuity-cluster governance",
+    SUBJECT_TYPE_SESSION_FAMILY_CARRYOVER: "Session-family carryover governance",
+}
+
+
+def _build_current_scientific_truth_for_session(
+    *,
+    session_id: str,
+    workspace_id: str,
+    created_by_user_id: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    session_record = session_repository.get_session(session_id, workspace_id=workspace_id)
+    decision_output = load_decision_artifact_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=False,
+    )
+    analysis_report = load_analysis_report_payload(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        allow_global_fallback=False,
+    )
+    candidates = annotate_candidates_with_reviews(
+        decision_output.get("top_experiments", []),
+        session_id=session_id,
+        workspace_id=workspace_id,
+    )
+    annotated_candidates = annotate_candidates_with_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=workspace_id,
+    )
+    workspace_memory = build_session_workspace_memory(
+        candidates,
+        session_id=session_id,
+        workspace_id=workspace_id,
+    )
+    review_queue = build_review_queue(
+        candidates,
+        session_id=session_id,
+        workspace_id=workspace_id,
+    )
+    scientific_truth = build_scientific_session_truth(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        source_name=str(session_record.get("source_name") or ""),
+        session_record=session_record,
+        upload_metadata=session_record.get("upload_metadata") if isinstance(session_record.get("upload_metadata"), dict) else {},
+        analysis_report=analysis_report,
+        decision_payload={**decision_output, "top_experiments": annotated_candidates},
+        review_queue=review_queue,
+        workspace_memory=workspace_memory,
+    )
+    if created_by_user_id is not None:
+        persist_scientific_session_truth(
+            scientific_truth,
+            session_id=session_id,
+            workspace_id=workspace_id,
+            created_by_user_id=created_by_user_id,
+            register_artifact=True,
+        )
+    return scientific_truth, session_record, decision_output, analysis_report
+
+
+def _resolve_governed_review_subject_context(
+    *,
+    scientific_truth: dict[str, Any],
+    subject_type: str,
+    subject_id: str,
+) -> dict[str, Any]:
+    context = resolve_governance_subject_context(
+        scientific_truth=scientific_truth,
+        subject_type=subject_type,
+        subject_id=subject_id,
+    )
+    return {
+        **context,
+        "layer_label": str(context.get("layer_label") or GOVERNANCE_LAYER_LABELS.get(subject_type, "Governance")).strip(),
+        "derived_context": {
+            "derived_review_status_label": str(context.get("derived_review_status_label") or context.get("effective_review_status_label") or "").strip(),
+            "derived_review_status_summary": str(context.get("derived_review_status_summary") or context.get("effective_review_status_summary") or "").strip(),
+            "derived_review_reason_label": str(context.get("derived_review_reason_label") or context.get("effective_review_reason_label") or "").strip(),
+            "derived_review_reason_summary": str(context.get("derived_review_reason_summary") or context.get("effective_review_reason_summary") or "").strip(),
+            "effective_review_origin_label": str(context.get("effective_review_origin_label") or "derived").strip(),
+            "effective_review_status_label": str(context.get("effective_review_status_label") or "").strip(),
+        },
+    }
+
+
+def _manual_governance_summaries(
+    *,
+    action_code: str,
+    layer_label: str,
+    derived_context: dict[str, Any],
+    governance_note: str,
+    reviewer_label: str,
+    review_status_label: str,
+    review_reason_label: str,
+) -> tuple[str, str, str, str]:
+    prior_status = str(derived_context.get("effective_review_status_label") or derived_context.get("derived_review_status_label") or "not recorded").strip()
+    if action_code == "reopened":
+        decision_summary = (
+            f"{layer_label} is reopened for reconsideration under bounded human review."
+            f" Current reviewed posture is reset to {review_status_label.lower()} while derived posture remains visible as {prior_status.lower() or 'not recorded'}."
+        )
+        review_reason_summary = (
+            governance_note.strip()
+            or f"{reviewer_label} reopened this layer for reconsideration rather than allowing the earlier broader-carryover boundary to stand unchanged."
+        )
+    elif action_code == "revised":
+        decision_summary = (
+            f"{layer_label} was manually revised to {review_status_label.lower()} under bounded human review."
+            f" Derived posture suggested {prior_status.lower() or 'not recorded'}."
+        )
+        review_reason_summary = (
+            governance_note.strip()
+            or f"{reviewer_label} revised this layer after re-reading the derived posture and current carryover implications."
+        )
+    else:
+        decision_summary = (
+            f"{layer_label} is manually {action_code} under bounded human review."
+            f" Derived posture suggested {prior_status.lower() or 'not recorded'}."
+        )
+        review_reason_summary = (
+            governance_note.strip()
+            or f"{reviewer_label} manually {action_code} this layer after reviewing the derived posture."
+        )
+    return review_status_label, review_reason_label, decision_summary, review_reason_summary
+
+
+def _resolve_manual_governance_action(
+    *,
+    action_code: str,
+    review_status_override: str,
+) -> tuple[str, str, str]:
+    normalized_override = str(review_status_override or "").strip().lower()
+    if action_code == "revised" and normalized_override in MANUAL_GOVERNANCE_STATUS_CODES:
+        review_status_label, review_reason_label = MANUAL_GOVERNANCE_STATUS_CODES[normalized_override]
+    elif action_code == "reopened" and normalized_override in {"approved", "blocked", "downgraded", "quarantined"}:
+        review_status_label, review_reason_label = MANUAL_GOVERNANCE_STATUS_CODES[normalized_override]
+    else:
+        review_status_label, review_reason_label = MANUAL_GOVERNANCE_ACTIONS[action_code]
+    return (
+        review_status_label,
+        review_reason_label,
+        MANUAL_GOVERNANCE_ACTION_LABELS.get(action_code, ""),
+    )
 
 
 def _resolve_column_mapping(
@@ -946,6 +1151,10 @@ async def sessions_page(
         latest_session_id=str(session_view.get("latest_session_id") or ""),
         job_fetcher=lambda job_id, workspace_id: job_manager.get_job(job_id, workspace_id=workspace_id),
     )
+    governance_workbench = build_governance_workbench(
+        session_history=session_history,
+        selected_session_id=str(session_view.get("session_id") or ""),
+    )
     return _render_template(
         request,
         "sessions.html",
@@ -954,8 +1163,46 @@ async def sessions_page(
         workspace_plan=workspace_plan,
         session_view=session_view,
         session_history=session_history,
+        governance_workbench=governance_workbench,
         session_identity=(session_history.get("focus_session") or {}).get("session_identity"),
         status_semantics=(session_history.get("focus_session") or {}).get("status_semantics"),
+    )
+
+
+@app.get("/governance", response_class=HTMLResponse)
+async def governance_page(
+    request: Request,
+    session_id: str | None = Query(default=None),
+    item_id: str | None = Query(default=None),
+) -> Response:
+    auth = _page_auth_or_redirect(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    workspace_plan = _workspace_plan_summary(auth)
+    session_view = _resolve_session_view(request, auth, session_id)
+    session_history = build_session_history_context(
+        session_repository.list_sessions(auth.workspace_id, limit=100),
+        workspace_id=auth.workspace_id,
+        active_session_id=str(session_view.get("session_id") or ""),
+        latest_session_id=str(session_view.get("latest_session_id") or ""),
+        job_fetcher=lambda job_id, workspace_id: job_manager.get_job(job_id, workspace_id=workspace_id),
+    )
+    governance_workbench = build_governance_workbench(
+        session_history=session_history,
+        selected_item_id=str(item_id or ""),
+        selected_session_id=str(session_view.get("session_id") or ""),
+    )
+    return _render_template(
+        request,
+        "governance.html",
+        title="Governance",
+        active_page="governance",
+        workspace_plan=workspace_plan,
+        session_view=session_view,
+        session_history=session_history,
+        governance_workbench=governance_workbench,
+        session_identity=(governance_workbench.get("selected_session") or {}).get("session_identity"),
+        status_semantics=(governance_workbench.get("selected_session") or {}).get("status_semantics"),
     )
 
 
@@ -1190,6 +1437,17 @@ async def discovery_page(
         workspace_sessions=workspace_sessions,
         workspace_id=auth.workspace_id,
     )
+    governance_session_history = build_session_history_context(
+        workspace_sessions,
+        workspace_id=auth.workspace_id,
+        active_session_id=effective_session_id,
+        latest_session_id=str(session_view.get("latest_session_id") or ""),
+        job_fetcher=lambda job_id, workspace_id: job_manager.get_job(job_id, workspace_id=workspace_id),
+    )
+    governance_workbench = build_governance_workbench(
+        session_history=governance_session_history,
+        selected_session_id=effective_session_id,
+    )
 
     return _render_template(
         request,
@@ -1207,6 +1465,7 @@ async def discovery_page(
         session_identity=session_identity,
         status_semantics=status_semantics,
         active_session_comparison=active_session_comparison,
+        governance_workbench=governance_workbench,
         workspace_plan=workspace_plan,
     )
 
@@ -1794,6 +2053,95 @@ async def supersede_belief_update_action(
     return RedirectResponse(url=target, status_code=303)
 
 
+@app.post("/governed-review/manual-action")
+async def record_manual_governed_review_action(
+    request: Request,
+    session_id: str = Form(...),
+    subject_type: str = Form(...),
+    subject_id: str = Form(...),
+    manual_action: str = Form(...),
+    review_status_override: str | None = Form(None),
+    csrf_token: str = Form(...),
+    governance_note: str | None = Form(None),
+    next: str = Form("/discovery"),
+) -> RedirectResponse:
+    auth = require_auth_context(request)
+    require_csrf(request, csrf_token)
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, session_id)
+
+    action_code = str(manual_action or "").strip().lower()
+    if action_code not in MANUAL_GOVERNANCE_ACTIONS:
+        raise HTTPException(status_code=400, detail="Unsupported manual governance action.")
+
+    reviewed_by = str(auth.user.get("display_name") or auth.user.get("email") or "scientist").strip() or "scientist"
+    try:
+        scientific_truth, _, _, _ = _build_current_scientific_truth_for_session(
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+        )
+        subject_context = _resolve_governed_review_subject_context(
+            scientific_truth=scientific_truth,
+            subject_type=subject_type,
+            subject_id=subject_id,
+        )
+        review_status_label, review_reason_label, manual_action_label = _resolve_manual_governance_action(
+            action_code=action_code,
+            review_status_override=str(review_status_override or ""),
+        )
+        review_status_label, review_reason_label, decision_summary, review_reason_summary = _manual_governance_summaries(
+            action_code=action_code,
+            layer_label=str(subject_context.get("layer_label") or "Governance"),
+            derived_context=subject_context.get("derived_context") if isinstance(subject_context.get("derived_context"), dict) else {},
+            governance_note=str(governance_note or "").strip(),
+            reviewer_label=reviewed_by,
+            review_status_label=review_status_label,
+            review_reason_label=review_reason_label,
+        )
+        record_manual_subject_governed_review_action(
+            {
+                "workspace_id": auth.workspace_id,
+                "session_id": session_id,
+                "subject_type": subject_type,
+                "subject_id": subject_id,
+                "target_key": subject_context.get("target_key", ""),
+                "candidate_id": subject_context.get("candidate_id", ""),
+                "source_class_label": subject_context.get("source_class_label", ""),
+                "provenance_confidence_label": subject_context.get("provenance_confidence_label", ""),
+                "trust_tier_label": subject_context.get("trust_tier_label", ""),
+                "review_status_label": review_status_label,
+                "review_reason_label": review_reason_label,
+                "review_reason_summary": review_reason_summary,
+                "promotion_gate_status_label": subject_context.get("promotion_gate_status_label", ""),
+                "promotion_block_reason_label": subject_context.get("promotion_block_reason_label", ""),
+                "manual_action_label": manual_action_label,
+                "decision_summary": decision_summary,
+                "recorded_by": reviewed_by,
+                "actor_user_id": auth.user_id,
+                "reviewer_label": reviewed_by,
+                "reviewer_user_id": auth.user_id,
+                "derived_context": subject_context.get("derived_context", {}),
+                "metadata": {
+                    "governance_note": str(governance_note or "").strip(),
+                    "review_status_override": str(review_status_override or "").strip(),
+                    "review_action_code": action_code,
+                    "subject_layer_label": subject_context.get("layer_label", ""),
+                    "derived_context": subject_context.get("derived_context", {}),
+                },
+            }
+        )
+        _build_current_scientific_truth_for_session(
+            session_id=session_id,
+            workspace_id=auth.workspace_id,
+            created_by_user_id=auth.user_id,
+        )
+    except (ContractValidationError, FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    target = str(next or "").strip() or f"/discovery?session_id={session_id}"
+    return RedirectResponse(url=target, status_code=303)
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(
     request: Request,
@@ -1849,6 +2197,17 @@ async def dashboard_page(
         workspace_sessions=workspace_sessions,
         workspace_id=auth.workspace_id,
     )
+    governance_session_history = build_session_history_context(
+        workspace_sessions,
+        workspace_id=auth.workspace_id,
+        active_session_id=str(session_view.get("session_id") or ""),
+        latest_session_id=str(session_view.get("latest_session_id") or ""),
+        job_fetcher=lambda job_id, workspace_id: job_manager.get_job(job_id, workspace_id=workspace_id),
+    )
+    governance_workbench = build_governance_workbench(
+        session_history=governance_session_history,
+        selected_session_id=str(session_view.get("session_id") or ""),
+    )
     return _render_template(
         request,
         "dashboard.html",
@@ -1859,6 +2218,7 @@ async def dashboard_page(
         session_identity=session_identity,
         status_semantics=status_semantics,
         active_session_comparison=active_session_comparison,
+        governance_workbench=governance_workbench,
         session_view=session_view,
         workspace_plan=workspace_plan,
     )

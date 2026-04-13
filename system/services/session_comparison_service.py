@@ -125,6 +125,17 @@ def _scientific_decision_summary(session: dict[str, Any]) -> dict[str, Any]:
     return fallback
 
 
+def _predictive_path_summary(session: dict[str, Any]) -> dict[str, Any]:
+    summary = session.get("predictive_path_summary") if isinstance(session.get("predictive_path_summary"), dict) else {}
+    return summary
+
+
+def _predictive_evaluation_contract(session: dict[str, Any]) -> dict[str, Any]:
+    summary = _predictive_path_summary(session)
+    contract = summary.get("evaluation_contract") if isinstance(summary.get("evaluation_contract"), dict) else {}
+    return contract
+
+
 def _belief_state_alignment_label(session: dict[str, Any]) -> str:
     truth = _scientific_truth(session)
     return _clean_text(truth.get("belief_state_alignment_label") or session.get("belief_state_alignment_label"))
@@ -367,6 +378,17 @@ def build_candidate_preview(decision_payload: dict[str, Any] | None, *, limit: i
                 "trust_label": _clean_text(rationale.get("trust_label") or row.get("trust_label"), default="not_recorded").lower(),
                 "priority_score": _safe_float(row.get("priority_score"), default=None),
                 "experiment_value": _safe_float(row.get("experiment_value"), default=None),
+                "signal_status_label": _clean_text(
+                    ((row.get("score_semantics") or {}) if isinstance(row.get("score_semantics"), dict) else {}).get("signal_status_label")
+                ),
+                "bounded_uncertainty_score": _safe_float(
+                    ((row.get("score_semantics") or {}) if isinstance(row.get("score_semantics"), dict) else {}).get("bounded_uncertainty_score"),
+                    default=None,
+                ),
+                "neighbor_gap": _safe_float(
+                    ((row.get("score_semantics") or {}) if isinstance(row.get("score_semantics"), dict) else {}).get("neighbor_gap"),
+                    default=None,
+                ),
             }
         )
     return preview
@@ -464,6 +486,13 @@ def _compare_candidate_previews(
             shared_shift_lines.append(
                 f"Shared candidate rank shifted for {label}: {focus_rank} to {candidate_rank}."
             )
+        focus_signal_status = _clean_text(focus_item.get("signal_status_label"))
+        candidate_signal_status = _clean_text(candidate_item.get("signal_status_label"))
+        if focus_signal_status and candidate_signal_status and focus_signal_status != candidate_signal_status:
+            shared_shift_lines.append(
+                f"Shared candidate signal status changed for {label}: {focus_signal_status.lower()} vs {candidate_signal_status.lower()}."
+            )
+            continue
         if len(shared_shift_lines) >= 2:
             break
 
@@ -527,6 +556,8 @@ def compare_session_basis(
     candidate_belief_alignment_label = _belief_state_alignment_label(candidate_session)
     focus_belief_alignment_summary = _belief_state_alignment_summary(focus_session)
     candidate_belief_alignment_summary = _belief_state_alignment_summary(candidate_session)
+    focus_predictive_evaluation = _predictive_evaluation_contract(focus_session)
+    candidate_predictive_evaluation = _predictive_evaluation_contract(candidate_session)
 
     matches: list[str] = []
     differences: list[str] = []
@@ -1300,6 +1331,14 @@ def compare_session_basis(
                 "Session-family carryover review differs: "
                 f"{focus_session_family_review_status_label or 'not recorded'} vs {candidate_session_family_review_status_label or 'not recorded'}."
             )
+    focus_session_family_review_origin = _clean_text(focus_decision_summary.get("session_family_effective_review_origin_label"))
+    candidate_session_family_review_origin = _clean_text(candidate_decision_summary.get("session_family_effective_review_origin_label"))
+    if focus_session_family_review_origin or candidate_session_family_review_origin:
+        if focus_session_family_review_origin != candidate_session_family_review_origin:
+            cautions.append(
+                "Session-family governance source differs: "
+                f"{focus_session_family_review_origin or 'not recorded'} vs {candidate_session_family_review_origin or 'not recorded'}."
+            )
     focus_next_step_label = _clean_text(focus_decision_summary.get("next_step_label"))
     candidate_next_step_label = _clean_text(candidate_decision_summary.get("next_step_label"))
     if focus_next_step_label or candidate_next_step_label:
@@ -1479,6 +1518,20 @@ def compare_session_basis(
         focus_candidate_preview,
         candidate_candidate_preview,
     )
+    focus_top_gap = _safe_float(((focus_predictive_evaluation.get("offline_ranking_evaluation") or {}) if isinstance(focus_predictive_evaluation.get("offline_ranking_evaluation"), dict) else {}).get("top_gap"))
+    candidate_top_gap = _safe_float(((candidate_predictive_evaluation.get("offline_ranking_evaluation") or {}) if isinstance(candidate_predictive_evaluation.get("offline_ranking_evaluation"), dict) else {}).get("top_gap"))
+    if focus_top_gap is not None and candidate_top_gap is not None and abs(focus_top_gap - candidate_top_gap) >= 0.015:
+        direction = "higher" if candidate_top_gap > focus_top_gap else "lower"
+        outcome_differences.append(
+            f"Top-gap separation is {direction} by {abs(candidate_top_gap - focus_top_gap):.3f}."
+        )
+    focus_too_close_rate = _safe_float(((focus_predictive_evaluation.get("offline_ranking_evaluation") or {}) if isinstance(focus_predictive_evaluation.get("offline_ranking_evaluation"), dict) else {}).get("too_close_rate"))
+    candidate_too_close_rate = _safe_float(((candidate_predictive_evaluation.get("offline_ranking_evaluation") or {}) if isinstance(candidate_predictive_evaluation.get("offline_ranking_evaluation"), dict) else {}).get("too_close_rate"))
+    if focus_too_close_rate is not None and candidate_too_close_rate is not None and abs(focus_too_close_rate - candidate_too_close_rate) >= 0.15:
+        direction = "more" if candidate_too_close_rate > focus_too_close_rate else "less"
+        outcome_differences.append(
+            f"The comparison shortlist has {direction} too-close-to-separate pressure by {abs(candidate_too_close_rate - focus_too_close_rate) * 100:.1f}%."
+        )
     outcome_preview_gap = bool(outcome_differences) and not (focus_candidate_preview and candidate_candidate_preview)
     if outcome_preview_gap:
         cautions.append("Outcome differences are summarized without shared shortlist preview support.")
@@ -1618,6 +1671,8 @@ def build_session_comparison_matrix(
         belief_state = _belief_state_summary(item)
         belief_updates = _belief_update_summary(item)
         scientific_decision_summary = _scientific_decision_summary(item)
+        governance_summary = item.get("governance_summary") if isinstance(item.get("governance_summary"), dict) else {}
+        predictive_path_summary = _predictive_path_summary(item)
         session_support_role_label, session_support_role_summary = _session_support_role(item)
 
         if is_focus:
@@ -1859,6 +1914,27 @@ def build_session_comparison_matrix(
             "belief_state_promotion_audit_summary": _clean_text(
                 belief_state.get("promotion_audit_summary")
             ),
+            "belief_state_effective_governed_review_origin_label": _clean_text(
+                belief_state.get("effective_governed_review_origin_label"),
+                default="derived",
+            ),
+            "belief_state_effective_governed_review_origin_summary": _clean_text(
+                belief_state.get("effective_governed_review_origin_summary")
+            ),
+            "belief_state_derived_governed_review_status_label": _clean_text(
+                belief_state.get("derived_governed_review_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_manual_governed_review_status_label": _clean_text(
+                belief_state.get("manual_governed_review_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_manual_governed_review_action_label": _clean_text(
+                belief_state.get("manual_governed_review_action_label")
+            ),
+            "belief_state_manual_governed_review_reviewer_label": _clean_text(
+                belief_state.get("manual_governed_review_reviewer_label")
+            ),
             "belief_state_continuity_cluster_review_status_label": _clean_text(
                 belief_state.get("continuity_cluster_review_status_label"),
                 default="Not recorded",
@@ -1881,6 +1957,27 @@ def build_session_comparison_matrix(
             ),
             "belief_state_continuity_cluster_promotion_audit_summary": _clean_text(
                 belief_state.get("continuity_cluster_promotion_audit_summary")
+            ),
+            "belief_state_continuity_cluster_effective_review_origin_label": _clean_text(
+                belief_state.get("continuity_cluster_effective_review_origin_label"),
+                default="derived",
+            ),
+            "belief_state_continuity_cluster_effective_review_origin_summary": _clean_text(
+                belief_state.get("continuity_cluster_effective_review_origin_summary")
+            ),
+            "belief_state_continuity_cluster_derived_review_status_label": _clean_text(
+                belief_state.get("continuity_cluster_derived_review_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_continuity_cluster_manual_review_status_label": _clean_text(
+                belief_state.get("continuity_cluster_manual_review_status_label"),
+                default="Not recorded",
+            ),
+            "belief_state_continuity_cluster_manual_review_action_label": _clean_text(
+                belief_state.get("continuity_cluster_manual_review_action_label")
+            ),
+            "belief_state_continuity_cluster_manual_review_reviewer_label": _clean_text(
+                belief_state.get("continuity_cluster_manual_review_reviewer_label")
             ),
             "belief_state_carryover_guardrail_summary": _clean_text(
                 belief_state.get("carryover_guardrail_summary")
@@ -2068,6 +2165,99 @@ def build_session_comparison_matrix(
             ),
             "scientific_decision_session_family_promotion_audit_summary": _clean_text(
                 scientific_decision_summary.get("session_family_promotion_audit_summary")
+            ),
+            "scientific_decision_session_family_effective_review_origin_label": _clean_text(
+                scientific_decision_summary.get("session_family_effective_review_origin_label"),
+                default="derived",
+            ),
+            "scientific_decision_session_family_effective_review_origin_summary": _clean_text(
+                scientific_decision_summary.get("session_family_effective_review_origin_summary")
+            ),
+            "scientific_decision_session_family_derived_review_status_label": _clean_text(
+                scientific_decision_summary.get("session_family_derived_review_status_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_session_family_manual_review_status_label": _clean_text(
+                scientific_decision_summary.get("session_family_manual_review_status_label"),
+                default="Not recorded",
+            ),
+            "scientific_decision_session_family_manual_review_action_label": _clean_text(
+                scientific_decision_summary.get("session_family_manual_review_action_label")
+            ),
+            "scientific_decision_session_family_manual_review_reviewer_label": _clean_text(
+                scientific_decision_summary.get("session_family_manual_review_reviewer_label")
+            ),
+            "governance_attention_label": _clean_text(
+                governance_summary.get("priority_label"),
+                default="Not recorded",
+            ),
+            "governance_attention_summary": _clean_text(governance_summary.get("attention_summary")),
+            "governance_item_count": int(governance_summary.get("item_count") or 0),
+            "governance_manual_override_count": int(governance_summary.get("manual_override_count") or 0),
+            "governance_manual_mismatch_count": int(governance_summary.get("manual_mismatch_count") or 0),
+            "governance_detail_url": _clean_text(governance_summary.get("detail_url")),
+            "predictive_path_summary": _clean_text(predictive_path_summary.get("summary_text")),
+            "predictive_task_summary": _clean_text(
+                ((predictive_path_summary.get("task_contract") or {}) if isinstance(predictive_path_summary.get("task_contract"), dict) else {}).get("task_summary")
+            ),
+            "predictive_model_signal_summary": _clean_text(predictive_path_summary.get("model_signal_summary")),
+            "predictive_path_heuristic_summary": _clean_text(predictive_path_summary.get("heuristic_logic_summary")),
+            "predictive_representation_summary": _clean_text(
+                ((predictive_path_summary.get("representation_summary") or {}) if isinstance(predictive_path_summary.get("representation_summary"), dict) else {}).get("representation_limitations_summary")
+            ),
+            "predictive_evaluation_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("evaluation_summary")
+            ),
+            "predictive_separation_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("candidate_separation_summary")
+            ),
+            "predictive_stability_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("ranking_stability_summary")
+            ),
+            "predictive_closeness_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("closeness_band_summary")
+            ),
+            "predictive_top_k_quality_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("top_k_quality_summary")
+            ),
+            "predictive_calibration_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("calibration_awareness_summary")
+            ),
+            "predictive_calibration_band_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("calibration_band_summary")
+            ),
+            "predictive_variation_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("session_variation_summary")
+            ),
+            "predictive_cross_session_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("cross_session_comparison_summary")
+            ),
+            "predictive_comparison_cohort_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("comparison_cohort_summary")
+            ),
+            "predictive_cohort_diagnostic_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("cohort_diagnostic_summary")
+            ),
+            "predictive_evaluation_subset_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("evaluation_subset_summary")
+            ),
+            "predictive_representation_evaluation_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("representation_evaluation_summary")
+            ),
+            "predictive_representation_condition_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("representation_condition_summary")
+            ),
+            "predictive_cross_run_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("cross_run_comparison_summary")
+            ),
+            "predictive_engine_strength_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("engine_strength_summary")
+            ),
+            "predictive_engine_weakness_summary": _clean_text(
+                ((predictive_path_summary.get("evaluation_contract") or {}) if isinstance(predictive_path_summary.get("evaluation_contract"), dict) else {}).get("engine_weakness_summary")
+            ),
+            "predictive_failure_mode_summary": _clean_text(
+                ((predictive_path_summary.get("failure_mode_summary") or {}) if isinstance(predictive_path_summary.get("failure_mode_summary"), dict) else {}).get("summary_text")
             ),
             "scientific_decision_carryover_guardrail_summary": _clean_text(
                 scientific_decision_summary.get("carryover_guardrail_summary")

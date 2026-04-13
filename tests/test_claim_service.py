@@ -12,6 +12,10 @@ from system.services.claim_service import (
     list_session_claims,
     sync_claim_governed_review_snapshot,
 )
+from system.services.governed_review_service import (
+    SUBJECT_TYPE_CLAIM,
+    record_manual_subject_governed_review_action,
+)
 from system.services.scientific_session_truth_service import build_scientific_session_truth
 
 
@@ -295,6 +299,56 @@ class ClaimServiceTest(unittest.TestCase):
         self.assertEqual(refs[0]["claim_source_class_label"], "Internal governed experimental source")
         self.assertEqual(refs[0]["claim_trust_tier_label"], "Candidate evidence")
         self.assertIn("2 governed review records", refs[0]["claim_governed_review_history_summary"].lower())
+
+    def test_claim_refs_surface_manual_override_without_erasing_derived_posture(self):
+        claim_repository = ClaimRepository()
+        claim = claim_repository.upsert_claim(
+            self._claim_payload(session_id="session_claims_review_3", candidate_id="cand_1", smiles="CCO")
+        )
+
+        sync_claim_governed_review_snapshot(
+            claim_id=claim["claim_id"],
+            workspace_id="workspace_1",
+            recorded_by="system",
+        )
+        derived_refs = claim_refs_from_records(
+            [claim_repository.get_claim(claim["claim_id"], workspace_id="workspace_1")],
+            belief_updates=[],
+        )
+        record_manual_subject_governed_review_action(
+            {
+                "workspace_id": "workspace_1",
+                "session_id": "session_claims_review_3",
+                "subject_type": SUBJECT_TYPE_CLAIM,
+                "subject_id": claim["claim_id"],
+                "candidate_id": "cand_1",
+                "source_class_label": derived_refs[0]["claim_source_class_label"],
+                "provenance_confidence_label": derived_refs[0]["claim_provenance_confidence_label"],
+                "trust_tier_label": derived_refs[0]["claim_trust_tier_label"],
+                "review_status_label": "Reviewed and blocked",
+                "review_reason_label": "Stronger trust still needed",
+                "review_reason_summary": "Owner manually blocked broader carryover pending stronger trust.",
+                "promotion_gate_status_label": derived_refs[0]["claim_promotion_gate_status_label"],
+                "promotion_block_reason_label": derived_refs[0]["claim_promotion_block_reason_label"],
+                "decision_summary": "Claim broader carryover is manually blocked under bounded review.",
+                "reviewer_label": "Owner",
+                "recorded_by": "Owner",
+            }
+        )
+
+        refs = claim_refs_from_records(
+            [claim_repository.get_claim(claim["claim_id"], workspace_id="workspace_1")],
+            belief_updates=[],
+        )
+
+        self.assertEqual(refs[0]["claim_governed_review_status_label"], "Reviewed and blocked")
+        self.assertEqual(refs[0]["claim_derived_governed_review_status_label"], "Not reviewed for broader influence")
+        self.assertEqual(refs[0]["claim_manual_governed_review_status_label"], "Reviewed and blocked")
+        self.assertEqual(refs[0]["claim_manual_governed_review_action_label"], "Blocked by reviewer")
+        self.assertEqual(refs[0]["claim_manual_governed_review_reviewer_label"], "Owner")
+        self.assertEqual(refs[0]["claim_effective_governed_review_origin_label"], "manual")
+        self.assertEqual(refs[0]["claim_trust_tier_label"], "Local-only evidence")
+        self.assertIn("manual governed review record", refs[0]["claim_manual_governed_review_history_summary"].lower())
 
     def test_claim_summary_groups_active_and_historical_support_per_claim(self):
         claims = [

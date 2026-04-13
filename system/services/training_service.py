@@ -6,7 +6,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
@@ -46,14 +46,26 @@ def calibration_cv_splits(y, desired_splits):
     return max(2, min(desired_splits, min_class_count))
 
 
-def build_model(calibration_method="isotonic", config=None, random_state=None, calibration_cv=None):
+def _build_classifier_estimator(*, family="random_forest", config=None, random_state=None):
     cfg = resolve_system_config(config, seed=random_state)
-    base_model = RandomForestClassifier(
-        n_estimators=cfg.model.n_estimators,
-        random_state=cfg.model.random_state if random_state is None else random_state,
-        class_weight=cfg.model.class_weight,
-        min_samples_leaf=cfg.model.min_samples_leaf,
-        n_jobs=-1,
+    common = {
+        "n_estimators": cfg.model.n_estimators,
+        "random_state": cfg.model.random_state if random_state is None else random_state,
+        "class_weight": cfg.model.class_weight,
+        "min_samples_leaf": cfg.model.min_samples_leaf,
+        "n_jobs": -1,
+    }
+    if family == "extra_trees":
+        return ExtraTreesClassifier(**common)
+    return RandomForestClassifier(**common)
+
+
+def build_model(calibration_method="isotonic", config=None, random_state=None, calibration_cv=None, family="random_forest"):
+    cfg = resolve_system_config(config, seed=random_state)
+    base_model = _build_classifier_estimator(
+        family=family,
+        config=cfg,
+        random_state=random_state,
     )
     effective_cv = max(2, cfg.model.calibration_cv if calibration_cv is None else calibration_cv)
     calibrated = calibrate_model(base_model, method=calibration_method, cv=effective_cv)
@@ -162,25 +174,26 @@ def benchmark_model_candidates(X_train, y_train, X_test, y_test, config=None):
     cfg = resolve_system_config(config)
     benchmark = []
     calibration_cv = calibration_cv_splits(y_train, cfg.model.calibration_cv)
+    for family in ("random_forest", "extra_trees"):
+        for method in cfg.model.calibration_methods:
+            method_cfg = replace(cfg, model=replace(cfg.model, calibration_cv=calibration_cv))
+            candidate_model = build_model(calibration_method=method, config=method_cfg, family=family)
+            candidate_model.fit(X_train, y_train)
 
-    for method in cfg.model.calibration_methods:
-        method_cfg = replace(cfg, model=replace(cfg.model, calibration_cv=calibration_cv))
-        candidate_model = build_model(calibration_method=method, config=method_cfg)
-        candidate_model.fit(X_train, y_train)
+            raw_probs = candidate_model.predict_proba(X_test)[:, 1]
+            clipped_probs = clip_probabilities(raw_probs, cfg.model.probability_clip)
+            y_pred = candidate_model.predict(X_test)
+            metrics = holdout_metrics(y_test, y_pred, raw_probs, clipped_probs)
 
-        raw_probs = candidate_model.predict_proba(X_test)[:, 1]
-        clipped_probs = clip_probabilities(raw_probs, cfg.model.probability_clip)
-        y_pred = candidate_model.predict(X_test)
-        metrics = holdout_metrics(y_test, y_pred, raw_probs, clipped_probs)
-
-        benchmark.append(
-            {
-                "name": f"rf_{method}",
-                "calibration_method": method,
-                "metrics": metrics,
-                "model": candidate_model,
-            }
-        )
+            benchmark.append(
+                {
+                    "name": f"{family}_{method}",
+                    "family": family,
+                    "calibration_method": method,
+                    "metrics": metrics,
+                    "model": candidate_model,
+                }
+            )
 
     benchmark.sort(
         key=lambda item: (
@@ -213,22 +226,34 @@ def train_model(df, random_state=42, config=None):
     benchmark = benchmark_model_candidates(X_train, y_train, X_test, y_test, config=cfg)
     selected = benchmark[0]
     selected_method = selected["calibration_method"]
+    selected_family = str(selected.get("family") or "random_forest")
 
     full_calibration_cv = calibration_cv_splits(y, cfg.model.calibration_cv)
     cv_metrics = evaluation_summary(
-        build_model(calibration_method=selected_method, config=cfg, calibration_cv=full_calibration_cv),
+        build_model(
+            calibration_method=selected_method,
+            config=cfg,
+            calibration_cv=full_calibration_cv,
+            family=selected_family,
+        ),
         X,
         y,
         config=cfg,
     )
 
-    final_model = build_model(calibration_method=selected_method, config=cfg, calibration_cv=full_calibration_cv)
+    final_model = build_model(
+        calibration_method=selected_method,
+        config=cfg,
+        calibration_cv=full_calibration_cv,
+        family=selected_family,
+    )
     final_model.fit(X, y)
     final_model.feature_order_ = list(X.columns)
 
     benchmark_summary = [
         {
             "name": candidate["name"],
+            "family": candidate.get("family") or "random_forest",
             "calibration_method": candidate["calibration_method"],
             "metrics": candidate["metrics"],
         }
@@ -260,6 +285,7 @@ def train_model(df, random_state=42, config=None):
             "name": selected["name"],
             "calibration_method": selected_method,
         },
+        "model_family": selected_family,
         "benchmark": benchmark_summary,
         "metrics": {
             "cv": cv_metrics,
@@ -331,7 +357,7 @@ def bundle_evaluation_summary(bundle):
 
     payload = {
         "schema_version": "training_result.v1",
-        "model_family": "random_forest",
+        "model_family": bundle.get("model_family") or "random_forest",
         "model_type": model_kind,
         "calibration_method": selected_model.get("calibration_method") or "",
         "training_scope": bundle.get("training_scope") or "",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from system.services.runtime_config import resolve_system_config
@@ -16,6 +17,41 @@ def align_features(df, features):
     if extra:
         print(f"Feature alignment: ignored {len(extra)} extra fingerprint columns")
     return aligned
+
+
+def _classification_ensemble_statistics(bundle, X):
+    pipeline = bundle["model"]
+    scaler = pipeline.named_steps["scaler"]
+    calibrated = pipeline.named_steps["clf"]
+    transformed = scaler.transform(X)
+    prediction_sets = []
+
+    if hasattr(calibrated, "calibrated_classifiers_"):
+        for calibrated_model in calibrated.calibrated_classifiers_:
+            estimator = None
+            for attr in ("estimator", "base_estimator", "classifier"):
+                estimator = getattr(calibrated_model, attr, None)
+                if estimator is not None:
+                    break
+            if estimator is None:
+                continue
+            if hasattr(estimator, "predict_proba"):
+                prediction_sets.append(estimator.predict_proba(transformed)[:, 1])
+            elif hasattr(estimator, "predict"):
+                prediction_sets.append(np.asarray(estimator.predict(transformed), dtype=float))
+
+    if not prediction_sets and hasattr(calibrated, "predict_proba"):
+        prediction_sets.append(calibrated.predict_proba(transformed)[:, 1])
+
+    if not prediction_sets:
+        zeros = np.zeros(len(X), dtype=float)
+        return zeros, zeros, np.ones(len(X), dtype=float)
+
+    stacked = np.vstack(prediction_sets)
+    mean_prediction = stacked.mean(axis=0)
+    dispersion = stacked.std(axis=0)
+    agreement = 1.0 - np.clip(dispersion / 0.25, 0.0, 1.0)
+    return mean_prediction, dispersion, agreement
 
 
 def predict_with_model(bundle, df, config=None):
@@ -35,9 +71,17 @@ def predict_with_model(bundle, df, config=None):
     X = align_features(scored, features)
     raw_probs = model.predict_proba(X)[:, 1]
     probs = clip_probabilities(raw_probs, cfg.model.probability_clip)
+    ensemble_mean, ensemble_dispersion, ensemble_agreement = _classification_ensemble_statistics(bundle, X)
+    margin_uncertainty = 1.0 - (abs(probs - 0.5) * 2.0)
+    disagreement_uncertainty = np.clip(ensemble_dispersion / 0.20, 0.0, 1.0)
 
     scored["confidence"] = probs
-    scored["uncertainty"] = 1.0 - (abs(probs - 0.5) * 2.0)
+    scored["uncertainty"] = np.clip((0.65 * margin_uncertainty) + (0.35 * disagreement_uncertainty), 0.0, 1.0)
+    scored["margin_uncertainty"] = margin_uncertainty
+    scored["ensemble_probability_mean"] = ensemble_mean
+    scored["ensemble_probability_std"] = ensemble_dispersion
+    scored["ensemble_agreement"] = ensemble_agreement
+    scored["signal_support"] = np.clip((0.6 * (1.0 - scored["uncertainty"])) + (0.4 * ensemble_agreement), 0.0, 1.0)
     if "novelty" not in scored.columns:
         scored["novelty"] = pd.to_numeric(scored.get("novel_to_dataset", 0), errors="coerce").fillna(0)
     else:

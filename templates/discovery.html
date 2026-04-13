@@ -32,6 +32,49 @@
       <p>These results are recommendations, not experimental truth. Use them to prioritize review and testing.</p>
     </section>
 
+    {% set governance_inbox = governance_workbench.inbox or {} %}
+    {% set governance_summary = governance_inbox.summary or {} %}
+    {% if governance_summary.item_count %}
+      <section class="panel discovery-interpretation-panel">
+        <div class="section-header">
+          <div>
+            <h2>Governance inbox</h2>
+            <p class="helper-copy">Reviewer workflow stays visible here so broader carryover pressure is not hidden behind the static session view.</p>
+          </div>
+        </div>
+        <div class="interpretation-grid">
+          <article class="interpretation-card">
+            <strong>Inbox items</strong>
+            <p>{{ governance_summary.item_count }}</p>
+          </article>
+          <article class="interpretation-card">
+            <strong>Immediate attention</strong>
+            <p>{{ governance_summary.immediate_attention_count or 0 }}</p>
+          </article>
+          <article class="interpretation-card">
+            <strong>Manual overrides</strong>
+            <p>{{ governance_summary.manual_override_count or 0 }}</p>
+          </article>
+          <article class="interpretation-card">
+            <strong>Blocked or quarantined</strong>
+            <p>{{ governance_summary.blocked_or_quarantined_count or 0 }}</p>
+          </article>
+        </div>
+        <div class="mini-callout">
+          <span class="panel-label">Workflow summary</span>
+          <p>{{ governance_summary.summary_text }}</p>
+          <div class="cta-row">
+            <a class="button button-secondary" href="/governance?session_id={{ session_id }}">Open governance inbox</a>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+
+    {% set predictive_path = workbench.predictive_path_summary or {} %}
+    {% set panel_title = "Predictive-path inspection" %}
+    {% set panel_copy = "This keeps the predictive task, ranking drivers, heuristic shortlist policy, and failure modes inspectable before stronger scoring work lands." %}
+    {% include "_predictive_path_panel.html" %}
+
     <section class="panel discovery-state-panel">
       {% if session_view.session_id %}
         <div class="state-icon">Session {{ session_view.session_id }}</div>
@@ -428,6 +471,57 @@
             </article>
           {% endif %}
         </div>
+        {% if scientific_decision_summary.session_family_review_status_label %}
+          <div class="mini-callout">
+            <span class="panel-label">Session-family governance</span>
+            <p>{{ scientific_decision_summary.session_family_review_status_label }}: {{ scientific_decision_summary.session_family_review_status_summary }}</p>
+            {% if scientific_decision_summary.session_family_effective_review_origin_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_effective_review_origin_label|replace("_", " ")|title }}: {{ scientific_decision_summary.session_family_effective_review_origin_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_derived_review_status_label %}
+              <p class="helper-copy">Derived posture: {{ scientific_decision_summary.session_family_derived_review_status_label }}{% if scientific_decision_summary.session_family_derived_review_status_summary %} — {{ scientific_decision_summary.session_family_derived_review_status_summary }}{% endif %}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_manual_review_status_label %}
+              <p class="helper-copy">Manual posture: {{ scientific_decision_summary.session_family_manual_review_status_label }}{% if scientific_decision_summary.session_family_manual_review_action_label %} — {{ scientific_decision_summary.session_family_manual_review_action_label }}{% endif %}{% if scientific_decision_summary.session_family_manual_review_reviewer_label %} by {{ scientific_decision_summary.session_family_manual_review_reviewer_label }}{% endif %}.</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_manual_review_note_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_manual_review_note_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_manual_review_reopen_revise_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_manual_review_reopen_revise_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_effective_carryover_effect_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_effective_carryover_effect_summary }}</p>
+            {% endif %}
+            {% if scientific_decision_summary.session_family_governed_review_consistency_summary %}
+              <p class="helper-copy">{{ scientific_decision_summary.session_family_governed_review_consistency_summary }}</p>
+            {% endif %}
+            {% if workbench.session_id and scientific_decision_summary.session_family_review_subject_id %}
+              <form method="post" action="/governed-review/manual-action" class="workspace-switcher-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="session_id" value="{{ workbench.session_id }}" />
+                <input type="hidden" name="subject_type" value="session_family_carryover" />
+                <input type="hidden" name="subject_id" value="{{ scientific_decision_summary.session_family_review_subject_id }}" />
+                <input type="hidden" name="next" value="/discovery?session_id={{ workbench.session_id }}" />
+                <label>
+                  Manual action
+                  <select name="manual_action">
+                    <option value="approved">Approve</option>
+                    <option value="blocked">Block</option>
+                    <option value="deferred">Defer</option>
+                    <option value="downgraded">Downgrade</option>
+                    <option value="quarantined">Quarantine</option>
+                  </select>
+                </label>
+                <label>
+                  Review note
+                  <input type="text" name="governance_note" placeholder="optional bounded reviewer note" />
+                </label>
+                <button type="submit" class="btn-secondary">Record session-family review</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endif %}
       </section>
     {% endif %}
     {% if claims_summary.claim_count %}
@@ -652,8 +746,50 @@
                   {% if claim.claim_governed_review_history_summary %}
                     <span class="helper-copy">{{ claim.claim_governed_review_history_summary }}</span>
                   {% endif %}
+                  {% if claim.claim_effective_governed_review_origin_summary %}
+                    <span class="helper-copy">{{ claim.claim_effective_governed_review_origin_label|replace("_", " ")|title }}: {{ claim.claim_effective_governed_review_origin_summary }}</span>
+                  {% endif %}
+                  {% if claim.claim_derived_governed_review_status_label %}
+                    <span class="helper-copy">Derived posture: {{ claim.claim_derived_governed_review_status_label }}{% if claim.claim_derived_governed_review_status_summary %} — {{ claim.claim_derived_governed_review_status_summary }}{% endif %}</span>
+                  {% endif %}
+                  {% if claim.claim_manual_governed_review_status_label %}
+                    <span class="helper-copy">Manual posture: {{ claim.claim_manual_governed_review_status_label }}{% if claim.claim_manual_governed_review_action_label %} — {{ claim.claim_manual_governed_review_action_label }}{% endif %}{% if claim.claim_manual_governed_review_reviewer_label %} by {{ claim.claim_manual_governed_review_reviewer_label }}{% endif %}.</span>
+                  {% endif %}
+                  {% if claim.claim_manual_governed_review_note_summary %}
+                    <span class="helper-copy">{{ claim.claim_manual_governed_review_note_summary }}</span>
+                  {% endif %}
+                  {% if claim.claim_manual_governed_review_reopen_revise_summary %}
+                    <span class="helper-copy">{{ claim.claim_manual_governed_review_reopen_revise_summary }}</span>
+                  {% endif %}
+                  {% if claim.claim_effective_carryover_effect_summary %}
+                    <span class="helper-copy">{{ claim.claim_effective_carryover_effect_summary }}</span>
+                  {% endif %}
                   {% if claim.claim_promotion_audit_summary %}
                     <span class="helper-copy">{{ claim.claim_promotion_audit_summary }}</span>
+                  {% endif %}
+                  {% if workbench.session_id and claim.claim_id %}
+                    <form method="post" action="/governed-review/manual-action" class="workspace-switcher-form" style="margin-top: 0.45rem;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                      <input type="hidden" name="session_id" value="{{ workbench.session_id }}" />
+                      <input type="hidden" name="subject_type" value="claim" />
+                      <input type="hidden" name="subject_id" value="{{ claim.claim_id }}" />
+                      <input type="hidden" name="next" value="/discovery?session_id={{ workbench.session_id }}" />
+                      <label>
+                        Manual action
+                        <select name="manual_action">
+                          <option value="approved">Approve</option>
+                          <option value="blocked">Block</option>
+                          <option value="deferred">Defer</option>
+                          <option value="downgraded">Downgrade</option>
+                          <option value="quarantined">Quarantine</option>
+                        </select>
+                      </label>
+                      <label>
+                        Review note
+                        <input type="text" name="governance_note" placeholder="optional bounded reviewer note" />
+                      </label>
+                      <button type="submit" class="btn-secondary">Record claim review</button>
+                    </form>
                   {% endif %}
                   {% if claim.current_support_count and (claim.claim_observed_label_support_count or claim.claim_numeric_rule_based_support_count or claim.claim_unresolved_basis_count or claim.claim_weak_basis_count) %}
                     <span class="helper-copy">Current claim basis: observed-label {{ claim.claim_observed_label_support_count or 0 }}, numeric-rule {{ claim.claim_numeric_rule_based_support_count or 0 }}, unresolved {{ claim.claim_unresolved_basis_count or 0 }}, weak-basis {{ claim.claim_weak_basis_count or 0 }}.</span>
@@ -1164,6 +1300,27 @@
             {% if belief_state_summary.governed_review_history_summary %}
               <p class="helper-copy">{{ belief_state_summary.governed_review_history_summary }}</p>
             {% endif %}
+            {% if belief_state_summary.effective_governed_review_origin_summary %}
+              <p class="helper-copy">{{ belief_state_summary.effective_governed_review_origin_label|replace("_", " ")|title }}: {{ belief_state_summary.effective_governed_review_origin_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.derived_governed_review_status_label %}
+              <p class="helper-copy">Derived posture: {{ belief_state_summary.derived_governed_review_status_label }}{% if belief_state_summary.derived_governed_review_status_summary %} — {{ belief_state_summary.derived_governed_review_status_summary }}{% endif %}</p>
+            {% endif %}
+            {% if belief_state_summary.manual_governed_review_status_label %}
+              <p class="helper-copy">Manual posture: {{ belief_state_summary.manual_governed_review_status_label }}{% if belief_state_summary.manual_governed_review_action_label %} — {{ belief_state_summary.manual_governed_review_action_label }}{% endif %}{% if belief_state_summary.manual_governed_review_reviewer_label %} by {{ belief_state_summary.manual_governed_review_reviewer_label }}{% endif %}.</p>
+            {% endif %}
+            {% if belief_state_summary.manual_governed_review_note_summary %}
+              <p class="helper-copy">{{ belief_state_summary.manual_governed_review_note_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.manual_governed_review_reopen_revise_summary %}
+              <p class="helper-copy">{{ belief_state_summary.manual_governed_review_reopen_revise_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.effective_carryover_effect_summary %}
+              <p class="helper-copy">{{ belief_state_summary.effective_carryover_effect_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.governed_review_consistency_summary %}
+              <p class="helper-copy">{{ belief_state_summary.governed_review_consistency_summary }}</p>
+            {% endif %}
             {% if belief_state_summary.promotion_audit_summary %}
               <p class="helper-copy">{{ belief_state_summary.promotion_audit_summary }}</p>
             {% endif %}
@@ -1176,11 +1333,77 @@
             {% if belief_state_summary.continuity_cluster_review_history_summary %}
               <p class="helper-copy">{{ belief_state_summary.continuity_cluster_review_history_summary }}</p>
             {% endif %}
+            {% if belief_state_summary.continuity_cluster_effective_review_origin_summary %}
+              <p class="helper-copy">{{ belief_state_summary.continuity_cluster_effective_review_origin_label|replace("_", " ")|title }}: {{ belief_state_summary.continuity_cluster_effective_review_origin_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.continuity_cluster_derived_review_status_label %}
+              <p class="helper-copy">Continuity derived posture: {{ belief_state_summary.continuity_cluster_derived_review_status_label }}{% if belief_state_summary.continuity_cluster_derived_review_status_summary %} — {{ belief_state_summary.continuity_cluster_derived_review_status_summary }}{% endif %}</p>
+            {% endif %}
+            {% if belief_state_summary.continuity_cluster_manual_review_status_label %}
+              <p class="helper-copy">Continuity manual posture: {{ belief_state_summary.continuity_cluster_manual_review_status_label }}{% if belief_state_summary.continuity_cluster_manual_review_action_label %} — {{ belief_state_summary.continuity_cluster_manual_review_action_label }}{% endif %}{% if belief_state_summary.continuity_cluster_manual_review_reviewer_label %} by {{ belief_state_summary.continuity_cluster_manual_review_reviewer_label }}{% endif %}.</p>
+            {% endif %}
+            {% if belief_state_summary.continuity_cluster_manual_review_note_summary %}
+              <p class="helper-copy">{{ belief_state_summary.continuity_cluster_manual_review_note_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.continuity_cluster_manual_review_reopen_revise_summary %}
+              <p class="helper-copy">{{ belief_state_summary.continuity_cluster_manual_review_reopen_revise_summary }}</p>
+            {% endif %}
+            {% if belief_state_summary.continuity_cluster_effective_carryover_effect_summary %}
+              <p class="helper-copy">{{ belief_state_summary.continuity_cluster_effective_carryover_effect_summary }}</p>
+            {% endif %}
             {% if belief_state_summary.continuity_cluster_promotion_audit_summary %}
               <p class="helper-copy">{{ belief_state_summary.continuity_cluster_promotion_audit_summary }}</p>
             {% endif %}
             {% if belief_state_summary.carryover_guardrail_summary %}
               <p class="helper-copy">{{ belief_state_summary.carryover_guardrail_summary }}</p>
+            {% endif %}
+            {% if workbench.session_id and belief_state_summary.governed_review_subject_id %}
+              <form method="post" action="/governed-review/manual-action" class="workspace-switcher-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="session_id" value="{{ workbench.session_id }}" />
+                <input type="hidden" name="subject_type" value="belief_state" />
+                <input type="hidden" name="subject_id" value="{{ belief_state_summary.governed_review_subject_id }}" />
+                <input type="hidden" name="next" value="/discovery?session_id={{ workbench.session_id }}" />
+                <label>
+                  Belief-state manual action
+                  <select name="manual_action">
+                    <option value="approved">Approve</option>
+                    <option value="blocked">Block</option>
+                    <option value="deferred">Defer</option>
+                    <option value="downgraded">Downgrade</option>
+                    <option value="quarantined">Quarantine</option>
+                  </select>
+                </label>
+                <label>
+                  Review note
+                  <input type="text" name="governance_note" placeholder="optional bounded reviewer note" />
+                </label>
+                <button type="submit" class="btn-secondary">Record belief-state review</button>
+              </form>
+            {% endif %}
+            {% if workbench.session_id and belief_state_summary.continuity_cluster_review_subject_id %}
+              <form method="post" action="/governed-review/manual-action" class="workspace-switcher-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="session_id" value="{{ workbench.session_id }}" />
+                <input type="hidden" name="subject_type" value="continuity_cluster" />
+                <input type="hidden" name="subject_id" value="{{ belief_state_summary.continuity_cluster_review_subject_id }}" />
+                <input type="hidden" name="next" value="/discovery?session_id={{ workbench.session_id }}" />
+                <label>
+                  Continuity-cluster manual action
+                  <select name="manual_action">
+                    <option value="approved">Approve</option>
+                    <option value="blocked">Block</option>
+                    <option value="deferred">Defer</option>
+                    <option value="downgraded">Downgrade</option>
+                    <option value="quarantined">Quarantine</option>
+                  </select>
+                </label>
+                <label>
+                  Review note
+                  <input type="text" name="governance_note" placeholder="optional bounded reviewer note" />
+                </label>
+                <button type="submit" class="btn-secondary">Record continuity review</button>
+              </form>
             {% endif %}
           </div>
         {% endif %}
@@ -1268,8 +1491,14 @@
                 <span class="data-chip">Rank {{ workbench.decision_overview.primary_candidate.rank }}</span>
                 <span class="data-chip">Policy priority {{ "%.3f"|format(workbench.decision_overview.primary_candidate.priority_score or 0) }}</span>
                 <span class="data-chip">{{ workbench.ranking_policy.primary_score_label }} {{ "%.3f"|format(workbench.decision_overview.primary_candidate.primary_score_value or 0) }}</span>
+                {% if workbench.decision_overview.primary_candidate.raw_predictive_signal is not none %}
+                  <span class="data-chip">{{ workbench.decision_overview.primary_candidate.raw_predictive_signal_label or "Raw signal" }} {{ "%.3f"|format(workbench.decision_overview.primary_candidate.raw_predictive_signal or 0) }}</span>
+                {% endif %}
               </div>
               <p>{{ workbench.decision_overview.primary_candidate.summary }}</p>
+              {% if workbench.decision_overview.primary_candidate.score_decomposition_summary %}
+                <p class="helper-copy">{{ workbench.decision_overview.primary_candidate.score_decomposition_summary }}</p>
+              {% endif %}
               <div class="decision-primary-context">
                 {% if workbench.decision_overview.primary_candidate.domain_label %}
                   <span class="data-chip">{{ workbench.decision_overview.primary_candidate.domain_label }}</span>
@@ -1306,10 +1535,16 @@
                   <span class="data-chip">{{ candidate.decision_label }}</span>
                   <span class="data-chip">Policy priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
                   <span class="data-chip">{{ candidate.primary_score_label }} {{ "%.3f"|format(candidate.primary_score_value or 0) }}</span>
+                  {% if candidate.raw_predictive_signal is not none %}
+                    <span class="data-chip">{{ candidate.raw_predictive_signal_label or "Raw signal" }} {{ "%.3f"|format(candidate.raw_predictive_signal or 0) }}</span>
+                  {% endif %}
                   {% if candidate.trust_label %}
                     <span class="data-chip">{{ candidate.trust_label }}</span>
                   {% endif %}
                 </div>
+                {% if candidate.score_decomposition_summary %}
+                  <p class="helper-copy">{{ candidate.score_decomposition_summary }}</p>
+                {% endif %}
               </article>
             {% endfor %}
           </div>

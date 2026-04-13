@@ -350,6 +350,7 @@ def run_pipeline(
         run_contract=run_contract,
         comparison_anchors=comparison_anchors,
         contract_versions=contract_versions,
+        bundle=bundle,
     )
     _apply_result_metadata(
         result,

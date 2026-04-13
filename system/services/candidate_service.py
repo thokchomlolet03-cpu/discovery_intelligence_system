@@ -58,6 +58,29 @@ def max_similarity_to_reference(candidate_fp, reference_fingerprints):
     return max(similarities, default=0.0)
 
 
+def reference_similarity_profile(candidate_fp, reference_fingerprints, *, top_k: int = 5):
+    if candidate_fp is None or not reference_fingerprints:
+        return {
+            "max_similarity": 0.0,
+            "support_density": 0.0,
+            "top_k_mean_similarity": 0.0,
+            "neighbor_count_above_04": 0,
+        }
+
+    similarities = sorted(
+        (tanimoto_similarity(candidate_fp, reference_fp) for _, reference_fp in reference_fingerprints),
+        reverse=True,
+    )
+    strongest = similarities[: max(1, top_k)]
+    support_density = float(sum(strongest) / len(strongest)) if strongest else 0.0
+    return {
+        "max_similarity": float(similarities[0] if similarities else 0.0),
+        "support_density": support_density,
+        "top_k_mean_similarity": support_density,
+        "neighbor_count_above_04": int(sum(1 for value in strongest if value >= 0.4)),
+    }
+
+
 def candidate_similarity_table(df, reference_smiles, config=None, enforce_batch_diversity: bool = True):
     cfg = resolve_system_config(config)
     n_bits = len(infer_fingerprint_columns(df))
@@ -84,8 +107,12 @@ def candidate_similarity_table(df, reference_smiles, config=None, enforce_batch_
             prepared_rows.append(prepared)
             continue
 
-        max_similarity = max_similarity_to_reference(candidate_fp, reference_fingerprints)
-        prepared["max_similarity"] = float(max_similarity)
+        similarity_profile = reference_similarity_profile(candidate_fp, reference_fingerprints)
+        max_similarity = float(similarity_profile["max_similarity"])
+        prepared["max_similarity"] = max_similarity
+        prepared["support_density"] = float(similarity_profile["support_density"])
+        prepared["top_k_mean_similarity"] = float(similarity_profile["top_k_mean_similarity"])
+        prepared["neighbor_count_above_04"] = int(similarity_profile["neighbor_count_above_04"])
         prepared["novelty"] = float(max(0.0, 1.0 - max_similarity))
         prepared["novel_to_dataset"] = int(max_similarity < 1.0)
         if not enforce_batch_diversity:
@@ -391,6 +418,7 @@ __all__ = [
     "mutate_smiles",
     "out_of_domain_ratio",
     "process_candidate_dataframe",
+    "reference_similarity_profile",
     "ring_addition",
     "tanimoto_similarity",
 ]

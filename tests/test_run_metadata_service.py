@@ -42,17 +42,29 @@ class RunMetadataServiceTest(unittest.TestCase):
             validation_summary={"label_source": "", "rows_with_values": 12},
             bundle={
                 "selected_model": {"name": "rf_regression", "calibration_method": ""},
-                "model_family": "random_forest",
+                "model_family": "extra_trees",
                 "training_scope": "session_trained",
-                "descriptor_features": ["mw", "rdkit_logp"],
+                "descriptor_features": ["mw", "rdkit_logp", "tpsa", "ring_count"],
                 "fingerprint_bits": 2048,
             },
         )
 
         self.assertEqual(run_contract["selected_model_name"], "rf_regression")
         self.assertEqual(run_contract["training_scope"], "session_trained")
-        self.assertEqual(run_contract["feature_signature"], "rdkit_descriptors_plus_morgan_fp_2048")
+        self.assertEqual(run_contract["feature_signature"], "rdkit_descriptors_4_plus_morgan_fp_2048")
         self.assertEqual(run_contract["label_source"], "continuous_measurement")
+        self.assertEqual(run_contract["selected_model_family"], "extra_trees")
+        self.assertEqual(
+            run_contract["predictive_task_contract"]["task_label"],
+            "Bounded measurement-oriented candidate prioritization",
+        )
+        self.assertIn(
+            "feature contract currently uses",
+            run_contract["predictive_representation_summary"]["represented_inputs_summary"].lower(),
+        )
+        self.assertIn("extra trees", run_contract["predictive_representation_summary"]["represented_inputs_summary"].lower())
+        self.assertTrue(run_contract["predictive_evaluation_contract"]["evaluation_ready"])
+        self.assertIn("comparison cohort", run_contract["predictive_evaluation_contract"]["comparison_cohort_summary"].lower())
 
     def test_infer_comparison_anchors_backfills_from_legacy_session_records(self):
         anchors = infer_comparison_anchors(

@@ -41,13 +41,14 @@ Entry into predictive core / representation / evaluation rigor after the neutral
 - Candidate rows now also persist raw predictive signal, raw-vs-heuristic blend weights, blended priority, support-density context, representation-support adjustment, and bounded final priority score so shortlist ordering is more inspectable at candidate level.
 - The live predictive engine now uses a broader RDKit descriptor contract, similarity-density context, and model-family comparison between random-forest and extra-trees variants before saving the selected session model.
 - Candidate-level uncertainty is now more explicit: the score layer can surface bounded uncertainty, fragility, closeness-to-neighbors, strong/fragile/thin signal status, and bounded caution summaries instead of relying only on a single uncertainty scalar.
-- Offline ranking evaluation now records candidate-separation, shortlist-stability, closeness-band, heuristic-influence, representation-sensitivity, calibration-awareness, model-family comparison, comparison-cohort, session-variation, and representation-support summaries so scoring changes can be compared more honestly across runs or versions.
+- Offline ranking evaluation now records candidate-separation, shortlist-stability, closeness-band, top-k quality, heuristic-influence, representation-sensitivity, calibration-awareness, calibration-band behavior, model-family comparison, comparison-cohort, evaluation-subset, session-variation, cross-session comparison, representation-support summaries, reusable evaluation subsets, bounded cross-run comparison anchors, and compact engine-strength versus engine-weakness summaries so scoring changes can be compared more honestly across runs or versions.
+- Predictive evaluation contracts now surface cohort-diagnostic, evaluation-subset, cross-session comparison, representation-aware evaluation, representation-conditioned reliability, calibration-band, and cross-run comparison summaries so the existing pages can show where the engine is stronger versus still representation-limited without pretending benchmark certainty.
 
 ### Partial
 - Measurement-first modeling is now surfaced more honestly in Discovery and Dashboard, but the broader scientific core still leans on compatibility-shaped ranking and heuristic signals.
 - Predictive-path visibility is much stronger than before, but the underlying scoring path is still only partly model-driven and still depends on bridge-state shortlist heuristics.
 - Candidate-level score semantics are clearer than before, and more of the final bounded priority now comes from raw signal than before, but the score function still leans on weighted shortlist policy and descriptor/similarity-shaped representation adjustments rather than a richer predictive representation.
-- Offline ranking evaluation now exists and is more useful than before, but it is still a bounded diagnostic harness rather than a mature benchmark platform with strong ground-truth ranking labels or deeper calibration evidence.
+- Offline ranking evaluation now exists and is more useful than before, but it is still a bounded diagnostic harness rather than a mature benchmark platform with strong ground-truth ranking labels, richer session-family benchmark cohorts, or deep calibration evidence.
 - Explanation quality is materially better than before, and Discovery/Dashboard now surface evidence, model, policy, source class, trust tier, and fallback semantics more clearly, but governance still remains partly rule-based even after adding bounded manual override semantics.
 - Workspace memory is useful, but it is not yet the same thing as a model-improvement loop.
 - Selective evidence governance is now explicit and partly operational, but it is still narrow: it affects interpretation/ranking context wording, continuity semantics, and limited reuse framing more than core recommendation mechanics.
@@ -104,7 +105,7 @@ State the next highest-leverage follow-up, not a long backlog.
 - Candidate generation is not yet a strong discovery mechanism.
 
 ## Next Recommended Phase
-Strengthen the representation/evaluation bridge further by adding deeper comparison cohorts, stronger session-family evaluation sets, and more principled uncertainty/calibration analysis on top of the current bounded diagnostics without adding live retraining yet.
+Strengthen the benchmark-and-calibration layer further by adding richer session-family evaluation cohorts, stronger reusable benchmark subsets, and more principled calibration/uncertainty analysis on top of the current bounded diagnostics without adding live retraining yet.
 
 ## Notes for Codex
 - Be conservative about scientific claims.

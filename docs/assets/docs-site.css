@@ -250,6 +250,7 @@ a {
   padding: 10px 11px;
   color: var(--text);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
 }
@@ -406,6 +407,7 @@ a {
   color: var(--text);
   cursor: pointer;
   text-align: center;
+  text-decoration: none;
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 

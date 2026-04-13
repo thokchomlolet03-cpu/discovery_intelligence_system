@@ -8,6 +8,14 @@
       name="description"
       content="Structured browser-readable documentation portal for Discovery Intelligence."
     />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("di-docs-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {}
+    </script>
     <link rel="stylesheet" href="./assets/docs-site.css" />
   </head>
   <body>
@@ -27,6 +35,7 @@
           <span class="search-label">Search docs</span>
           <input id="doc-search" type="search" placeholder="Search title, category, or summary" />
         </label>
+        <button id="theme-toggle" class="ghost-button" type="button">Light mode</button>
         <button id="focus-toggle" class="ghost-button" type="button">Focus mode</button>
       </div>
     </header>
@@ -98,8 +107,17 @@
               <p class="helper-copy">
                 Use the map for quick browsing, then move into the reader when you want the full document.
               </p>
+              <div class="constellation-controls">
+                <button id="map-zoom-out" class="ghost-button" type="button">Zoom out</button>
+                <button id="map-zoom-reset" class="ghost-button" type="button">Reset</button>
+                <button id="map-zoom-in" class="ghost-button" type="button">Zoom in</button>
+              </div>
             </div>
-            <div id="doc-constellation" class="doc-constellation" aria-label="Document constellation diagram"></div>
+            <div id="doc-constellation-viewport" class="doc-constellation-viewport" aria-label="Scrollable document constellation viewport">
+              <div id="doc-constellation-stage" class="doc-constellation-stage">
+                <div id="doc-constellation" class="doc-constellation" aria-label="Document constellation diagram"></div>
+              </div>
+            </div>
           </section>
 
           <section>
@@ -160,5 +178,6 @@
     </template>
 
     <script src="./assets/docs-site.js"></script>
+    <script src="./assets/theme-toggle.js"></script>
   </body>
 </html>

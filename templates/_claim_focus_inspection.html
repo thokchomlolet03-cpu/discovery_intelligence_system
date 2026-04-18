@@ -1,0 +1,40 @@
+{% set claim = focused_claim_inspection or {} %}
+{% if claim %}
+  <details class="mini-callout" data-epistemic-rendered="focused-claim-inspection">
+    <summary>{{ section_title or "Inspect one claim" }}</summary>
+    {% if section_copy %}
+      <p class="helper-copy">{{ section_copy }}</p>
+    {% endif %}
+    {% if claim.available %}
+      <div class="dashboard-meta-row">
+        <span class="data-chip">Claim {{ claim.claim_type.replace("_", " ") }}</span>
+        <span class="data-chip">Status {{ claim.claim_status.replace("_", " ") }}</span>
+        <span class="data-chip">Scope {{ claim.claim_scope.replace("_", " ") }}</span>
+        {% if claim.candidate_label %}
+          <span class="data-chip">Candidate {{ claim.candidate_label }}</span>
+        {% endif %}
+        {% if claim.run_label %}
+          <span class="data-chip">Run {{ claim.run_label }}</span>
+        {% endif %}
+      </div>
+      <p>{{ claim.claim_text }}</p>
+      <div class="mini-callout">
+        <span class="panel-label">Support basis</span>
+        <p>{{ claim.support_basis_summary }}</p>
+      </div>
+      <div class="dashboard-meta-row">
+        <span class="data-chip">Requests {{ claim.experiment_request_count or 0 }}</span>
+        <span class="data-chip">Results {{ claim.experiment_result_count or 0 }}</span>
+        <span class="data-chip">Pending {{ claim.pending_request_count or 0 }}</span>
+        <span class="data-chip">Belief updates {{ claim.belief_update_count or 0 }}</span>
+        <span class="data-chip">Belief {{ claim.belief_state }}</span>
+        <span class="data-chip">Unresolved {{ claim.unresolved_state.replace("_", " ") }}</span>
+      </div>
+    {% else %}
+      <p>No focused claim is available for inspection.</p>
+      {% if claim.absence_reason %}
+        <p class="helper-copy">Explicit absence: {{ claim.absence_reason.replace("_", " ") }}.</p>
+      {% endif %}
+    {% endif %}
+  </details>
+{% endif %}

@@ -10,7 +10,15 @@ import plotly.express as px
 from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
 from system.db import resolve_artifact_path
 from system.review_manager import build_review_queue
+from system.services.epistemic_ui_service import (
+    build_epistemic_entry_points,
+    build_focused_claim_inspection,
+    build_focused_experiment_inspection,
+    build_session_epistemic_detail_reveal,
+    build_session_epistemic_summary,
+)
 from system.services.run_metadata_service import build_run_provenance
+from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.data_service import canonical_label_column
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context, domain_chip_label
 from system.session_artifacts import (
@@ -226,13 +234,17 @@ def _dashboard_insight_summary(
     target_definition: dict[str, Any],
     modeling_mode: str,
     run_provenance: dict[str, Any],
+    ranking_policy: dict[str, Any] | None = None,
+    ranking_diagnostics: dict[str, Any] | None = None,
+    recommendation_summary: str = "",
+    trust_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
-    ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
-    recommendation_summary = str(analysis_report.get("top_level_recommendation_summary") or "").strip()
+    ranking_diagnostics = ranking_diagnostics if isinstance(ranking_diagnostics, dict) and ranking_diagnostics else analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
+    recommendation_summary = str(recommendation_summary or analysis_report.get("top_level_recommendation_summary") or "").strip()
     review_summary = review_payload.get("summary", {}) if isinstance(review_payload, dict) else {}
-    ranking_policy = analysis_report.get("ranking_policy", {}) if isinstance(analysis_report, dict) else {}
-    trust_context = build_trust_context(
+    ranking_policy = ranking_policy if isinstance(ranking_policy, dict) else analysis_report.get("ranking_policy", {}) if isinstance(analysis_report, dict) else {}
+    trust_context = trust_context if isinstance(trust_context, dict) else build_trust_context(
         target_definition=target_definition,
         modeling_mode=modeling_mode,
         analysis_report=analysis_report,
@@ -364,6 +376,12 @@ def _dashboard_insight_summary(
 
 def build_dashboard_context(session_id: str | None = None, workspace_id: str | None = None) -> dict[str, Any]:
     run_root = _run_root(session_id)
+    projection = build_scientific_session_projection(
+        session_record={"session_id": session_id or "", "workspace_id": workspace_id or "", "source_name": ""},
+        workspace_id=workspace_id,
+        upload_metadata={},
+        include_workspace_memory=False,
+    )
     dataset = _load_csv(
         _resolve_run_artifact(
             session_id=session_id,
@@ -384,7 +402,7 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
             )
         )
     )
-    decision_payload = load_decision_artifact_payload(
+    decision_payload = projection.get("decision_payload") if isinstance(projection.get("decision_payload"), dict) else load_decision_artifact_payload(
         session_id=session_id,
         workspace_id=workspace_id,
         allow_global_fallback=workspace_id is None,
@@ -402,7 +420,7 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
                 "artifact_state": "error",
                 "load_error": "Decision artifact failed contract validation.",
             }
-    analysis_report = load_analysis_report_payload(
+    analysis_report = projection.get("analysis_report") if isinstance(projection.get("analysis_report"), dict) else load_analysis_report_payload(
         session_id=session_id,
         workspace_id=workspace_id,
         allow_global_fallback=workspace_id is None,
@@ -432,7 +450,9 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         review_payload = build_review_queue(decision_rows, session_id=session_id, workspace_id=workspace_id)
 
     warnings = analysis_report.get("warnings", []) if isinstance(analysis_report, dict) else []
-    target_definition = analysis_report.get("target_definition") if isinstance(analysis_report, dict) and isinstance(analysis_report.get("target_definition"), dict) else {}
+    target_definition = projection.get("target_definition") if isinstance(projection.get("target_definition"), dict) else {}
+    if not target_definition:
+        target_definition = analysis_report.get("target_definition") if isinstance(analysis_report, dict) and isinstance(analysis_report.get("target_definition"), dict) else {}
     if not target_definition and isinstance(decision_payload.get("target_definition"), dict):
         target_definition = decision_payload.get("target_definition") or {}
     modeling_mode = str(
@@ -440,26 +460,26 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         or decision_payload.get("modeling_mode")
         or ""
     ).strip()
-    metric_interpretation = build_metric_interpretation(
+    metric_interpretation = projection.get("metric_interpretation") if isinstance(projection.get("metric_interpretation"), list) else build_metric_interpretation(
         target_definition=target_definition,
         modeling_mode=modeling_mode,
         ranking_policy=analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {},
     )
-    run_contract = (
+    run_contract = projection.get("run_contract") if isinstance(projection.get("run_contract"), dict) else (
         analysis_report.get("run_contract")
         if isinstance(analysis_report, dict) and isinstance(analysis_report.get("run_contract"), dict)
         else decision_payload.get("run_contract")
         if isinstance(decision_payload.get("run_contract"), dict)
         else {}
     )
-    comparison_anchors = (
+    comparison_anchors = projection.get("comparison_anchors") if isinstance(projection.get("comparison_anchors"), dict) else (
         analysis_report.get("comparison_anchors")
         if isinstance(analysis_report, dict) and isinstance(analysis_report.get("comparison_anchors"), dict)
         else decision_payload.get("comparison_anchors")
         if isinstance(decision_payload.get("comparison_anchors"), dict)
         else {}
     )
-    run_provenance = build_run_provenance(
+    run_provenance = projection.get("run_provenance") if isinstance(projection.get("run_provenance"), dict) else build_run_provenance(
         run_contract=run_contract,
         comparison_anchors=comparison_anchors,
     )
@@ -469,10 +489,22 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         {"label": "Top policy experiment value", "value": f"{float((decision_payload.get('summary') or {}).get('top_experiment_value', 0.0)):.3f}"},
         {"label": "Pending review", "value": int((review_payload.get("summary") or {}).get("pending_review", 0))},
     ]
-    measurement_summary = analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
-    ranking_diagnostics = analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
+    measurement_summary = projection.get("measurement_summary") if isinstance(projection.get("measurement_summary"), dict) else analysis_report.get("measurement_summary", {}) if isinstance(analysis_report, dict) else {}
+    ranking_diagnostics = projection.get("ranking_diagnostics") if isinstance(projection.get("ranking_diagnostics"), dict) else analysis_report.get("ranking_diagnostics", {}) if isinstance(analysis_report, dict) else {}
+    predictive_summary = projection.get("predictive_summary") if isinstance(projection.get("predictive_summary"), dict) else {}
+    governance_summary = projection.get("governance_summary") if isinstance(projection.get("governance_summary"), dict) else {}
+    trust_context = projection.get("trust_context") if isinstance(projection.get("trust_context"), dict) else build_trust_context(
+        target_definition=target_definition,
+        modeling_mode=modeling_mode,
+        analysis_report=analysis_report,
+        decision_payload=decision_payload,
+        ranking_policy=projection.get("ranking_policy") if isinstance(projection.get("ranking_policy"), dict) else analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {},
+        run_provenance=run_provenance,
+    )
     if measurement_summary:
         cards.append({"label": "Rows with values", "value": int(measurement_summary.get("rows_with_values", 0) or 0)})
+    if predictive_summary.get("average_uncertainty") is not None:
+        cards.append({"label": "Avg uncertainty", "value": f"{float(predictive_summary.get('average_uncertainty', 0.0)):.3f}"})
     if ranking_diagnostics.get("out_of_domain_rate") is not None:
         cards.append(
             {
@@ -628,6 +660,10 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
             target_definition=target_definition,
             modeling_mode=modeling_mode,
             run_provenance=run_provenance,
+            ranking_policy=projection.get("ranking_policy") if isinstance(projection.get("ranking_policy"), dict) else {},
+            ranking_diagnostics=ranking_diagnostics,
+            recommendation_summary=str(projection.get("recommendation_summary") or analysis_report.get("top_level_recommendation_summary") or "").strip(),
+            trust_context=trust_context,
         ),
         "review_summary": review_payload.get("summary", {}),
         "analysis_report": analysis_report if isinstance(analysis_report, dict) else {},
@@ -639,4 +675,38 @@ def build_dashboard_context(session_id: str | None = None, workspace_id: str | N
         "modeling_mode": modeling_mode,
         "decision_intent": str((analysis_report.get("decision_intent") if isinstance(analysis_report, dict) else "") or decision_payload.get("decision_intent") or "").strip(),
         "metric_interpretation": metric_interpretation,
+        "predictive_summary": predictive_summary,
+        "governance_summary": governance_summary,
+        "trust_context": trust_context,
+        "run_interpretation_summary": projection.get("run_interpretation_summary") if isinstance(projection.get("run_interpretation_summary"), dict) else {},
+        "belief_layer_summary": projection.get("belief_layer_summary") if isinstance(projection.get("belief_layer_summary"), dict) else {},
+        "belief_read_model": projection.get("belief_read_model") if isinstance(projection.get("belief_read_model"), dict) else {},
+        "experiment_lifecycle_summary": projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {},
+        "experiment_lifecycle_model": projection.get("experiment_lifecycle_model") if isinstance(projection.get("experiment_lifecycle_model"), dict) else {},
+        "claim_detail_summary": projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {},
+        "claim_detail_items": projection.get("claim_detail_items") if isinstance(projection.get("claim_detail_items"), list) else [],
+        "session_epistemic_summary": projection.get("session_epistemic_summary") if isinstance(projection.get("session_epistemic_summary"), dict) else build_session_epistemic_summary(
+            belief_layer_summary=projection.get("belief_layer_summary") if isinstance(projection.get("belief_layer_summary"), dict) else {},
+            experiment_lifecycle_summary=projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {},
+            claim_detail_summary=projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {},
+        ),
+        "epistemic_entry_points": projection.get("epistemic_entry_points") if isinstance(projection.get("epistemic_entry_points"), dict) else build_epistemic_entry_points(
+            claim_detail_summary=projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {},
+            experiment_lifecycle_summary=projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {},
+        ),
+        "session_epistemic_detail_reveal": projection.get("session_epistemic_detail_reveal") if isinstance(projection.get("session_epistemic_detail_reveal"), dict) else build_session_epistemic_detail_reveal(
+            session_epistemic_summary=projection.get("session_epistemic_summary") if isinstance(projection.get("session_epistemic_summary"), dict) else {},
+            epistemic_entry_points=projection.get("epistemic_entry_points") if isinstance(projection.get("epistemic_entry_points"), dict) else {},
+            claim_detail_items=projection.get("claim_detail_items") if isinstance(projection.get("claim_detail_items"), list) else [],
+            experiment_lifecycle_model=projection.get("experiment_lifecycle_model") if isinstance(projection.get("experiment_lifecycle_model"), dict) else {},
+        ),
+        "focused_claim_inspection": projection.get("focused_claim_inspection") if isinstance(projection.get("focused_claim_inspection"), dict) else build_focused_claim_inspection(
+            claim_detail_items=projection.get("claim_detail_items") if isinstance(projection.get("claim_detail_items"), list) else [],
+        ),
+        "focused_experiment_inspection": projection.get("focused_experiment_inspection") if isinstance(projection.get("focused_experiment_inspection"), dict) else build_focused_experiment_inspection(
+            experiment_lifecycle_model=projection.get("experiment_lifecycle_model") if isinstance(projection.get("experiment_lifecycle_model"), dict) else {},
+        ),
+        "recommendation_summary": str(projection.get("recommendation_summary") or analysis_report.get("top_level_recommendation_summary") or "").strip(),
+        "scientific_session_projection": projection,
+        "projection_diagnostics": projection.get("diagnostics") if isinstance(projection, dict) else {},
     }

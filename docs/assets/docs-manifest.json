@@ -59,6 +59,12 @@
   },
   "documents": [
     {
+      "title": "Current System State",
+      "path": "current_system_state.md",
+      "category": "System Truth",
+      "summary": "Structured technical status document describing what Discovery Intelligence is today, what is implemented, what remains partial, and what should come next."
+    },
+    {
       "title": "Current System Truth",
       "path": "current_system_truth.md",
       "category": "System Truth",

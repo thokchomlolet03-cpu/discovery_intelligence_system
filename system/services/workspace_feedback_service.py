@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from system.db.repositories import ReviewRepository
+from system.db import ScientificStateRepository
 
 
 review_repository = ReviewRepository()
+scientific_state_repository = ScientificStateRepository()
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -202,6 +204,16 @@ def annotate_candidates_with_workspace_memory(
     if not candidate_rows:
         return []
 
+    carryover_records: list[dict[str, Any]] = []
+    if workspace_id and session_id:
+        try:
+            carryover_records = scientific_state_repository.list_carryover_records(
+                session_id=str(session_id),
+                workspace_id=workspace_id,
+            )
+        except Exception:
+            carryover_records = []
+
     if review_events is None:
         review_events = review_repository.list_reviews(workspace_id=workspace_id)
     label_map = session_labels if isinstance(session_labels, dict) else {}
@@ -222,6 +234,30 @@ def annotate_candidates_with_workspace_memory(
     history_by_token: dict[str, list[dict[str, Any]]] = {}
     for review in serialized_reviews:
         history_by_token.setdefault(review["match_token"], []).append(review)
+    for item in carryover_records:
+        canonical = _normalize_token(item.get("canonical_smiles") or item.get("smiles"))
+        if not canonical:
+            continue
+        history_by_token.setdefault(canonical, []).append(
+            {
+                "session_id": _clean_text(item.get("source_session_id")),
+                "session_label": label_map.get(_clean_text(item.get("source_session_id")), _clean_text(item.get("source_session_id"), default="Session")),
+                "candidate_id": _clean_text(item.get("source_candidate_id")),
+                "smiles": _clean_text(item.get("smiles")),
+                "match_token": canonical,
+                "action": _clean_text(item.get("source_action")),
+                "action_label": _title_token(item.get("source_action")),
+                "status": _clean_text(item.get("source_status")),
+                "status_label": _title_token(item.get("source_status")),
+                "note": _clean_text(item.get("source_note")),
+                "reviewer": _clean_text(item.get("source_reviewer"), default="unassigned"),
+                "reviewed_at": _clean_text(item.get("source_reviewed_at")),
+                "reviewed_at_label": _humanize_timestamp(item.get("source_reviewed_at")),
+                "upload_url": f"/upload?session_id={_clean_text(item.get('source_session_id'))}" if _clean_text(item.get("source_session_id")) else "",
+                "discovery_url": f"/discovery?session_id={_clean_text(item.get('source_session_id'))}" if _clean_text(item.get("source_session_id")) else "",
+                "dashboard_url": f"/dashboard?session_id={_clean_text(item.get('source_session_id'))}" if _clean_text(item.get("source_session_id")) else "",
+            }
+        )
 
     annotated: list[dict[str, Any]] = []
     for candidate in candidate_rows:

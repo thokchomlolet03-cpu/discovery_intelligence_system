@@ -9,6 +9,7 @@ import pandas as pd
 from system.contracts import REVIEW_STATUS_VALUES, validate_review_event_record, validate_review_queue_artifact
 from system.db.repositories import ArtifactRepository, ReviewRepository
 from system.services.artifact_service import DATA_DIR, uploaded_session_dir, write_dataframe, write_review_queue_artifact
+from system.services.scientific_state_service import sync_review_into_scientific_state
 
 
 REVIEWS_PATH = DATA_DIR / "reviews.json"
@@ -117,7 +118,9 @@ def record_review_action(
             "metadata": {},
         }
     )
-    return review_repository.record_review(record)
+    saved = review_repository.record_review(record)
+    sync_review_into_scientific_state(saved)
+    return saved
 
 
 def record_review_actions(
@@ -167,7 +170,10 @@ def record_review_actions(
 
     if not created_payloads:
         return []
-    return review_repository.record_reviews(created_payloads)
+    saved = review_repository.record_reviews(created_payloads)
+    for item in saved:
+        sync_review_into_scientific_state(item)
+    return saved
 
 
 def latest_review_map(session_id: str | None, workspace_id: str | None = None) -> dict[str, dict[str, Any]]:

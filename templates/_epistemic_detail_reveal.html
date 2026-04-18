@@ -1,0 +1,59 @@
+{% set detail = epistemic_detail_reveal or {} %}
+{% if detail %}
+  <details class="mini-callout" data-epistemic-rendered="detail-reveal">
+    <summary>{{ section_title or "Inspect epistemic detail" }}</summary>
+    {% if section_copy %}
+      <p class="helper-copy">{{ section_copy }}</p>
+    {% endif %}
+
+    {% if detail.available %}
+      <div class="dashboard-meta-row">
+        <span class="data-chip">Claim detail {{ "available" if detail.detail_available else "absent" }}</span>
+        <span class="data-chip">Experiment lifecycle {{ "available" if detail.lifecycle_available else "absent" }}</span>
+        <span class="data-chip">Claims shown {{ detail.claim_item_count or 0 }}</span>
+        <span class="data-chip">Experiments shown {{ detail.experiment_item_count or 0 }}</span>
+        <span class="data-chip">Unresolved {{ detail.unresolved_count or 0 }}</span>
+      </div>
+
+      {% if detail.claim_items %}
+        <div class="mini-callout">
+          <span class="panel-label">Claim detail</span>
+          <ul class="compact-list">
+            {% for item in detail.claim_items %}
+              <li>
+                {{ item.claim_type.replace("_", " ") }}:
+                {{ item.claim_text }}
+                {% if item.pending_request_count %} Pending {{ item.pending_request_count }}.{% endif %}
+                {% if item.has_results %} Result recorded.{% endif %}
+                Belief {{ item.belief_state }}.
+                Unresolved state: {{ item.unresolved_state.replace("_", " ") }}.
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if detail.experiment_items %}
+        <div class="mini-callout">
+          <span class="panel-label">Experiment lifecycle</span>
+          <ul class="compact-list">
+            {% for item in detail.experiment_items %}
+              <li>
+                {{ item.status.replace("_", " ") }}:
+                {{ item.objective_summary }}
+                {% if item.result_summary %} {{ item.result_summary }}{% endif %}
+                {% if item.belief_summary %} {{ item.belief_summary }}{% endif %}
+                Unresolved state: {{ item.unresolved_state.replace("_", " ") }}.
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    {% else %}
+      <p>No canonical epistemic detail is available beyond the compact summary.</p>
+      {% if detail.absence_reason %}
+        <p class="helper-copy">Explicit absence: {{ detail.absence_reason.replace("_", " ") }}.</p>
+      {% endif %}
+    {% endif %}
+  </details>
+{% endif %}

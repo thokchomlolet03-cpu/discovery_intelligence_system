@@ -3,6 +3,13 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from system.discovery_workbench import humanize_timestamp
+from system.services.epistemic_ui_service import (
+    build_epistemic_entry_points,
+    build_focused_claim_inspection,
+    build_focused_experiment_inspection,
+    build_session_epistemic_detail_reveal,
+    build_session_epistemic_summary,
+)
 from system.services.run_metadata_service import comparison_anchor_summary, infer_comparison_anchors
 from system.services.session_comparison_service import (
     build_candidate_preview,
@@ -10,6 +17,7 @@ from system.services.session_comparison_service import (
     build_session_comparison_overview,
     compare_session_basis,
 )
+from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.session_identity_service import build_session_identity
 from system.services.status_semantics_service import build_status_semantics
 from system.services.workspace_feedback_service import build_session_workspace_memory, build_workspace_feedback_summary
@@ -187,19 +195,26 @@ def build_session_history_context(
             except Exception:
                 latest_job = None
 
-        decision_payload = load_decision_artifact_payload(
+        projection = build_scientific_session_projection(
+            session_record=session,
+            workspace_id=workspace_id,
+            upload_metadata=upload_metadata,
+            current_job=latest_job,
+            include_workspace_memory=False,
+        )
+        decision_payload = projection.get("decision_payload") if isinstance(projection.get("decision_payload"), dict) else load_decision_artifact_payload(
             session_id=session_id,
             workspace_id=workspace_id,
             allow_global_fallback=False,
         )
-        analysis_report = load_analysis_report_payload(
+        analysis_report = projection.get("analysis_report") if isinstance(projection.get("analysis_report"), dict) else load_analysis_report_payload(
             session_id=session_id,
             workspace_id=workspace_id,
             allow_global_fallback=False,
         )
 
         results_ready = str(decision_payload.get("artifact_state") or "").strip().lower() == "ok"
-        measurement = _measurement_summary(session, analysis_report)
+        measurement = projection.get("measurement_summary") if isinstance(projection.get("measurement_summary"), dict) else _measurement_summary(session, analysis_report)
         top_summary = decision_payload.get("summary") if isinstance(decision_payload.get("summary"), dict) else {}
         job_status = str(
             (latest_job or {}).get("status")
@@ -211,15 +226,16 @@ def build_session_history_context(
             results_ready=results_ready,
             has_upload=bool(upload_metadata),
         )
-        ranking_policy = analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {}
+        ranking_policy = projection.get("ranking_policy") if isinstance(projection.get("ranking_policy"), dict) else analysis_report.get("ranking_policy") if isinstance(analysis_report, dict) else {}
         ranking_policy = ranking_policy if isinstance(ranking_policy, dict) else {}
         recommendation_summary = str(
-            analysis_report.get("top_level_recommendation_summary")
+            projection.get("recommendation_summary")
+            or analysis_report.get("top_level_recommendation_summary")
             or decision_payload.get("load_error")
             or summary_metadata.get("last_error")
             or ""
         ).strip()
-        session_identity = build_session_identity(
+        session_identity = projection.get("session_identity") if isinstance(projection.get("session_identity"), dict) else build_session_identity(
             session_record=session,
             upload_metadata=upload_metadata,
             analysis_report=analysis_report,
@@ -227,22 +243,24 @@ def build_session_history_context(
             current_job=latest_job,
             state_kind="ready" if results_ready else "",
         )
-        status_semantics = build_status_semantics(
+        status_semantics = projection.get("status_semantics") if isinstance(projection.get("status_semantics"), dict) else build_status_semantics(
             session_record=session,
             upload_metadata=upload_metadata,
             analysis_report=analysis_report,
             decision_payload=decision_payload,
             current_job=latest_job,
         )
-        comparison_anchors = infer_comparison_anchors(
+        comparison_anchors = projection.get("comparison_anchors") if isinstance(projection.get("comparison_anchors"), dict) else infer_comparison_anchors(
             session_record=session,
             upload_metadata=upload_metadata,
             analysis_report=analysis_report,
             decision_payload=decision_payload,
         )
-        outcome_profile = _outcome_profile(decision_payload, analysis_report)
-        candidate_preview = build_candidate_preview(decision_payload)
-        workspace_memory_candidates = build_candidate_preview(decision_payload, limit=25)
+        outcome_profile = projection.get("outcome_profile") if isinstance(projection.get("outcome_profile"), dict) else _outcome_profile(decision_payload, analysis_report)
+        candidate_preview = projection.get("candidate_preview") if isinstance(projection.get("candidate_preview"), list) else build_candidate_preview(decision_payload)
+        workspace_memory_candidates = (
+            projection.get("recommendations") if isinstance(projection.get("recommendations"), list) else build_candidate_preview(decision_payload, limit=25)
+        )
 
         items.append(
             {
@@ -280,7 +298,34 @@ def build_session_history_context(
                 "comparison_basis_label": comparison_anchor_summary(comparison_anchors),
                 "outcome_profile": outcome_profile,
                 "candidate_preview": candidate_preview,
+                "governance_summary": projection.get("governance_summary") if isinstance(projection.get("governance_summary"), dict) else {},
+                "carryover_summary": projection.get("carryover_summary") if isinstance(projection.get("carryover_summary"), dict) else {},
+                "belief_layer_summary": projection.get("belief_layer_summary") if isinstance(projection.get("belief_layer_summary"), dict) else {},
+                "experiment_lifecycle_summary": projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {},
+                "claim_detail_summary": projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {},
+                "session_epistemic_summary": projection.get("session_epistemic_summary") if isinstance(projection.get("session_epistemic_summary"), dict) else build_session_epistemic_summary(
+                    belief_layer_summary=projection.get("belief_layer_summary") if isinstance(projection.get("belief_layer_summary"), dict) else {},
+                    experiment_lifecycle_summary=projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {},
+                    claim_detail_summary=projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {},
+                ),
+                "epistemic_entry_points": projection.get("epistemic_entry_points") if isinstance(projection.get("epistemic_entry_points"), dict) else build_epistemic_entry_points(
+                    claim_detail_summary=projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {},
+                    experiment_lifecycle_summary=projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {},
+                ),
+                "session_epistemic_detail_reveal": projection.get("session_epistemic_detail_reveal") if isinstance(projection.get("session_epistemic_detail_reveal"), dict) else build_session_epistemic_detail_reveal(
+                    session_epistemic_summary=projection.get("session_epistemic_summary") if isinstance(projection.get("session_epistemic_summary"), dict) else {},
+                    epistemic_entry_points=projection.get("epistemic_entry_points") if isinstance(projection.get("epistemic_entry_points"), dict) else {},
+                    claim_detail_items=projection.get("claim_detail_items") if isinstance(projection.get("claim_detail_items"), list) else [],
+                    experiment_lifecycle_model=projection.get("experiment_lifecycle_model") if isinstance(projection.get("experiment_lifecycle_model"), dict) else {},
+                ),
+                "focused_claim_inspection": projection.get("focused_claim_inspection") if isinstance(projection.get("focused_claim_inspection"), dict) else build_focused_claim_inspection(
+                    claim_detail_items=projection.get("claim_detail_items") if isinstance(projection.get("claim_detail_items"), list) else [],
+                ),
+                "focused_experiment_inspection": projection.get("focused_experiment_inspection") if isinstance(projection.get("focused_experiment_inspection"), dict) else build_focused_experiment_inspection(
+                    experiment_lifecycle_model=projection.get("experiment_lifecycle_model") if isinstance(projection.get("experiment_lifecycle_model"), dict) else {},
+                ),
                 "workspace_memory_candidates": workspace_memory_candidates,
+                "projection_diagnostics": projection.get("diagnostics") if isinstance(projection, dict) else {},
                 "is_active": bool(active_session_id and session_id == active_session_id),
                 "is_latest": bool(latest_session_id and session_id == latest_session_id),
                 "upload_url": f"/upload?session_id={session_id}",

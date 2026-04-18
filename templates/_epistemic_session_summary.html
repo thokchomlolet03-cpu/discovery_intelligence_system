@@ -1,0 +1,37 @@
+{% set summary = session_epistemic_summary or {} %}
+{% set entry = epistemic_entry_points or {} %}
+{% if summary %}
+  <section class="mini-callout" data-epistemic-rendered="session-summary" data-epistemic-status="{{ summary.status or 'absent' }}">
+    <div class="section-header">
+      <div>
+        <h2>{{ section_title or "Epistemic Summary" }}</h2>
+        <p class="helper-copy">{{ section_copy or "Compact claim, experiment, and belief visibility for this session." }}</p>
+      </div>
+      <div class="dashboard-meta-row">
+        <span class="data-chip">Status: {{ (summary.status or "absent").replace("_", " ") }}</span>
+        <span class="data-chip">Claims {{ summary.active_claim_count or summary.claim_count or 0 }}</span>
+        <span class="data-chip">Pending {{ summary.pending_experiment_count or 0 }}</span>
+        <span class="data-chip">Recorded {{ summary.result_recorded_count or 0 }}</span>
+        <span class="data-chip">Unresolved {{ summary.unresolved_count or 0 }}</span>
+        <span class="data-chip">Belief-linked {{ summary.belief_updated_count or 0 }}</span>
+      </div>
+    </div>
+    <p>{{ summary.summary_line or "No compact epistemic summary is available for this session." }}</p>
+    <div class="dashboard-meta-row">
+      <span class="data-chip">Claim detail {{ "available" if entry.claim_detail_available else "absent" }}</span>
+      <span class="data-chip">Experiment lifecycle {{ "available" if entry.experiment_lifecycle_available else "absent" }}</span>
+      {% if entry.claim_detail_available %}
+        <span class="data-chip">Detail items {{ entry.claim_detail_count or 0 }}</span>
+      {% endif %}
+      {% if entry.candidate_linked_detail_count %}
+        <span class="data-chip">Candidate-linked {{ entry.candidate_linked_detail_count }}</span>
+      {% endif %}
+      {% if entry.run_linked_detail_count %}
+        <span class="data-chip">Run-linked {{ entry.run_linked_detail_count }}</span>
+      {% endif %}
+    </div>
+    {% if summary.absence_reason %}
+      <p class="helper-copy">Explicit absence: {{ summary.absence_reason.replace("_", " ") }}.</p>
+    {% endif %}
+  </section>
+{% endif %}

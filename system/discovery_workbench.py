@@ -6,6 +6,15 @@ from typing import Any
 
 from system.contracts import ContractValidationError, validate_decision_artifact, validate_review_event_record
 from system.review_manager import STATUS_ORDER, normalize_status
+from system.services.epistemic_ui_service import (
+    build_candidate_epistemic_context,
+    build_candidate_epistemic_detail_reveal,
+    build_focused_claim_inspection,
+    build_focused_experiment_inspection,
+    build_epistemic_entry_points,
+    build_session_epistemic_detail_reveal,
+    build_session_epistemic_summary,
+)
 from system.services.run_metadata_service import build_run_provenance
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context
 from system.session_report import ranking_policy as build_ranking_policy
@@ -840,6 +849,43 @@ def _build_candidate_annotation_lookup(candidates: list[dict[str, Any]] | None) 
     return lookup
 
 
+def _build_projection_candidate_lookup(rows: list[dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
+    return _build_candidate_annotation_lookup(rows)
+
+
+def _belief_candidate_lookup(model: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    model = model if isinstance(model, dict) else {}
+    rows = model.get("candidate_items") if isinstance(model.get("candidate_items"), list) else []
+    lookup: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        candidate_id = str(row.get("candidate_id") or "").strip().lower()
+        canonical_smiles = str(row.get("canonical_smiles") or "").strip().lower()
+        if candidate_id:
+            lookup[f"id:{candidate_id}"] = row
+        if canonical_smiles:
+            lookup[f"smiles:{canonical_smiles}"] = row
+    return lookup
+
+
+def _claim_detail_candidate_lookup(items: list[dict[str, Any]] | None) -> dict[str, list[dict[str, Any]]]:
+    rows = items if isinstance(items, list) else []
+    lookup: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        attachment_context = row.get("attachment_context") if isinstance(row.get("attachment_context"), dict) else {}
+        candidate_context = attachment_context.get("candidate_context") if isinstance(attachment_context.get("candidate_context"), dict) else {}
+        candidate_id = str(candidate_context.get("candidate_id") or "").strip().lower()
+        canonical_smiles = str(candidate_context.get("canonical_smiles") or "").strip().lower()
+        if candidate_id:
+            lookup.setdefault(f"id:{candidate_id}", []).append(row)
+        if canonical_smiles:
+            lookup.setdefault(f"smiles:{canonical_smiles}", []).append(row)
+    return lookup
+
+
 def _restore_candidate_annotations(
     candidate: dict[str, Any],
     *,
@@ -857,6 +903,74 @@ def _restore_candidate_annotations(
         for field, value in annotations.items():
             merged[field] = value
         break
+    return merged
+
+
+def _restore_projection_candidate_fields(
+    candidate: dict[str, Any],
+    *,
+    index: int,
+    projection_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    if not projection_lookup:
+        return candidate
+
+    merged = dict(candidate)
+    for key in _candidate_annotation_keys(candidate, index):
+        overlay = projection_lookup.get(key)
+        if not isinstance(overlay, dict):
+            continue
+        # Projection-derived candidate semantics stay additive and never replace
+        # the ranked-list identity itself, which still comes from the stored artifact row.
+        for field in (
+            "confidence",
+            "uncertainty",
+            "novelty",
+            "predicted_value",
+            "prediction_dispersion",
+            "bucket",
+            "risk",
+            "status",
+            "priority_score",
+            "experiment_value",
+            "rationale",
+            "decision_policy",
+            "final_recommendation",
+            "normalized_explanation",
+            "review_summary",
+            "review_note",
+            "reviewer",
+            "reviewed_at",
+            "provenance",
+            "applicability_domain",
+            "target_definition",
+            "carryover_summary",
+            "candidate_state_provenance",
+            "candidate_field_provenance",
+            "candidate_trust_summary",
+        ):
+            if field in overlay:
+                merged[field] = overlay[field]
+        break
+    return merged
+
+
+def _attach_belief_candidate_fields(
+    candidate: dict[str, Any],
+    *,
+    belief_lookup: dict[str, dict[str, Any]],
+    claim_detail_lookup: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    merged = dict(candidate)
+    candidate_id = str(candidate.get("candidate_id") or "").strip().lower()
+    canonical_smiles = str(candidate.get("canonical_smiles") or candidate.get("smiles") or "").strip().lower()
+    belief_row = belief_lookup.get(f"id:{candidate_id}") or belief_lookup.get(f"smiles:{canonical_smiles}") or {}
+    if belief_row:
+        merged["claim_summary"] = belief_row
+    detail_lookup = claim_detail_lookup if isinstance(claim_detail_lookup, dict) else {}
+    claim_details = detail_lookup.get(f"id:{candidate_id}") or detail_lookup.get(f"smiles:{canonical_smiles}") or []
+    if claim_details:
+        merged["claim_detail_items"] = claim_details
     return merged
 
 
@@ -890,6 +1004,8 @@ def normalize_candidate(
     review_history = normalize_review_history(candidate.get("review_history"))
     workspace_memory = candidate.get("workspace_memory") if isinstance(candidate.get("workspace_memory"), dict) else {}
     workspace_memory_history = normalize_workspace_memory_history(candidate.get("workspace_memory_history"))
+    claim_summary = candidate.get("claim_summary") if isinstance(candidate.get("claim_summary"), dict) else {}
+    claim_detail_items = candidate.get("claim_detail_items") if isinstance(candidate.get("claim_detail_items"), list) else []
     reviewed_at = _to_iso(candidate.get("reviewed_at") or review_summary.get("reviewed_at"))
     reviewer = str(candidate.get("reviewer") or review_summary.get("reviewer") or "unassigned")
     review_note = str(candidate.get("review_note") or review_summary.get("note") or "").strip()
@@ -914,6 +1030,21 @@ def normalize_candidate(
     decision_policy = candidate.get("decision_policy") if isinstance(candidate.get("decision_policy"), dict) else {}
     final_recommendation = candidate.get("final_recommendation") if isinstance(candidate.get("final_recommendation"), dict) else {}
     normalized_explanation = candidate.get("normalized_explanation") if isinstance(candidate.get("normalized_explanation"), dict) else {}
+    candidate_field_provenance = candidate.get("candidate_field_provenance") if isinstance(candidate.get("candidate_field_provenance"), dict) else {}
+    candidate_trust_summary = candidate.get("candidate_trust_summary") if isinstance(candidate.get("candidate_trust_summary"), dict) else {}
+    carryover_summary = candidate.get("carryover_summary") if isinstance(candidate.get("carryover_summary"), dict) else {}
+    candidate_epistemic_context = build_candidate_epistemic_context(
+        claim_summary=claim_summary,
+        claim_detail_items=claim_detail_items,
+    )
+    candidate_epistemic_detail_reveal = build_candidate_epistemic_detail_reveal(
+        candidate_epistemic_context=candidate_epistemic_context,
+        claim_summary=claim_summary,
+        claim_detail_items=claim_detail_items,
+    )
+    focused_claim_inspection = build_focused_claim_inspection(
+        claim_detail_items=claim_detail_items,
+    )
     domain = domain_summary(candidate.get("max_similarity"))
     if candidate.get("domain_status") or candidate.get("domain_label") or candidate.get("domain_summary"):
         domain = {
@@ -991,6 +1122,13 @@ def normalize_candidate(
         novelty=novelty,
         target_kind=target_kind,
     )
+    if candidate_trust_summary:
+        if str(candidate_trust_summary.get("trust_label") or "").strip():
+            rationale["trust_label"] = str(candidate_trust_summary.get("trust_label") or rationale["trust_label"]).strip()
+        if str(candidate_trust_summary.get("trust_summary") or "").strip():
+            rationale["trust_summary"] = str(candidate_trust_summary.get("trust_summary") or rationale["trust_summary"]).strip()
+        if isinstance(candidate_trust_summary.get("cautions"), list) and candidate_trust_summary.get("cautions"):
+            rationale["cautions"] = [str(item).strip() for item in candidate_trust_summary.get("cautions") if str(item).strip()][:4] or rationale["cautions"]
     explanations = enrich_explanations(
         rationale["evidence_lines"] or explanations,
         decision_summary=rationale["summary"] or decision["summary"],
@@ -1100,6 +1238,14 @@ def normalize_candidate(
         "workspace_memory_history": workspace_memory_history,
         "workspace_memory_count": int(candidate.get("workspace_memory_count") or 0),
         "workspace_memory_session_count": int((workspace_memory or {}).get("session_count") or 0),
+        "claim_summary": claim_summary,
+        "claim_detail_items": claim_detail_items,
+        "candidate_epistemic_context": candidate_epistemic_context,
+        "candidate_epistemic_detail_reveal": candidate_epistemic_detail_reveal,
+        "focused_claim_inspection": focused_claim_inspection,
+        "carryover_summary": carryover_summary,
+        "candidate_state_provenance": str(candidate.get("candidate_state_provenance") or "").strip(),
+        "candidate_field_provenance": candidate_field_provenance,
         "suggested_next_action": suggested_action,
         "observed_value": observed_value,
         "assay": assay,
@@ -1236,56 +1382,105 @@ def build_discovery_workbench(
     session_id: str | None,
     evaluation_summary: dict[str, Any] | None,
     system_version: str,
+    scientific_session_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     artifact_state = str(decision_output.get("artifact_state") or "ok")
+    projection = scientific_session_projection if isinstance(scientific_session_projection, dict) else {}
     raw_candidate_rows = (
         decision_output.get("top_experiments")
         if isinstance(decision_output.get("top_experiments"), list)
         else []
     )
     annotation_lookup = _build_candidate_annotation_lookup(raw_candidate_rows)
+    projection_candidate_lookup = _build_projection_candidate_lookup(
+        projection.get("candidate_projection_rows") if isinstance(projection.get("candidate_projection_rows"), list) else []
+    )
+    belief_candidate_lookup = _belief_candidate_lookup(
+        projection.get("belief_read_model") if isinstance(projection.get("belief_read_model"), dict) else {}
+    )
     analysis_payload = analysis_report if isinstance(analysis_report, dict) else {}
-    target_definition = (
+    projection_target_definition = projection.get("target_definition") if isinstance(projection.get("target_definition"), dict) else {}
+    target_definition = projection_target_definition or (
         decision_output.get("target_definition") if isinstance(decision_output.get("target_definition"), dict) else {}
     ) or (
         analysis_payload.get("target_definition") if isinstance(analysis_payload.get("target_definition"), dict) else {}
     )
     modeling_mode = str(
-        decision_output.get("modeling_mode")
+        projection.get("comparison_anchors", {}).get("modeling_mode") if isinstance(projection.get("comparison_anchors"), dict) else ""
+        or decision_output.get("modeling_mode")
         or analysis_payload.get("modeling_mode")
         or ""
     ).strip()
-    ranking_policy = normalize_ranking_policy(
+    projection_ranking_policy = projection.get("ranking_policy") if isinstance(projection.get("ranking_policy"), dict) else {}
+    ranking_policy = projection_ranking_policy or normalize_ranking_policy(
         analysis_payload,
         target_definition=target_definition,
         modeling_mode=modeling_mode,
     )
-    interpretation = build_metric_interpretation(
+    interpretation = projection.get("metric_interpretation") if isinstance(projection.get("metric_interpretation"), list) else build_metric_interpretation(
         target_definition=target_definition,
         modeling_mode=modeling_mode,
         ranking_policy=ranking_policy,
     )
     run_contract = (
+        projection.get("run_contract") if isinstance(projection.get("run_contract"), dict) else {}
+    ) or (
         decision_output.get("run_contract") if isinstance(decision_output.get("run_contract"), dict) else {}
     ) or (
         analysis_payload.get("run_contract") if isinstance(analysis_payload.get("run_contract"), dict) else {}
     )
     comparison_anchors = (
+        projection.get("comparison_anchors") if isinstance(projection.get("comparison_anchors"), dict) else {}
+    ) or (
         decision_output.get("comparison_anchors") if isinstance(decision_output.get("comparison_anchors"), dict) else {}
     ) or (
         analysis_payload.get("comparison_anchors") if isinstance(analysis_payload.get("comparison_anchors"), dict) else {}
     )
-    run_provenance = build_run_provenance(
+    run_provenance = projection.get("run_provenance") if isinstance(projection.get("run_provenance"), dict) else build_run_provenance(
         run_contract=run_contract,
         comparison_anchors=comparison_anchors,
     )
-    trust_context = build_trust_context(
+    trust_context = projection.get("trust_context") if isinstance(projection.get("trust_context"), dict) else build_trust_context(
         target_definition=target_definition,
         modeling_mode=modeling_mode,
         analysis_report=analysis_payload,
         decision_payload=decision_output,
         ranking_policy=ranking_policy,
         run_provenance=run_provenance,
+    )
+    projection_measurement_summary = projection.get("measurement_summary") if isinstance(projection.get("measurement_summary"), dict) else {}
+    projection_recommendation_summary = str(projection.get("recommendation_summary") or "").strip()
+    projection_predictive_summary = projection.get("predictive_summary") if isinstance(projection.get("predictive_summary"), dict) else {}
+    projection_governance_summary = projection.get("governance_summary") if isinstance(projection.get("governance_summary"), dict) else {}
+    projection_ranking_diagnostics = projection.get("ranking_diagnostics") if isinstance(projection.get("ranking_diagnostics"), dict) else {}
+    projection_run_interpretation_summary = projection.get("run_interpretation_summary") if isinstance(projection.get("run_interpretation_summary"), dict) else {}
+    projection_belief_summary = projection.get("belief_layer_summary") if isinstance(projection.get("belief_layer_summary"), dict) else {}
+    belief_read_model = projection.get("belief_read_model") if isinstance(projection.get("belief_read_model"), dict) else {}
+    experiment_lifecycle_summary = projection.get("experiment_lifecycle_summary") if isinstance(projection.get("experiment_lifecycle_summary"), dict) else {}
+    experiment_lifecycle_model = projection.get("experiment_lifecycle_model") if isinstance(projection.get("experiment_lifecycle_model"), dict) else {}
+    claim_detail_summary = projection.get("claim_detail_summary") if isinstance(projection.get("claim_detail_summary"), dict) else {}
+    claim_detail_items = projection.get("claim_detail_items") if isinstance(projection.get("claim_detail_items"), list) else []
+    projection_diagnostics = projection.get("diagnostics") if isinstance(projection.get("diagnostics"), dict) else {}
+    session_epistemic_summary = projection.get("session_epistemic_summary") if isinstance(projection.get("session_epistemic_summary"), dict) else build_session_epistemic_summary(
+        belief_layer_summary=projection_belief_summary,
+        experiment_lifecycle_summary=experiment_lifecycle_summary,
+        claim_detail_summary=claim_detail_summary,
+    )
+    epistemic_entry_points = projection.get("epistemic_entry_points") if isinstance(projection.get("epistemic_entry_points"), dict) else build_epistemic_entry_points(
+        claim_detail_summary=claim_detail_summary,
+        experiment_lifecycle_summary=experiment_lifecycle_summary,
+    )
+    session_epistemic_detail_reveal = projection.get("session_epistemic_detail_reveal") if isinstance(projection.get("session_epistemic_detail_reveal"), dict) else build_session_epistemic_detail_reveal(
+        session_epistemic_summary=session_epistemic_summary,
+        epistemic_entry_points=epistemic_entry_points,
+        claim_detail_items=claim_detail_items,
+        experiment_lifecycle_model=experiment_lifecycle_model,
+    )
+    focused_claim_inspection = projection.get("focused_claim_inspection") if isinstance(projection.get("focused_claim_inspection"), dict) else build_focused_claim_inspection(
+        claim_detail_items=claim_detail_items,
+    )
+    focused_experiment_inspection = projection.get("focused_experiment_inspection") if isinstance(projection.get("focused_experiment_inspection"), dict) else build_focused_experiment_inspection(
+        experiment_lifecycle_model=experiment_lifecycle_model,
     )
     if artifact_state == "error":
         state = {
@@ -1307,20 +1502,35 @@ def build_discovery_workbench(
             },
             "review_summary": {status.replace(" ", "_") if " " in status else status: 0 for status in STATUS_ORDER},
             "warnings": list(analysis_payload.get("warnings", [])),
-            "recommendation_summary": str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
+            "recommendation_summary": projection_recommendation_summary or str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
             "last_updated_label": humanize_timestamp(decision_output.get("source_updated_at")),
             "last_updated": _to_iso(decision_output.get("source_updated_at")),
             "system_version": system_version,
             "candidates": [],
             "workspace_memory": workspace_memory_summary_from_candidates([]),
             "target_definition": target_definition,
-            "measurement_summary": analysis_payload.get("measurement_summary", {}),
-            "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
+            "measurement_summary": projection_measurement_summary or analysis_payload.get("measurement_summary", {}),
+            "ranking_diagnostics": projection_ranking_diagnostics or analysis_payload.get("ranking_diagnostics", {}),
             "ranking_policy": ranking_policy,
             "decision_overview": decision_overview([]),
             "interpretation": interpretation,
             "run_provenance": run_provenance,
             "trust_context": trust_context,
+            "run_interpretation_summary": projection_run_interpretation_summary,
+            "predictive_summary": projection_predictive_summary,
+            "governance_summary": projection_governance_summary,
+            "belief_layer_summary": projection_belief_summary,
+            "belief_read_model": belief_read_model,
+            "experiment_lifecycle_summary": experiment_lifecycle_summary,
+            "experiment_lifecycle_model": experiment_lifecycle_model,
+            "claim_detail_summary": claim_detail_summary,
+            "claim_detail_items": claim_detail_items,
+            "session_epistemic_summary": session_epistemic_summary,
+            "epistemic_entry_points": epistemic_entry_points,
+            "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
+            "focused_claim_inspection": focused_claim_inspection,
+            "focused_experiment_inspection": focused_experiment_inspection,
+            "projection_diagnostics": projection_diagnostics,
         }
 
     if artifact_state == "missing":
@@ -1345,20 +1555,35 @@ def build_discovery_workbench(
                 },
                 "review_summary": {"suggested": 0, "under_review": 0, "approved": 0, "rejected": 0, "tested": 0, "ingested": 0},
                 "warnings": list(analysis_payload.get("warnings", [])),
-                "recommendation_summary": str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
+                "recommendation_summary": projection_recommendation_summary or str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
                 "last_updated_label": humanize_timestamp(decision_output.get("source_updated_at")),
                 "last_updated": _to_iso(decision_output.get("source_updated_at")),
                 "system_version": system_version,
                 "candidates": [],
                 "workspace_memory": workspace_memory_summary_from_candidates([]),
                 "target_definition": target_definition,
-                "measurement_summary": analysis_payload.get("measurement_summary", {}),
-                "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
+                "measurement_summary": projection_measurement_summary or analysis_payload.get("measurement_summary", {}),
+                "ranking_diagnostics": projection_ranking_diagnostics or analysis_payload.get("ranking_diagnostics", {}),
                 "ranking_policy": ranking_policy,
                 "decision_overview": decision_overview([]),
                 "interpretation": interpretation,
                 "run_provenance": run_provenance,
                 "trust_context": trust_context,
+                "run_interpretation_summary": projection_run_interpretation_summary,
+                "predictive_summary": projection_predictive_summary,
+                "governance_summary": projection_governance_summary,
+                "belief_layer_summary": projection_belief_summary,
+                "belief_read_model": belief_read_model,
+                "experiment_lifecycle_summary": experiment_lifecycle_summary,
+                "experiment_lifecycle_model": experiment_lifecycle_model,
+                "claim_detail_summary": claim_detail_summary,
+                "claim_detail_items": claim_detail_items,
+                "session_epistemic_summary": session_epistemic_summary,
+                "epistemic_entry_points": epistemic_entry_points,
+                "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
+                "focused_claim_inspection": focused_claim_inspection,
+                "focused_experiment_inspection": focused_experiment_inspection,
+                "projection_diagnostics": projection_diagnostics,
             }
         raw_candidates = validated_output.get("top_experiments", [])
         candidates_input = raw_candidates if isinstance(raw_candidates, list) else []
@@ -1366,11 +1591,20 @@ def build_discovery_workbench(
     model_version = resolve_model_version(evaluation_summary, candidates_input, system_version)
     dataset_version = resolve_dataset_version(session_id, validated_output)
     iteration = int(validated_output.get("iteration") or 0)
+    claim_detail_candidate_lookup = _claim_detail_candidate_lookup(claim_detail_items)
 
     candidates = [
         normalize_candidate(
             _restore_candidate_annotations(
-                dict(candidate),
+                _attach_belief_candidate_fields(
+                    _restore_projection_candidate_fields(
+                        dict(candidate),
+                        index=index,
+                        projection_lookup=projection_candidate_lookup,
+                    ),
+                    belief_lookup=belief_candidate_lookup,
+                    claim_detail_lookup=claim_detail_candidate_lookup,
+                ),
                 index=index,
                 annotation_lookup=annotation_lookup,
             ),
@@ -1424,12 +1658,9 @@ def build_discovery_workbench(
         "source_path": validated_output.get("source_path") or "decision_output.json",
         "target_definition": validated_output.get("target_definition") or analysis_payload.get("target_definition") or {},
         "scientific_contract": validated_output.get("scientific_contract") or {},
-        "run_contract": validated_output.get("run_contract") or analysis_payload.get("run_contract") or {},
-        "comparison_anchors": validated_output.get("comparison_anchors") or analysis_payload.get("comparison_anchors") or {},
-        "run_provenance": build_run_provenance(
-            run_contract=validated_output.get("run_contract") or analysis_payload.get("run_contract") or {},
-            comparison_anchors=validated_output.get("comparison_anchors") or analysis_payload.get("comparison_anchors") or {},
-        ),
+        "run_contract": run_contract,
+        "comparison_anchors": comparison_anchors,
+        "run_provenance": run_provenance,
         "contract_versions": validated_output.get("contract_versions") or analysis_payload.get("contract_versions") or {},
         "modeling_mode": modeling_mode,
         "decision_intent": str(validated_output.get("decision_intent") or analysis_payload.get("decision_intent") or "").strip(),
@@ -1448,16 +1679,38 @@ def build_discovery_workbench(
             "ingested": int(counts.get("ingested", 0)),
         },
         "warnings": list(analysis_payload.get("warnings", [])),
-        "recommendation_summary": str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
+        "recommendation_summary": projection_recommendation_summary or str(analysis_payload.get("top_level_recommendation_summary") or "").strip(),
         "last_updated_label": humanize_timestamp(last_updated),
         "last_updated": _to_iso(last_updated),
         "system_version": system_version,
         "candidates": candidates,
         "workspace_memory": workspace_memory_summary_from_candidates(candidates),
-        "measurement_summary": analysis_payload.get("measurement_summary", {}),
-        "ranking_diagnostics": analysis_payload.get("ranking_diagnostics", {}),
+        "measurement_summary": projection_measurement_summary or analysis_payload.get("measurement_summary", {}),
+        "ranking_diagnostics": projection_ranking_diagnostics or analysis_payload.get("ranking_diagnostics", {}),
         "ranking_policy": ranking_policy,
         "decision_overview": decision_overview(candidates),
         "interpretation": interpretation,
         "trust_context": trust_context,
+        "run_interpretation_summary": projection_run_interpretation_summary,
+        "predictive_summary": projection_predictive_summary,
+        "governance_summary": projection_governance_summary or {
+            "counts": counts,
+            "pending_review": int(counts.get("suggested", 0) + counts.get("under review", 0)),
+            "approved": int(counts.get("approved", 0)),
+            "rejected": int(counts.get("rejected", 0)),
+            "tested": int(counts.get("tested", 0)),
+            "ingested": int(counts.get("ingested", 0)),
+        },
+        "belief_layer_summary": projection_belief_summary,
+        "belief_read_model": belief_read_model,
+        "experiment_lifecycle_summary": experiment_lifecycle_summary,
+        "experiment_lifecycle_model": experiment_lifecycle_model,
+        "claim_detail_summary": claim_detail_summary,
+        "claim_detail_items": claim_detail_items,
+        "session_epistemic_summary": session_epistemic_summary,
+        "epistemic_entry_points": epistemic_entry_points,
+        "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
+        "focused_claim_inspection": focused_claim_inspection,
+        "focused_experiment_inspection": focused_experiment_inspection,
+        "projection_diagnostics": projection_diagnostics,
     }

@@ -8,6 +8,10 @@ from typing import Any
 from system.contracts import ContractValidationError, normalize_loaded_decision_artifact
 from system.db import resolve_session_artifact_path
 from system.services.artifact_service import DATA_DIR, artifact_display_path
+from system.services.scientific_state_service import (
+    synthesize_analysis_report_from_scientific_state,
+    synthesize_decision_payload_from_scientific_state,
+)
 from system.upload_parser import load_session_metadata
 
 
@@ -153,6 +157,26 @@ def load_decision_artifact_payload(
         "source_updated_at": "",
     }
 
+    if session_id:
+        try:
+            canonical_payload = synthesize_decision_payload_from_scientific_state(session_id, workspace_id=workspace_id)
+            diagnostics = {
+                **dict(canonical_payload.get("scientific_state_diagnostics") or {}),
+                "legacy_fallback_used": False,
+            }
+            payload = normalize_loaded_decision_artifact(
+                canonical_payload,
+                session_id=session_id,
+                generated_at=canonical_payload.get("source_updated_at"),
+                source_path=canonical_payload.get("source_path"),
+                source_updated_at=canonical_payload.get("source_updated_at"),
+                artifact_state="ok",
+            )
+            payload["scientific_state_diagnostics"] = diagnostics
+            return payload
+        except FileNotFoundError:
+            pass
+
     candidate_paths: list[Path] = []
     if session_id:
         target = resolve_session_artifact_path(session_id, "decision_output.json", workspace_id=workspace_id)
@@ -174,7 +198,7 @@ def load_decision_artifact_payload(
                 "source_updated_at": artifact["source_updated_at"],
             }
         try:
-            return normalize_loaded_decision_artifact(
+            payload = normalize_loaded_decision_artifact(
                 _backfill_target_definition(artifact["payload"] or {}, session_id=session_id, workspace_id=workspace_id),
                 session_id=session_id,
                 generated_at=artifact["source_updated_at"],
@@ -182,6 +206,11 @@ def load_decision_artifact_payload(
                 source_updated_at=artifact["source_updated_at"],
                 artifact_state="ok",
             )
+            payload["scientific_state_diagnostics"] = {
+                "scientific_state_source": "legacy_artifact",
+                "legacy_fallback_used": True,
+            }
+            return payload
         except ContractValidationError:
             return {
                 **default_payload,
@@ -200,7 +229,7 @@ def load_decision_artifact_payload(
     decision_payload = nested_payload.get("decision_output") if isinstance(nested_payload, dict) else None
     if isinstance(decision_payload, dict):
         try:
-            return normalize_loaded_decision_artifact(
+            payload = normalize_loaded_decision_artifact(
                 _backfill_target_definition(decision_payload, session_id=session_id, workspace_id=workspace_id),
                 session_id=session_id,
                 generated_at=result_artifact.get("source_updated_at"),
@@ -208,6 +237,11 @@ def load_decision_artifact_payload(
                 source_updated_at=result_artifact.get("source_updated_at"),
                 artifact_state="ok",
             )
+            payload["scientific_state_diagnostics"] = {
+                "scientific_state_source": "legacy_artifact",
+                "legacy_fallback_used": True,
+            }
+            return payload
         except ContractValidationError:
             return {
                 **default_payload,
@@ -231,6 +265,13 @@ def load_analysis_report_payload(
     workspace_id: str | None = None,
     allow_global_fallback: bool = True,
 ) -> dict[str, Any]:
+    canonical_report: dict[str, Any] | None = None
+    if session_id:
+        try:
+            canonical_report = synthesize_analysis_report_from_scientific_state(session_id, workspace_id=workspace_id)
+        except FileNotFoundError:
+            canonical_report = None
+
     candidate_paths: list[Path] = []
     if session_id:
         target = resolve_session_artifact_path(session_id, "analysis_report.json", workspace_id=workspace_id)
@@ -253,12 +294,21 @@ def load_analysis_report_payload(
                     workspace_id=workspace_id,
                 )
                 report = _backfill_target_definition(report, session_id=session_id, workspace_id=workspace_id)
-                return {
+                merged_report = {
+                    **(canonical_report or {}),
                     **report,
+                }
+                return {
+                    **merged_report,
                     "artifact_state": "ok",
                     "source_path": artifact["source_path"],
                     "source_updated_at": artifact["source_updated_at"],
                     "load_error": "",
+                    "scientific_state_diagnostics": {
+                        **dict((canonical_report or {}).get("scientific_state_diagnostics") or {}),
+                        "scientific_state_source": "canonical_sql+legacy_artifact",
+                        "legacy_fallback_used": True,
+                    },
                 }
 
     result_artifact = load_result_payload(
@@ -274,13 +324,29 @@ def load_analysis_report_payload(
             workspace_id=workspace_id,
         )
         report = _backfill_target_definition(report, session_id=session_id, workspace_id=workspace_id)
-        return {
+        merged_report = {
+            **(canonical_report or {}),
             **report,
+        }
+        return {
+            **merged_report,
             "artifact_state": "ok",
             "source_path": f"{result_artifact.get('source_path')}#analysis_report",
             "source_updated_at": result_artifact.get("source_updated_at"),
             "load_error": "",
+            "scientific_state_diagnostics": {
+                **dict((canonical_report or {}).get("scientific_state_diagnostics") or {}),
+                "scientific_state_source": "canonical_sql+legacy_artifact",
+                "legacy_fallback_used": True,
+            },
         }
+
+    if canonical_report is not None:
+        canonical_report["scientific_state_diagnostics"] = {
+            **dict(canonical_report.get("scientific_state_diagnostics") or {}),
+            "legacy_fallback_used": False,
+        }
+        return canonical_report
 
     return {"artifact_state": "missing", "source_path": "", "source_updated_at": "", "load_error": ""}
 

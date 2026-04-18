@@ -164,6 +164,19 @@
             {% endif %}
           </div>
         {% endif %}
+
+        {% with session_epistemic_summary=session_history.focus_session.session_epistemic_summary, epistemic_entry_points=session_history.focus_session.epistemic_entry_points, section_title="Epistemic summary", section_copy="This keeps claim, experiment, and belief state visible when you reopen the focus session." %}
+          {% include "_epistemic_session_summary.html" %}
+        {% endwith %}
+        {% with epistemic_detail_reveal=session_history.focus_session.session_epistemic_detail_reveal, section_title="Inspect epistemic detail", section_copy="Reveal a small canonical detail view for the focus session when epistemic detail has been recorded." %}
+          {% include "_epistemic_detail_reveal.html" %}
+        {% endwith %}
+        {% with focused_claim_inspection=session_history.focus_session.focused_claim_inspection, section_title="Inspect one claim", section_copy="A narrow focused view of one canonical claim in the focus session." %}
+          {% include "_claim_focus_inspection.html" %}
+        {% endwith %}
+        {% with focused_experiment_inspection=session_history.focus_session.focused_experiment_inspection, section_title="Inspect one experiment-linked state", section_copy="A narrow focused view of one canonical experiment-linked state in the focus session." %}
+          {% include "_experiment_focus_inspection.html" %}
+        {% endwith %}
       </article>
     </section>
   {% endif %}
@@ -300,6 +313,18 @@
                 {% endif %}
               </div>
             {% endif %}
+            {% with session_epistemic_summary=item.session_epistemic_summary, epistemic_entry_points=item.epistemic_entry_points, section_title="Epistemic summary", section_copy="Compact claim, experiment, and belief visibility for this session." %}
+              {% include "_epistemic_session_summary.html" %}
+            {% endwith %}
+            {% with epistemic_detail_reveal=item.session_epistemic_detail_reveal, section_title="Inspect epistemic detail", section_copy="Reveal a small canonical detail view for this session when detail has been recorded." %}
+              {% include "_epistemic_detail_reveal.html" %}
+            {% endwith %}
+            {% with focused_claim_inspection=item.focused_claim_inspection, section_title="Inspect one claim", section_copy="A narrow focused view of one canonical claim in this session." %}
+              {% include "_claim_focus_inspection.html" %}
+            {% endwith %}
+            {% with focused_experiment_inspection=item.focused_experiment_inspection, section_title="Inspect one experiment-linked state", section_copy="A narrow focused view of one canonical experiment-linked state in this session." %}
+              {% include "_experiment_focus_inspection.html" %}
+            {% endwith %}
             {% if item.status_semantics %}
               <div class="mini-callout">
                 <span class="panel-label">Status truth</span>
@@ -421,6 +446,18 @@
                 {% endif %}
               </div>
             {% endif %}
+            {% with session_epistemic_summary=item.session_epistemic_summary, epistemic_entry_points=item.epistemic_entry_points, section_title="Epistemic summary", section_copy="Compact claim, experiment, and belief visibility for this older session." %}
+              {% include "_epistemic_session_summary.html" %}
+            {% endwith %}
+            {% with epistemic_detail_reveal=item.session_epistemic_detail_reveal, section_title="Inspect epistemic detail", section_copy="Reveal a small canonical detail view for this older session when detail has been recorded." %}
+              {% include "_epistemic_detail_reveal.html" %}
+            {% endwith %}
+            {% with focused_claim_inspection=item.focused_claim_inspection, section_title="Inspect one claim", section_copy="A narrow focused view of one canonical claim in this older session." %}
+              {% include "_claim_focus_inspection.html" %}
+            {% endwith %}
+            {% with focused_experiment_inspection=item.focused_experiment_inspection, section_title="Inspect one experiment-linked state", section_copy="A narrow focused view of one canonical experiment-linked state in this older session." %}
+              {% include "_experiment_focus_inspection.html" %}
+            {% endwith %}
 
             {% if item.status_semantics %}
               <div class="mini-callout">

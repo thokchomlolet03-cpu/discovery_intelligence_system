@@ -1,0 +1,22 @@
+{% set entry = epistemic_entry_points or {} %}
+{% if entry %}
+  <div class="mini-callout" data-epistemic-rendered="entry-points">
+    <span class="panel-label">{{ section_title or "Epistemic Detail Availability" }}</span>
+    <div class="dashboard-meta-row">
+      <span class="data-chip">Claim detail {{ "available" if entry.claim_detail_available else "absent" }}</span>
+      <span class="data-chip">Experiment lifecycle {{ "available" if entry.experiment_lifecycle_available else "absent" }}</span>
+      {% if entry.candidate_linked_detail_count %}
+        <span class="data-chip">Candidate-linked {{ entry.candidate_linked_detail_count }}</span>
+      {% endif %}
+      {% if entry.run_linked_detail_count %}
+        <span class="data-chip">Run-linked {{ entry.run_linked_detail_count }}</span>
+      {% endif %}
+    </div>
+    {% if section_copy %}
+      <p class="helper-copy">{{ section_copy }}</p>
+    {% endif %}
+    {% if entry.absence_reason %}
+      <p class="helper-copy">Explicit absence: {{ entry.absence_reason.replace("_", " ") }}.</p>
+    {% endif %}
+  </div>
+{% endif %}

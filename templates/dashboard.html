@@ -75,6 +75,19 @@
     {% include "_active_session_comparison_panel.html" %}
   {% endwith %}
 
+  {% with session_epistemic_summary=dashboard.session_epistemic_summary, epistemic_entry_points=dashboard.epistemic_entry_points, section_title="Epistemic Session Summary", section_copy="This dashboard summary keeps tracked claims, experiment progress, unresolved state, and belief linkage visible alongside trust and evidence context." %}
+    {% include "_epistemic_session_summary.html" %}
+  {% endwith %}
+  {% with epistemic_detail_reveal=dashboard.session_epistemic_detail_reveal, section_title="Inspect epistemic detail", section_copy="Reveal a small canonical detail view for claim and experiment state when this dashboard session has recorded epistemic objects." %}
+    {% include "_epistemic_detail_reveal.html" %}
+  {% endwith %}
+  {% with focused_claim_inspection=dashboard.focused_claim_inspection, section_title="Inspect one claim", section_copy="A narrow focused view of one canonical claim in this dashboard session." %}
+    {% include "_claim_focus_inspection.html" %}
+  {% endwith %}
+  {% with focused_experiment_inspection=dashboard.focused_experiment_inspection, section_title="Inspect one experiment-linked state", section_copy="A narrow focused view of one canonical experiment-linked epistemic state in this dashboard session." %}
+    {% include "_experiment_focus_inspection.html" %}
+  {% endwith %}
+
   {% if dashboard.insight_summary %}
     <section class="panel dashboard-insight-panel">
       <div class="section-header">

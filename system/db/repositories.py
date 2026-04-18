@@ -20,14 +20,40 @@ from system.contracts import (
 )
 from system.db.models import (
     ArtifactRecordModel,
+    BeliefStateModel,
+    BeliefUpdateModel,
     BillingWebhookEventModel,
+    CanonicalCandidateStateModel,
+    CanonicalRunMetadataModel,
+    ClaimModel,
+    CarryoverRecordModel,
+    EvidenceRecordModel,
+    ExperimentRequestModel,
+    ExperimentResultModel,
     JobModel,
+    ModelOutputRecordModel,
+    RecommendationRecordModel,
     ReviewEventModel,
     SessionModel,
+    TargetDefinitionRecordModel,
     UserModel,
     WorkspaceMembershipModel,
     WorkspaceModel,
     WorkspaceUsageEventModel,
+)
+from system.scientific_state.contracts import (
+    BeliefStateRecord,
+    BeliefUpdateRecord,
+    CanonicalCandidateStateRecord,
+    CanonicalRunMetadataRecord,
+    CarryoverRecord,
+    ClaimRecord,
+    EvidenceRecord,
+    ExperimentRequestRecord,
+    ExperimentResultRecord,
+    ModelOutputRecord,
+    RecommendationRecord,
+    TargetDefinitionRecord,
 )
 from system.db.session import session_scope
 
@@ -200,6 +226,281 @@ def _workspace_usage_payload(record: WorkspaceUsageEventModel) -> dict[str, Any]
             "metadata": record.metadata_json or {},
         }
     )
+
+
+def _target_definition_record_payload(record: TargetDefinitionRecordModel) -> dict[str, Any]:
+    return TargetDefinitionRecord(
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        target_name=record.target_name,
+        target_kind=record.target_kind,
+        optimization_direction=record.optimization_direction,
+        measurement_column=record.measurement_column,
+        label_column=record.label_column,
+        measurement_unit=record.measurement_unit,
+        scientific_meaning=record.scientific_meaning,
+        assay_context=record.assay_context,
+        dataset_type=record.dataset_type,
+        mapping_confidence=record.mapping_confidence,
+        success_definition=record.success_definition,
+        target_notes=record.target_notes,
+        source_payload=record.source_payload or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _evidence_record_payload(record: EvidenceRecordModel) -> dict[str, Any]:
+    return EvidenceRecord(
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        evidence_type=record.evidence_type,
+        entity_id=record.entity_id,
+        candidate_id=record.candidate_id,
+        smiles=record.smiles,
+        canonical_smiles=record.canonical_smiles,
+        assay=record.assay,
+        target_name=record.target_name,
+        observed_value=record.observed_value,
+        observed_label=record.observed_label,
+        source_row_index=record.source_row_index,
+        source_column=record.source_column,
+        provenance=record.provenance_json or {},
+        payload=record.payload_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _model_output_record_payload(record: ModelOutputRecordModel) -> dict[str, Any]:
+    return ModelOutputRecord(
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        candidate_id=record.candidate_id,
+        smiles=record.smiles,
+        canonical_smiles=record.canonical_smiles,
+        target_name=record.target_name,
+        model_name=record.model_name,
+        model_family=record.model_family,
+        model_kind=record.model_kind,
+        calibration_method=record.calibration_method,
+        training_scope=record.training_scope,
+        model_source=record.model_source,
+        model_source_role=record.model_source_role,
+        baseline_fallback_used=record.baseline_fallback_used,
+        bridge_state_summary=record.bridge_state_summary,
+        confidence=record.confidence,
+        uncertainty=record.uncertainty,
+        predicted_value=record.predicted_value,
+        prediction_dispersion=record.prediction_dispersion,
+        novelty=record.novelty,
+        applicability=record.applicability_json or {},
+        provenance=record.provenance_json or {},
+        diagnostics=record.diagnostics_json or {},
+        payload=record.payload_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _recommendation_record_payload(record: RecommendationRecordModel) -> dict[str, Any]:
+    return RecommendationRecord(
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        candidate_id=record.candidate_id,
+        smiles=record.smiles,
+        canonical_smiles=record.canonical_smiles,
+        rank=record.rank,
+        decision_intent=record.decision_intent,
+        modeling_mode=record.modeling_mode,
+        scoring_mode=record.scoring_mode,
+        bucket=record.bucket,
+        risk=record.risk,
+        status=record.status,
+        priority_score=record.priority_score,
+        experiment_value=record.experiment_value,
+        acquisition_score=record.acquisition_score,
+        rationale_summary=record.rationale_summary,
+        rationale=record.rationale_json or {},
+        policy_trace=record.policy_trace_json or {},
+        recommendation=record.recommendation_json or {},
+        normalized_explanation=record.normalized_explanation_json or {},
+        governance=record.governance_json or {},
+        payload=record.payload_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _carryover_record_payload(record: CarryoverRecordModel) -> dict[str, Any]:
+    return CarryoverRecord(
+        workspace_id=record.workspace_id,
+        session_id=record.session_id,
+        created_by_user_id=record.created_by_user_id or "",
+        source_session_id=record.source_session_id,
+        source_candidate_id=record.source_candidate_id,
+        target_candidate_id=record.target_candidate_id,
+        smiles=record.smiles,
+        canonical_smiles=record.canonical_smiles,
+        carryover_kind=record.carryover_kind,
+        match_basis=record.match_basis,
+        review_event_id=record.review_event_id,
+        source_status=record.source_status,
+        source_action=record.source_action,
+        source_note=record.source_note,
+        source_reviewer=record.source_reviewer,
+        source_reviewed_at=record.source_reviewed_at,
+        payload=record.payload_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _canonical_run_metadata_payload(record: CanonicalRunMetadataModel) -> dict[str, Any]:
+    return CanonicalRunMetadataRecord(
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        source_name=record.source_name,
+        input_type=record.input_type,
+        decision_intent=record.decision_intent,
+        modeling_mode=record.modeling_mode,
+        scoring_mode=record.scoring_mode,
+        run_contract=record.run_contract_json or {},
+        comparison_anchors=record.comparison_anchors_json or {},
+        ranking_policy=record.ranking_policy_json or {},
+        ranking_diagnostics=record.ranking_diagnostics_json or {},
+        trust_summary=record.trust_summary_json or {},
+        provenance_markers=record.provenance_markers_json or {},
+        source_payload=record.source_payload_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _canonical_candidate_state_payload(record: CanonicalCandidateStateModel) -> dict[str, Any]:
+    return CanonicalCandidateStateRecord(
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        candidate_id=record.candidate_id,
+        smiles=record.smiles,
+        canonical_smiles=record.canonical_smiles,
+        rank=record.rank,
+        identity_context=record.identity_context_json or {},
+        evidence_summary=record.evidence_summary_json or {},
+        predictive_summary=record.predictive_summary_json or {},
+        recommendation_summary=record.recommendation_summary_json or {},
+        governance_summary=record.governance_summary_json or {},
+        carryover_summary=record.carryover_summary_json or {},
+        trust_summary=record.trust_summary_json or {},
+        provenance_markers=record.provenance_markers_json or {},
+        source_payload=record.source_payload_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _claim_payload(record: ClaimModel) -> dict[str, Any]:
+    return ClaimRecord(
+        claim_id=record.claim_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        candidate_id=record.candidate_id,
+        canonical_smiles=record.canonical_smiles,
+        run_metadata_session_id=record.run_metadata_session_id,
+        claim_scope=record.claim_scope,
+        claim_type=record.claim_type,
+        claim_text=record.claim_text,
+        claim_summary=record.claim_summary_json or {},
+        source_basis=record.source_basis,
+        support_links=record.support_links_json or {},
+        status=record.status,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _experiment_request_payload(record: ExperimentRequestModel) -> dict[str, Any]:
+    return ExperimentRequestRecord(
+        request_id=record.request_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        claim_id=record.claim_id,
+        candidate_id=record.candidate_id,
+        canonical_smiles=record.canonical_smiles,
+        objective=record.objective,
+        rationale=record.rationale,
+        requested_measurement=record.requested_measurement,
+        status=record.status,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _experiment_result_payload(record: ExperimentResultModel) -> dict[str, Any]:
+    return ExperimentResultRecord(
+        result_id=record.result_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        request_id=record.request_id,
+        claim_id=record.claim_id,
+        candidate_id=record.candidate_id,
+        canonical_smiles=record.canonical_smiles,
+        outcome=record.outcome,
+        observed_value=record.observed_value,
+        observed_label=record.observed_label,
+        result_summary=record.result_summary_json or {},
+        provenance_markers=record.provenance_markers_json or {},
+        status=record.status,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _belief_update_payload(record: BeliefUpdateModel) -> dict[str, Any]:
+    return BeliefUpdateRecord(
+        update_id=record.update_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        claim_id=record.claim_id,
+        result_id=record.result_id,
+        update_reason=record.update_reason,
+        pre_belief_state=record.pre_belief_state_json or {},
+        post_belief_state=record.post_belief_state_json or {},
+        deterministic_rule=record.deterministic_rule,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _belief_state_payload(record: BeliefStateModel) -> dict[str, Any]:
+    return BeliefStateRecord(
+        belief_state_id=record.belief_state_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        claim_id=record.claim_id,
+        current_state=record.current_state,
+        current_strength=record.current_strength,
+        support_basis_summary=record.support_basis_summary,
+        latest_update_id=record.latest_update_id,
+        status=record.status,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
 
 
 class UserRepository:
@@ -888,6 +1189,536 @@ class BillingWebhookEventRepository:
                 }
                 for row in rows
             ]
+
+
+class ScientificStateRepository:
+    def __init__(self, session_repository: SessionRepository | None = None) -> None:
+        self.session_repository = session_repository or SessionRepository()
+
+    def _workspace_id(self, session_id: str, workspace_id: str | None) -> str:
+        if workspace_id:
+            return workspace_id
+        try:
+            return self.session_repository.get_session(session_id)["workspace_id"]
+        except FileNotFoundError:
+            return LEGACY_WORKSPACE_ID
+
+    def upsert_target_definition(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = TargetDefinitionRecord(**payload).dict()
+        workspace_id = self._workspace_id(record_payload["session_id"], record_payload.get("workspace_id"))
+        with session_scope() as db:
+            statement = select(TargetDefinitionRecordModel).where(
+                TargetDefinitionRecordModel.session_id == record_payload["session_id"]
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = TargetDefinitionRecordModel(
+                    session_id=record_payload["session_id"],
+                    workspace_id=workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    created_at=record_payload["created_at"],
+                )
+            record.workspace_id = workspace_id
+            record.created_by_user_id = record_payload.get("created_by_user_id") or record.created_by_user_id
+            record.target_name = record_payload["target_name"]
+            record.target_kind = record_payload["target_kind"]
+            record.optimization_direction = record_payload["optimization_direction"]
+            record.measurement_column = record_payload["measurement_column"]
+            record.label_column = record_payload["label_column"]
+            record.measurement_unit = record_payload["measurement_unit"]
+            record.scientific_meaning = record_payload["scientific_meaning"]
+            record.assay_context = record_payload["assay_context"]
+            record.dataset_type = record_payload["dataset_type"]
+            record.mapping_confidence = record_payload["mapping_confidence"]
+            record.success_definition = record_payload["success_definition"]
+            record.target_notes = record_payload["target_notes"]
+            record.source_payload = record_payload["source_payload"]
+            record.updated_at = _utc_now()
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _target_definition_record_payload(record)
+
+    def replace_evidence_records(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(EvidenceRecordModel).filter(EvidenceRecordModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = EvidenceRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = EvidenceRecordModel(
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    evidence_type=record_payload["evidence_type"],
+                    entity_id=record_payload["entity_id"],
+                    candidate_id=record_payload["candidate_id"],
+                    smiles=record_payload["smiles"],
+                    canonical_smiles=record_payload["canonical_smiles"],
+                    assay=record_payload["assay"],
+                    target_name=record_payload["target_name"],
+                    observed_value=record_payload["observed_value"],
+                    observed_label=record_payload["observed_label"],
+                    source_row_index=record_payload["source_row_index"],
+                    source_column=record_payload["source_column"],
+                    provenance_json=record_payload["provenance"],
+                    payload_json=record_payload["payload"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_evidence_record_payload(record))
+            return created
+
+    def replace_model_outputs(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(ModelOutputRecordModel).filter(ModelOutputRecordModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = ModelOutputRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = ModelOutputRecordModel(
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    candidate_id=record_payload["candidate_id"],
+                    smiles=record_payload["smiles"],
+                    canonical_smiles=record_payload["canonical_smiles"],
+                    target_name=record_payload["target_name"],
+                    model_name=record_payload["model_name"],
+                    model_family=record_payload["model_family"],
+                    model_kind=record_payload["model_kind"],
+                    calibration_method=record_payload["calibration_method"],
+                    training_scope=record_payload["training_scope"],
+                    model_source=record_payload["model_source"],
+                    model_source_role=record_payload["model_source_role"],
+                    baseline_fallback_used=record_payload["baseline_fallback_used"],
+                    bridge_state_summary=record_payload["bridge_state_summary"],
+                    confidence=record_payload["confidence"],
+                    uncertainty=record_payload["uncertainty"],
+                    predicted_value=record_payload["predicted_value"],
+                    prediction_dispersion=record_payload["prediction_dispersion"],
+                    novelty=record_payload["novelty"],
+                    applicability_json=record_payload["applicability"],
+                    provenance_json=record_payload["provenance"],
+                    diagnostics_json=record_payload["diagnostics"],
+                    payload_json=record_payload["payload"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_model_output_record_payload(record))
+            return created
+
+    def replace_recommendations(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(RecommendationRecordModel).filter(RecommendationRecordModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = RecommendationRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = RecommendationRecordModel(
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    candidate_id=record_payload["candidate_id"],
+                    smiles=record_payload["smiles"],
+                    canonical_smiles=record_payload["canonical_smiles"],
+                    rank=record_payload["rank"],
+                    decision_intent=record_payload["decision_intent"],
+                    modeling_mode=record_payload["modeling_mode"],
+                    scoring_mode=record_payload["scoring_mode"],
+                    bucket=record_payload["bucket"],
+                    risk=record_payload["risk"],
+                    status=record_payload["status"],
+                    priority_score=record_payload["priority_score"],
+                    experiment_value=record_payload["experiment_value"],
+                    acquisition_score=record_payload["acquisition_score"],
+                    rationale_summary=record_payload["rationale_summary"],
+                    rationale_json=record_payload["rationale"],
+                    policy_trace_json=record_payload["policy_trace"],
+                    recommendation_json=record_payload["recommendation"],
+                    normalized_explanation_json=record_payload["normalized_explanation"],
+                    governance_json=record_payload["governance"],
+                    payload_json=record_payload["payload"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_recommendation_record_payload(record))
+            return created
+
+    def replace_carryover_records(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(CarryoverRecordModel).filter(CarryoverRecordModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = CarryoverRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = CarryoverRecordModel(
+                    workspace_id=effective_workspace_id,
+                    session_id=session_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    source_session_id=record_payload["source_session_id"],
+                    source_candidate_id=record_payload["source_candidate_id"],
+                    target_candidate_id=record_payload["target_candidate_id"],
+                    smiles=record_payload["smiles"],
+                    canonical_smiles=record_payload["canonical_smiles"],
+                    carryover_kind=record_payload["carryover_kind"],
+                    match_basis=record_payload["match_basis"],
+                    review_event_id=record_payload["review_event_id"],
+                    source_status=record_payload["source_status"],
+                    source_action=record_payload["source_action"],
+                    source_note=record_payload["source_note"],
+                    source_reviewer=record_payload["source_reviewer"],
+                    source_reviewed_at=record_payload["source_reviewed_at"],
+                    payload_json=record_payload["payload"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_carryover_record_payload(record))
+            return created
+
+    def upsert_run_metadata(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = CanonicalRunMetadataRecord(**payload).dict()
+        workspace_id = self._workspace_id(record_payload["session_id"], record_payload.get("workspace_id"))
+        with session_scope() as db:
+            statement = select(CanonicalRunMetadataModel).where(
+                CanonicalRunMetadataModel.session_id == record_payload["session_id"]
+            )
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = CanonicalRunMetadataModel(
+                    session_id=record_payload["session_id"],
+                    workspace_id=workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    created_at=record_payload["created_at"],
+                )
+            record.workspace_id = workspace_id
+            record.created_by_user_id = record_payload.get("created_by_user_id") or record.created_by_user_id
+            record.source_name = record_payload["source_name"]
+            record.input_type = record_payload["input_type"]
+            record.decision_intent = record_payload["decision_intent"]
+            record.modeling_mode = record_payload["modeling_mode"]
+            record.scoring_mode = record_payload["scoring_mode"]
+            record.run_contract_json = record_payload["run_contract"]
+            record.comparison_anchors_json = record_payload["comparison_anchors"]
+            record.ranking_policy_json = record_payload["ranking_policy"]
+            record.ranking_diagnostics_json = record_payload["ranking_diagnostics"]
+            record.trust_summary_json = record_payload["trust_summary"]
+            record.provenance_markers_json = record_payload["provenance_markers"]
+            record.source_payload_json = record_payload["source_payload"]
+            record.updated_at = _utc_now()
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _canonical_run_metadata_payload(record)
+
+    def replace_candidate_states(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(CanonicalCandidateStateModel).filter(CanonicalCandidateStateModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = CanonicalCandidateStateRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = CanonicalCandidateStateModel(
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    candidate_id=record_payload["candidate_id"],
+                    smiles=record_payload["smiles"],
+                    canonical_smiles=record_payload["canonical_smiles"],
+                    rank=record_payload["rank"],
+                    identity_context_json=record_payload["identity_context"],
+                    evidence_summary_json=record_payload["evidence_summary"],
+                    predictive_summary_json=record_payload["predictive_summary"],
+                    recommendation_summary_json=record_payload["recommendation_summary"],
+                    governance_summary_json=record_payload["governance_summary"],
+                    carryover_summary_json=record_payload["carryover_summary"],
+                    trust_summary_json=record_payload["trust_summary"],
+                    provenance_markers_json=record_payload["provenance_markers"],
+                    source_payload_json=record_payload["source_payload"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_canonical_candidate_state_payload(record))
+            return created
+
+    def list_evidence_records(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(EvidenceRecordModel).where(EvidenceRecordModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(EvidenceRecordModel.workspace_id == workspace_id)
+            statement = statement.order_by(EvidenceRecordModel.id.asc())
+            return [_evidence_record_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def list_model_outputs(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ModelOutputRecordModel).where(ModelOutputRecordModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ModelOutputRecordModel.workspace_id == workspace_id)
+            statement = statement.order_by(ModelOutputRecordModel.id.asc())
+            return [_model_output_record_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def list_recommendations(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(RecommendationRecordModel).where(RecommendationRecordModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(RecommendationRecordModel.workspace_id == workspace_id)
+            statement = statement.order_by(RecommendationRecordModel.rank.asc(), RecommendationRecordModel.id.asc())
+            return [_recommendation_record_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def get_target_definition(self, *, session_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(TargetDefinitionRecordModel).where(TargetDefinitionRecordModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(TargetDefinitionRecordModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No scientific target definition found for '{session_id}'.")
+            return _target_definition_record_payload(record)
+
+    def list_carryover_records(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(CarryoverRecordModel).where(CarryoverRecordModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(CarryoverRecordModel.workspace_id == workspace_id)
+            statement = statement.order_by(CarryoverRecordModel.updated_at.asc(), CarryoverRecordModel.id.asc())
+            return [_carryover_record_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def recommendation_state_map(self, *, session_id: str, workspace_id: str | None = None) -> dict[str, dict[str, Any]]:
+        rows = self.list_recommendations(session_id=session_id, workspace_id=workspace_id)
+        return {
+            f"{str(item.get('candidate_id') or '')}::{str(item.get('canonical_smiles') or item.get('smiles') or '')}": item
+            for item in rows
+        }
+
+    def get_run_metadata(self, *, session_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(CanonicalRunMetadataModel).where(CanonicalRunMetadataModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(CanonicalRunMetadataModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No canonical run metadata found for '{session_id}'.")
+            return _canonical_run_metadata_payload(record)
+
+    def list_candidate_states(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(CanonicalCandidateStateModel).where(CanonicalCandidateStateModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(CanonicalCandidateStateModel.workspace_id == workspace_id)
+            statement = statement.order_by(CanonicalCandidateStateModel.rank.asc(), CanonicalCandidateStateModel.id.asc())
+            return [_canonical_candidate_state_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def replace_claims(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(ClaimModel).filter(ClaimModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = ClaimRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = ClaimModel(
+                    claim_id=record_payload["claim_id"],
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    candidate_id=record_payload["candidate_id"],
+                    canonical_smiles=record_payload["canonical_smiles"],
+                    run_metadata_session_id=record_payload["run_metadata_session_id"],
+                    claim_scope=record_payload["claim_scope"],
+                    claim_type=record_payload["claim_type"],
+                    claim_text=record_payload["claim_text"],
+                    claim_summary_json=record_payload["claim_summary"],
+                    source_basis=record_payload["source_basis"],
+                    support_links_json=record_payload["support_links"],
+                    status=record_payload["status"],
+                    provenance_markers_json=record_payload["provenance_markers"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_claim_payload(record))
+            return created
+
+    def list_claims(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ClaimModel).where(ClaimModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ClaimModel.workspace_id == workspace_id)
+            statement = statement.order_by(ClaimModel.created_at.asc(), ClaimModel.id.asc())
+            return [_claim_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def get_claim(self, *, claim_id: str) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(ClaimModel).where(ClaimModel.claim_id == claim_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No claim found for '{claim_id}'.")
+            return _claim_payload(record)
+
+    def record_experiment_request(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = ExperimentRequestRecord(**payload).dict()
+        with session_scope() as db:
+            record = ExperimentRequestModel(
+                request_id=record_payload["request_id"],
+                session_id=record_payload["session_id"],
+                workspace_id=record_payload["workspace_id"],
+                created_by_user_id=record_payload.get("created_by_user_id") or None,
+                claim_id=record_payload["claim_id"],
+                candidate_id=record_payload["candidate_id"],
+                canonical_smiles=record_payload["canonical_smiles"],
+                objective=record_payload["objective"],
+                rationale=record_payload["rationale"],
+                requested_measurement=record_payload["requested_measurement"],
+                status=record_payload["status"],
+                provenance_markers_json=record_payload["provenance_markers"],
+                created_at=record_payload["created_at"],
+                updated_at=record_payload["updated_at"],
+            )
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _experiment_request_payload(record)
+
+    def update_experiment_request_status(self, *, request_id: str, status: str) -> dict[str, Any]:
+        with session_scope() as db:
+            record = db.execute(select(ExperimentRequestModel).where(ExperimentRequestModel.request_id == request_id)).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No experiment request found for '{request_id}'.")
+            record.status = status
+            record.updated_at = _utc_now()
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _experiment_request_payload(record)
+
+    def list_experiment_requests(self, *, claim_id: str | None = None, session_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ExperimentRequestModel)
+            if claim_id is not None:
+                statement = statement.where(ExperimentRequestModel.claim_id == claim_id)
+            if session_id is not None:
+                statement = statement.where(ExperimentRequestModel.session_id == session_id)
+            statement = statement.order_by(ExperimentRequestModel.created_at.asc(), ExperimentRequestModel.id.asc())
+            return [_experiment_request_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def record_experiment_result(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = ExperimentResultRecord(**payload).dict()
+        with session_scope() as db:
+            record = ExperimentResultModel(
+                result_id=record_payload["result_id"],
+                session_id=record_payload["session_id"],
+                workspace_id=record_payload["workspace_id"],
+                created_by_user_id=record_payload.get("created_by_user_id") or None,
+                request_id=record_payload["request_id"],
+                claim_id=record_payload["claim_id"],
+                candidate_id=record_payload["candidate_id"],
+                canonical_smiles=record_payload["canonical_smiles"],
+                outcome=record_payload["outcome"],
+                observed_value=record_payload["observed_value"],
+                observed_label=record_payload["observed_label"],
+                result_summary_json=record_payload["result_summary"],
+                provenance_markers_json=record_payload["provenance_markers"],
+                status=record_payload["status"],
+                created_at=record_payload["created_at"],
+                updated_at=record_payload["updated_at"],
+            )
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _experiment_result_payload(record)
+
+    def list_experiment_results(self, *, request_id: str | None = None, claim_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ExperimentResultModel)
+            if request_id is not None:
+                statement = statement.where(ExperimentResultModel.request_id == request_id)
+            if claim_id is not None:
+                statement = statement.where(ExperimentResultModel.claim_id == claim_id)
+            statement = statement.order_by(ExperimentResultModel.created_at.asc(), ExperimentResultModel.id.asc())
+            return [_experiment_result_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def record_belief_update(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = BeliefUpdateRecord(**payload).dict()
+        with session_scope() as db:
+            record = BeliefUpdateModel(
+                update_id=record_payload["update_id"],
+                session_id=record_payload["session_id"],
+                workspace_id=record_payload["workspace_id"],
+                created_by_user_id=record_payload.get("created_by_user_id") or None,
+                claim_id=record_payload["claim_id"],
+                result_id=record_payload["result_id"],
+                update_reason=record_payload["update_reason"],
+                pre_belief_state_json=record_payload["pre_belief_state"],
+                post_belief_state_json=record_payload["post_belief_state"],
+                deterministic_rule=record_payload["deterministic_rule"],
+                provenance_markers_json=record_payload["provenance_markers"],
+                created_at=record_payload["created_at"],
+                updated_at=record_payload["updated_at"],
+            )
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _belief_update_payload(record)
+
+    def list_belief_updates(self, *, claim_id: str | None = None, result_id: str | None = None) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(BeliefUpdateModel)
+            if claim_id is not None:
+                statement = statement.where(BeliefUpdateModel.claim_id == claim_id)
+            if result_id is not None:
+                statement = statement.where(BeliefUpdateModel.result_id == result_id)
+            statement = statement.order_by(BeliefUpdateModel.created_at.asc(), BeliefUpdateModel.id.asc())
+            return [_belief_update_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def upsert_belief_state(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = BeliefStateRecord(**payload).dict()
+        with session_scope() as db:
+            statement = select(BeliefStateModel).where(BeliefStateModel.claim_id == record_payload["claim_id"])
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = BeliefStateModel(
+                    belief_state_id=record_payload["belief_state_id"],
+                    session_id=record_payload["session_id"],
+                    workspace_id=record_payload["workspace_id"],
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    claim_id=record_payload["claim_id"],
+                    created_at=record_payload["created_at"],
+                )
+            record.current_state = record_payload["current_state"]
+            record.current_strength = record_payload["current_strength"]
+            record.support_basis_summary = record_payload["support_basis_summary"]
+            record.latest_update_id = record_payload["latest_update_id"]
+            record.status = record_payload["status"]
+            record.provenance_markers_json = record_payload["provenance_markers"]
+            record.updated_at = _utc_now()
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _belief_state_payload(record)
+
+    def get_belief_state(self, *, claim_id: str) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(BeliefStateModel).where(BeliefStateModel.claim_id == claim_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No belief state found for claim '{claim_id}'.")
+            return _belief_state_payload(record)
 
 
 class ArtifactRepository:

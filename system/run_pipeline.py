@@ -25,6 +25,7 @@ from system.services.target_definition_service import (
     infer_modeling_mode,
     normalize_decision_intent,
 )
+from system.services.scientific_state_service import persist_run_scientific_state
 from system.session_report import (
     apply_scoring_mode,
     build_analysis_report,
@@ -414,6 +415,15 @@ def run_pipeline(
         )
         if persist_artifacts
         else {}
+    )
+    workspace_id = str(options.get("workspace_id") or "") or "legacy_workspace"
+    result["scientific_state_diagnostics"] = persist_run_scientific_state(
+        prepared=prepared,
+        result=result,
+        scored=scored,
+        bundle=bundle,
+        workspace_id=workspace_id,
+        created_by_user_id=str(options.get("created_by_user_id") or "") or None,
     )
 
     if persist_artifacts:

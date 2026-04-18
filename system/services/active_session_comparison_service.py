@@ -5,6 +5,7 @@ from typing import Any
 
 from system.services.run_metadata_service import comparison_anchor_summary, infer_comparison_anchors
 from system.services.session_comparison_service import build_candidate_preview, compare_session_basis
+from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.status_semantics_service import build_status_semantics
 from system.session_artifacts import load_analysis_report_payload, load_decision_artifact_payload
 
@@ -219,22 +220,29 @@ def build_active_session_comparison_context(
         return {}
 
     current_upload_metadata = current_session_record.get("upload_metadata") if isinstance(current_session_record.get("upload_metadata"), dict) else {}
+    current_projection = build_scientific_session_projection(
+        session_record=current_session_record,
+        workspace_id=workspace_id,
+        upload_metadata=current_upload_metadata,
+        current_job=None,
+        include_workspace_memory=False,
+    )
     current_focus = {
-        "comparison_anchors": infer_comparison_anchors(
+        "comparison_anchors": current_projection.get("comparison_anchors") if isinstance(current_projection.get("comparison_anchors"), dict) else infer_comparison_anchors(
             session_record=current_session_record,
             upload_metadata=current_upload_metadata,
             analysis_report=current_analysis_report,
             decision_payload=current_decision_payload,
         ),
-        "status_semantics": build_status_semantics(
+        "status_semantics": current_projection.get("status_semantics") if isinstance(current_projection.get("status_semantics"), dict) else build_status_semantics(
             session_record=current_session_record,
             upload_metadata=current_upload_metadata,
             analysis_report=current_analysis_report,
             decision_payload=current_decision_payload,
             current_job=None,
         ),
-        "outcome_profile": _outcome_profile(current_decision_payload, current_analysis_report),
-        "candidate_preview": build_candidate_preview(current_decision_payload),
+        "outcome_profile": current_projection.get("outcome_profile") if isinstance(current_projection.get("outcome_profile"), dict) else _outcome_profile(current_decision_payload, current_analysis_report),
+        "candidate_preview": current_projection.get("candidate_preview") if isinstance(current_projection.get("candidate_preview"), list) else build_candidate_preview(current_decision_payload),
     }
 
     best_candidate: dict[str, Any] | None = None
@@ -259,22 +267,29 @@ def build_active_session_comparison_context(
             allow_global_fallback=False,
         )
         upload_metadata = session.get("upload_metadata") if isinstance(session.get("upload_metadata"), dict) else {}
+        projection = build_scientific_session_projection(
+            session_record=session,
+            workspace_id=workspace_id,
+            upload_metadata=upload_metadata,
+            current_job=None,
+            include_workspace_memory=False,
+        )
         candidate_focus = {
-            "comparison_anchors": infer_comparison_anchors(
+            "comparison_anchors": projection.get("comparison_anchors") if isinstance(projection.get("comparison_anchors"), dict) else infer_comparison_anchors(
                 session_record=session,
                 upload_metadata=upload_metadata,
                 analysis_report=analysis_report,
                 decision_payload=decision_payload,
             ),
-            "status_semantics": build_status_semantics(
+            "status_semantics": projection.get("status_semantics") if isinstance(projection.get("status_semantics"), dict) else build_status_semantics(
                 session_record=session,
                 upload_metadata=upload_metadata,
                 analysis_report=analysis_report,
                 decision_payload=decision_payload,
                 current_job=None,
             ),
-            "outcome_profile": _outcome_profile(decision_payload, analysis_report),
-            "candidate_preview": build_candidate_preview(decision_payload),
+            "outcome_profile": projection.get("outcome_profile") if isinstance(projection.get("outcome_profile"), dict) else _outcome_profile(decision_payload, analysis_report),
+            "candidate_preview": projection.get("candidate_preview") if isinstance(projection.get("candidate_preview"), list) else build_candidate_preview(decision_payload),
         }
         comparison = compare_session_basis(
             focus_session=current_focus,

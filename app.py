@@ -62,6 +62,7 @@ from system.upload_parser import (
 from system.services.ingestion import normalize_input_type, normalize_semantic_mapping
 from system.services.active_session_comparison_service import build_active_session_comparison_context
 from system.services.session_identity_service import build_session_identity
+from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.status_semantics_service import build_status_semantics, persisted_status_snapshot
 from system.services.workspace_feedback_service import annotate_candidates_with_workspace_memory
 from system.session_history import build_session_history_context
@@ -1098,8 +1099,15 @@ async def discovery_page(
     effective_session_id = session_view["session_id"]
     workspace_plan = _workspace_plan_summary(auth)
     workspace_sessions = session_repository.list_sessions(auth.workspace_id, limit=25)
+    current_job = _latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id) if isinstance(session_view, dict) else None
+    projection = build_scientific_session_projection(
+        session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
+        workspace_id=auth.workspace_id,
+        upload_metadata=(session_view.get("session_record") or {}).get("upload_metadata") if isinstance(session_view, dict) else {},
+        current_job=current_job,
+    )
 
-    decision_output = load_decision_output(
+    decision_output = projection.get("decision_payload") if isinstance(projection.get("decision_payload"), dict) else load_decision_output(
         session_id=effective_session_id,
         workspace_id=auth.workspace_id,
         allow_global_fallback=False,
@@ -1115,7 +1123,7 @@ async def discovery_page(
         workspace_id=auth.workspace_id,
     )
     review_queue = build_review_queue(candidates, session_id=effective_session_id, workspace_id=auth.workspace_id)
-    analysis_report = load_analysis_report(
+    analysis_report = projection.get("analysis_report") if isinstance(projection.get("analysis_report"), dict) else load_analysis_report(
         session_id=effective_session_id,
         workspace_id=auth.workspace_id,
         allow_global_fallback=False,
@@ -1133,23 +1141,20 @@ async def discovery_page(
         session_id=effective_session_id,
         evaluation_summary=evaluation_summary,
         system_version=app.version,
+        scientific_session_projection=projection,
     )
-    session_identity = build_session_identity(
+    session_identity = projection.get("session_identity") if isinstance(projection.get("session_identity"), dict) else build_session_identity(
         session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
         analysis_report=analysis_report,
         decision_payload=decision_output,
-        current_job=_latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id)
-        if isinstance(session_view, dict)
-        else None,
+        current_job=current_job,
         state_kind=str((workbench.get("state") or {}).get("kind") or ""),
     )
-    status_semantics = build_status_semantics(
+    status_semantics = projection.get("status_semantics") if isinstance(projection.get("status_semantics"), dict) else build_status_semantics(
         session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
         analysis_report=analysis_report,
         decision_payload=decision_output,
-        current_job=_latest_job_payload_for_session(session_view.get("session_record"), auth.workspace_id)
-        if isinstance(session_view, dict)
-        else None,
+        current_job=current_job,
     )
     active_session_comparison = build_active_session_comparison_context(
         current_session_record=session_view.get("session_record") if isinstance(session_view, dict) else {},
@@ -1176,6 +1181,7 @@ async def discovery_page(
         status_semantics=status_semantics,
         active_session_comparison=active_session_comparison,
         workspace_plan=workspace_plan,
+        scientific_session_projection=projection,
     )
 
 

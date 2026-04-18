@@ -1,0 +1,47 @@
+{% set experiment = focused_experiment_inspection or {} %}
+{% if experiment %}
+  <details class="mini-callout" data-epistemic-rendered="focused-experiment-inspection">
+    <summary>{{ section_title or "Inspect one experiment-linked state" }}</summary>
+    {% if section_copy %}
+      <p class="helper-copy">{{ section_copy }}</p>
+    {% endif %}
+    {% if experiment.available %}
+      <div class="dashboard-meta-row">
+        <span class="data-chip">Status {{ experiment.status.replace("_", " ") }}</span>
+        <span class="data-chip">Scope {{ experiment.claim_scope.replace("_", " ") }}</span>
+        {% if experiment.linked_claim_id %}
+          <span class="data-chip">Claim {{ experiment.linked_claim_id }}</span>
+        {% endif %}
+        {% if experiment.candidate_label %}
+          <span class="data-chip">Candidate {{ experiment.candidate_label }}</span>
+        {% endif %}
+        {% if experiment.run_label %}
+          <span class="data-chip">Run {{ experiment.run_label }}</span>
+        {% endif %}
+      </div>
+      <p>{{ experiment.objective_summary }}</p>
+      {% if experiment.rationale_summary %}
+        <p class="helper-copy">{{ experiment.rationale_summary }}</p>
+      {% endif %}
+      <div class="dashboard-meta-row">
+        <span class="data-chip">Result {{ experiment.result_status.replace("_", " ") }}</span>
+        <span class="data-chip">Belief update {{ "present" if experiment.has_belief_update else "absent" }}</span>
+        <span class="data-chip">Belief {{ experiment.belief_state }}</span>
+        <span class="data-chip">Unresolved {{ experiment.unresolved_state.replace("_", " ") }}</span>
+      </div>
+      <div class="mini-callout">
+        <span class="panel-label">Result summary</span>
+        <p>{{ experiment.result_summary }}</p>
+      </div>
+      <div class="mini-callout">
+        <span class="panel-label">Belief linkage</span>
+        <p>{{ experiment.belief_summary }}</p>
+      </div>
+    {% else %}
+      <p>No focused experiment-linked state is available for inspection.</p>
+      {% if experiment.absence_reason %}
+        <p class="helper-copy">Explicit absence: {{ experiment.absence_reason.replace("_", " ") }}.</p>
+      {% endif %}
+    {% endif %}
+  </details>
+{% endif %}

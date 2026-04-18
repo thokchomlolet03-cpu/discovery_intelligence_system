@@ -32,6 +32,19 @@
       <p>These results are recommendations, not experimental truth. Use them to prioritize review and testing.</p>
     </section>
 
+    {% with session_epistemic_summary=workbench.session_epistemic_summary, epistemic_entry_points=workbench.epistemic_entry_points, section_title="Epistemic Session Summary", section_copy="This compact summary keeps claims, experiment follow-through, unresolved state, and belief linkage visible without turning Discovery into a workflow screen." %}
+      {% include "_epistemic_session_summary.html" %}
+    {% endwith %}
+    {% with epistemic_detail_reveal=workbench.session_epistemic_detail_reveal, section_title="Inspect epistemic detail", section_copy="Reveal a small canonical detail view for claims and experiment lifecycle when this session has recorded epistemic objects." %}
+      {% include "_epistemic_detail_reveal.html" %}
+    {% endwith %}
+    {% with focused_claim_inspection=workbench.focused_claim_inspection, section_title="Inspect one claim", section_copy="A narrow focused view of one canonical claim in this session." %}
+      {% include "_claim_focus_inspection.html" %}
+    {% endwith %}
+    {% with focused_experiment_inspection=workbench.focused_experiment_inspection, section_title="Inspect one experiment-linked state", section_copy="A narrow focused view of one canonical experiment-linked epistemic state in this session." %}
+      {% include "_experiment_focus_inspection.html" %}
+    {% endwith %}
+
     <section class="panel discovery-state-panel">
       {% if session_view.session_id %}
         <div class="state-icon">Session {{ session_view.session_id }}</div>
@@ -80,6 +93,10 @@
 
     {% with active_session_comparison=active_session_comparison, section_title="Compared With Prior Run", section_copy="Use this panel to see whether the current shortlist can be read across against the nearest prior baseline in the same workspace, or whether target/model drift makes the comparison unsafe." %}
       {% include "_active_session_comparison_panel.html" %}
+    {% endwith %}
+
+    {% with epistemic_entry_points=workbench.epistemic_entry_points, section_title="Detail Availability", section_copy="Deeper claim and experiment inspection exists for this session, but it is kept lightweight in this view." %}
+      {% include "_epistemic_entry_points.html" %}
     {% endwith %}
 
     {% set workspace_memory = workbench.workspace_memory or {} %}

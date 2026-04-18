@@ -257,6 +257,125 @@
     return `<ul class="detail-list">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`;
   }
 
+  function candidateEpistemicContextHtml(candidate, compact = false) {
+    const context = candidate.candidate_epistemic_context && typeof candidate.candidate_epistemic_context === "object"
+      ? candidate.candidate_epistemic_context
+      : {};
+    const status = String(context.status || "no_epistemic_objects");
+    const summary = String(
+      context.summary_line
+      || (context.available
+        ? "Compact epistemic context is available for this candidate."
+        : "No claim, experiment, or belief context is recorded for this candidate.")
+    );
+    const chips = [
+      `Claims ${Number(context.claim_count || 0)}`,
+      context.has_pending_experiment ? "Pending experiment" : "",
+      context.has_recorded_result ? "Result recorded" : "",
+      context.has_belief_update ? "Belief updated" : "",
+      !context.has_belief_update && context.has_belief_state ? "Belief state present" : "",
+      Number(context.unresolved_count || 0) > 0 ? `Unresolved ${Number(context.unresolved_count || 0)}` : "",
+      context.detail_available ? `Detail available ${Number(context.detail_count || 0)}` : "",
+      !context.available ? "No epistemic objects" : "",
+    ].filter(Boolean);
+    return `
+      <section class="${compact ? "candidate-epistemic-inline" : "decision-summary-block"}" data-epistemic-rendered="candidate-context" data-epistemic-status="${escapeHtml(status)}">
+        <span class="panel-label">Epistemic context</span>
+        <strong>${escapeHtml(titleCase(status.replace(/_/g, " ")))}</strong>
+        <p>${escapeHtml(summary)}</p>
+        ${chips.length ? `<div class="decision-primary-context">${chips.map((chip) => `<span class="data-chip">${escapeHtml(chip)}</span>`).join("")}</div>` : ""}
+        ${
+          context.absence_reason
+            ? `<p class="helper-copy">Explicit absence: ${escapeHtml(titleCase(String(context.absence_reason).replace(/_/g, " ")))}</p>`
+            : ""
+        }
+      </section>
+    `;
+  }
+
+  function candidateEpistemicDetailRevealHtml(candidate) {
+    const detail = candidate.candidate_epistemic_detail_reveal && typeof candidate.candidate_epistemic_detail_reveal === "object"
+      ? candidate.candidate_epistemic_detail_reveal
+      : {};
+    const claimItems = Array.isArray(detail.claim_items) ? detail.claim_items : [];
+    if (!Object.keys(detail).length) {
+      return "";
+    }
+    return `
+      <details class="reasoning-block" data-epistemic-rendered="candidate-detail-reveal" data-epistemic-status="${escapeHtml(String(detail.status || "no_epistemic_objects"))}">
+        <summary>Inspect epistemic detail</summary>
+        ${
+          detail.available
+            ? `
+              <div class="decision-primary-context">
+                <span class="data-chip">Claims ${escapeHtml(String(detail.claim_count || 0))}</span>
+                <span class="data-chip">Pending ${escapeHtml(String(detail.pending_experiment_count || 0))}</span>
+                <span class="data-chip">Unresolved ${escapeHtml(String(detail.unresolved_count || 0))}</span>
+                <span class="data-chip">Belief update ${detail.has_belief_update ? "yes" : "no"}</span>
+              </div>
+              ${
+                claimItems.length
+                  ? `<ul class="detail-list">${claimItems
+                      .map(
+                        (item) => `<li>${
+                          escapeHtml(titleCase(String(item.claim_type || "unknown").replace(/_/g, " ")))
+                        }: ${escapeHtml(item.claim_text || "Claim detail recorded.")} ${
+                          item.pending_request_count ? `Pending ${escapeHtml(String(item.pending_request_count))}. ` : ""
+                        }${
+                          item.has_results ? "Result recorded. " : ""
+                        }Belief ${escapeHtml(String(item.belief_state || "absent"))}. Unresolved state: ${escapeHtml(titleCase(String(item.unresolved_state || "unknown").replace(/_/g, " ")))}.</li>`
+                      )
+                      .join("")}</ul>`
+                  : `<p class="helper-copy">No linked claim detail is available beyond the compact summary.</p>`
+              }
+            `
+            : `
+              <p>No canonical epistemic detail is available beyond the compact summary.</p>
+              ${detail.absence_reason ? `<p class="helper-copy">Explicit absence: ${escapeHtml(titleCase(String(detail.absence_reason).replace(/_/g, " ")))}</p>` : ""}
+            `
+        }
+      </details>
+    `;
+  }
+
+  function focusedClaimInspectionHtml(candidate) {
+    const claim = candidate.focused_claim_inspection && typeof candidate.focused_claim_inspection === "object"
+      ? candidate.focused_claim_inspection
+      : {};
+    if (!Object.keys(claim).length) {
+      return "";
+    }
+    return `
+      <details class="reasoning-block" data-epistemic-rendered="focused-claim-inspection" data-epistemic-status="${escapeHtml(String(claim.claim_status || "absent"))}">
+        <summary>Inspect one claim</summary>
+        ${
+          claim.available
+            ? `
+              <div class="decision-primary-context">
+                <span class="data-chip">Claim ${escapeHtml(titleCase(String(claim.claim_type || "unknown").replace(/_/g, " ")))}</span>
+                <span class="data-chip">Status ${escapeHtml(titleCase(String(claim.claim_status || "unknown").replace(/_/g, " ")))}</span>
+                <span class="data-chip">Scope ${escapeHtml(titleCase(String(claim.claim_scope || "unknown").replace(/_/g, " ")))}</span>
+                ${claim.candidate_label ? `<span class="data-chip">Candidate ${escapeHtml(claim.candidate_label)}</span>` : ""}
+              </div>
+              <p>${escapeHtml(claim.claim_text || "Claim detail recorded.")}</p>
+              <p class="helper-copy">${escapeHtml(claim.support_basis_summary || "Canonical support basis not recorded.")}</p>
+              <div class="decision-primary-context">
+                <span class="data-chip">Requests ${escapeHtml(String(claim.experiment_request_count || 0))}</span>
+                <span class="data-chip">Results ${escapeHtml(String(claim.experiment_result_count || 0))}</span>
+                <span class="data-chip">Pending ${escapeHtml(String(claim.pending_request_count || 0))}</span>
+                <span class="data-chip">Belief ${escapeHtml(String(claim.belief_state || "absent"))}</span>
+                <span class="data-chip">Unresolved ${escapeHtml(titleCase(String(claim.unresolved_state || "unknown").replace(/_/g, " ")))}</span>
+              </div>
+            `
+            : `
+              <p>No focused claim is available for inspection.</p>
+              ${claim.absence_reason ? `<p class="helper-copy">Explicit absence: ${escapeHtml(titleCase(String(claim.absence_reason).replace(/_/g, " ")))}</p>` : ""}
+            `
+        }
+      </details>
+    `;
+  }
+
   function compactScientificBlocksHtml(candidate) {
     const blocks = [
       { label: "Uploaded evidence and derived facts", ...candidateDataFacts(candidate) },
@@ -421,6 +540,7 @@
               ${badgeHtml("decision", candidate.decision_category)}
               ${candidate.trust_label ? badgeHtml("status", candidate.trust_label) : ""}
               <div class="table-subtle">${escapeHtml(candidate.suggested_next_action || candidate.decision_label)}</div>
+              <div class="table-subtle">${escapeHtml((candidate.candidate_epistemic_context && candidate.candidate_epistemic_context.summary_line) || "No claim, experiment, or belief context recorded.")}</div>
             </td>
             <td>${metricHtml(signalLabel("confidence"), candidate.confidence, "confidence")}</td>
             <td>${metricHtml(signalLabel("uncertainty"), candidate.uncertainty, "uncertainty")}</td>
@@ -539,6 +659,10 @@
                 </section>
 
                 ${compactScientificBlocksHtml(candidate)}
+
+                ${candidateEpistemicContextHtml(candidate)}
+                ${candidateEpistemicDetailRevealHtml(candidate)}
+                ${focusedClaimInspectionHtml(candidate)}
 
                 <section class="decision-summary-block">
                   <span class="panel-label">Trust read</span>
@@ -919,6 +1043,18 @@
           <code>${escapeHtml(candidate.smiles)}</code>
         </div>
         <p>${escapeHtml(candidate.decision_summary)}</p>
+      </section>
+
+      <section class="detail-section">
+        ${candidateEpistemicContextHtml(candidate)}
+      </section>
+
+      <section class="detail-section">
+        ${candidateEpistemicDetailRevealHtml(candidate)}
+      </section>
+
+      <section class="detail-section">
+        ${focusedClaimInspectionHtml(candidate)}
       </section>
 
       <section class="detail-section">

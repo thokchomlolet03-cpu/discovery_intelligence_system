@@ -1033,6 +1033,7 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(workbench["candidates"][0]["candidate_epistemic_context"]["status"], "pending_experiment")
         self.assertTrue(workbench["session_epistemic_detail_reveal"]["available"])
         self.assertTrue(workbench["candidates"][0]["focused_claim_inspection"]["available"])
+        self.assertTrue(workbench["candidates"][0]["focused_experiment_inspection"]["available"])
 
     def test_experiment_lifecycle_read_model_exposes_pending_completed_and_unresolved_states(self):
         claims = [
@@ -1340,6 +1341,18 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertTrue(focused_claim["available"])
         self.assertEqual(focused_claim["selected_claim_id"], "claim_2")
         self.assertEqual(focused_claim["claim_scope"], "run")
+        self.assertEqual(focused_claim["choice_count"], 2)
+        self.assertTrue(focused_claim["multiple_available"])
+        self.assertFalse(focused_claim["default_first_fallback_used"])
+        self.assertEqual(len(focused_claim["claim_choices"]), 2)
+        self.assertTrue(any(choice["selected"] and choice["claim_id"] == "claim_2" for choice in focused_claim["claim_choices"]))
+
+        fallback_claim = build_focused_claim_inspection(
+            claim_detail_items=claim_items,
+        )
+        self.assertTrue(fallback_claim["available"])
+        self.assertEqual(fallback_claim["selected_claim_id"], "claim_1")
+        self.assertTrue(fallback_claim["default_first_fallback_used"])
 
         experiment_model = {
             "experiment_items": [
@@ -1379,6 +1392,20 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(focused_experiment["selected_request_id"], "req_2")
         self.assertEqual(focused_experiment["status"], "completed")
         self.assertTrue(focused_experiment["has_belief_update"])
+        self.assertEqual(focused_experiment["choice_count"], 2)
+        self.assertTrue(focused_experiment["multiple_available"])
+        self.assertFalse(focused_experiment["default_first_fallback_used"])
+        self.assertEqual(len(focused_experiment["experiment_choices"]), 2)
+        self.assertTrue(
+            any(choice["selected"] and choice["request_id"] == "req_2" for choice in focused_experiment["experiment_choices"])
+        )
+
+        fallback_experiment = build_focused_experiment_inspection(
+            experiment_lifecycle_model=experiment_model,
+        )
+        self.assertTrue(fallback_experiment["available"])
+        self.assertEqual(fallback_experiment["selected_request_id"], "req_1")
+        self.assertTrue(fallback_experiment["default_first_fallback_used"])
 
         absent_experiment = build_focused_experiment_inspection(
             experiment_lifecycle_model={},
@@ -1386,6 +1413,7 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         )
         self.assertFalse(absent_experiment["available"])
         self.assertEqual(absent_experiment["absence_reason"], "no_experiment_available_for_focused_inspection")
+        self.assertFalse(absent_experiment["selected_available"])
 
     def test_dashboard_and_session_history_expose_compact_epistemic_surfaces(self):
         projection = {
@@ -1455,6 +1483,7 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         discovery_template = (repo_root / "templates" / "discovery.html").read_text()
         dashboard_template = (repo_root / "templates" / "dashboard.html").read_text()
         sessions_template = (repo_root / "templates" / "sessions.html").read_text()
+        base_template = (repo_root / "templates" / "base.html").read_text()
         reveal_template = (repo_root / "templates" / "_epistemic_detail_reveal.html").read_text()
         claim_focus_template = (repo_root / "templates" / "_claim_focus_inspection.html").read_text()
         experiment_focus_template = (repo_root / "templates" / "_experiment_focus_inspection.html").read_text()
@@ -1473,21 +1502,44 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertIn("item.session_epistemic_summary", sessions_template)
         self.assertIn("item.epistemic_entry_points", sessions_template)
         self.assertIn("item.session_epistemic_detail_reveal", sessions_template)
+        self.assertIn("/epistemic_focus.js", base_template)
         self.assertIn('data-epistemic-rendered="detail-reveal"', reveal_template)
         self.assertIn('data-epistemic-rendered="focused-claim-inspection"', claim_focus_template)
+        self.assertIn('data-epistemic-rendered="focused-claim-selector"', claim_focus_template)
+        self.assertIn("data-epistemic-focus-root", claim_focus_template)
+        self.assertIn("data-epistemic-focus-select", claim_focus_template)
+        self.assertIn("data-epistemic-focus-panel", claim_focus_template)
+        self.assertIn("data-claim-choice-panel", claim_focus_template)
         self.assertIn('data-epistemic-rendered="focused-experiment-inspection"', experiment_focus_template)
+        self.assertIn('data-epistemic-rendered="focused-experiment-selector"', experiment_focus_template)
+        self.assertIn("data-epistemic-focus-root", experiment_focus_template)
+        self.assertIn("data-epistemic-focus-select", experiment_focus_template)
+        self.assertIn("data-epistemic-focus-panel", experiment_focus_template)
+        self.assertIn("data-experiment-choice-panel", experiment_focus_template)
 
     def test_discovery_frontend_uses_compact_candidate_epistemic_context(self):
         repo_root = Path(__file__).resolve().parents[1]
         discovery_js = (repo_root / "static" / "discovery.js").read_text()
+        focus_js = (repo_root / "static" / "epistemic_focus.js").read_text()
 
         self.assertIn("candidate.candidate_epistemic_context", discovery_js)
         self.assertIn("candidate.candidate_epistemic_detail_reveal", discovery_js)
         self.assertIn("candidate.focused_claim_inspection", discovery_js)
+        self.assertIn("candidate.focused_experiment_inspection", discovery_js)
+        self.assertIn("claim.claim_choices", discovery_js)
+        self.assertIn("experiment.experiment_choices", discovery_js)
         self.assertIn('data-epistemic-rendered="candidate-context"', discovery_js)
         self.assertIn('data-epistemic-rendered="candidate-detail-reveal"', discovery_js)
         self.assertIn('data-epistemic-rendered="focused-claim-inspection"', discovery_js)
+        self.assertIn('data-epistemic-rendered="focused-experiment-inspection"', discovery_js)
+        self.assertIn('data-epistemic-rendered="focused-claim-selector"', discovery_js)
+        self.assertIn('data-epistemic-rendered="focused-experiment-selector"', discovery_js)
+        self.assertIn("window.discoveryEpistemicFocus?.enhance(root)", discovery_js)
+        self.assertIn("window.discoveryEpistemicFocus?.enhance(contentNode)", discovery_js)
+        self.assertIn("data-epistemic-focus-root", discovery_js)
         self.assertNotIn("candidate.claim_detail_items[0]", discovery_js)
+        self.assertIn("selectionState", focus_js)
+        self.assertIn("data-epistemic-focus-select", focus_js)
 
 
 if __name__ == "__main__":

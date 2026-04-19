@@ -846,6 +846,16 @@ def build_scientific_session_projection(
     diagnostics["session_epistemic_detail_affordance_available"] = bool(session_epistemic_detail_reveal.get("available"))
     diagnostics["focused_claim_inspection_available"] = bool(focused_claim_inspection.get("available"))
     diagnostics["focused_experiment_inspection_available"] = bool(focused_experiment_inspection.get("available"))
+    diagnostics["focused_claim_choice_count"] = _safe_int(focused_claim_inspection.get("choice_count"))
+    diagnostics["focused_experiment_choice_count"] = _safe_int(focused_experiment_inspection.get("choice_count"))
+    diagnostics["focused_claim_multiple_available"] = bool(focused_claim_inspection.get("multiple_available"))
+    diagnostics["focused_experiment_multiple_available"] = bool(focused_experiment_inspection.get("multiple_available"))
+    diagnostics["focused_claim_default_first_fallback_used"] = bool(focused_claim_inspection.get("default_first_fallback_used"))
+    diagnostics["focused_experiment_default_first_fallback_used"] = bool(
+        focused_experiment_inspection.get("default_first_fallback_used")
+    )
+    diagnostics["focused_claim_selected_available"] = bool(focused_claim_inspection.get("selected_available"))
+    diagnostics["focused_experiment_selected_available"] = bool(focused_experiment_inspection.get("selected_available"))
     diagnostics["candidate_epistemic_context_available"] = any(
         bool(item.get("claim_count")) or bool(item.get("has_experiment_request")) or bool(item.get("has_experiment_result"))
         for item in (belief_read_model.get("candidate_items") if isinstance(belief_read_model, dict) else [])

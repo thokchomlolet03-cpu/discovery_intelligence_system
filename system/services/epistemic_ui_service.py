@@ -15,6 +15,67 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _choice_label(prefix: str, identifier: str, fallback_index: int, summary: str) -> str:
+    label = _clean_text(summary)
+    if label:
+        return label
+    clean_identifier = _clean_text(identifier)
+    if clean_identifier:
+        return f"{prefix} {clean_identifier}"
+    return f"{prefix} {fallback_index}"
+
+
+def _claim_inspection_payload(item: dict[str, Any]) -> dict[str, Any]:
+    claim = item.get("claim") if isinstance(item.get("claim"), dict) else {}
+    attachment = item.get("attachment_context") if isinstance(item.get("attachment_context"), dict) else {}
+    experiment_detail = item.get("experiment_detail") if isinstance(item.get("experiment_detail"), dict) else {}
+    belief_update = item.get("belief_update_summary") if isinstance(item.get("belief_update_summary"), dict) else {}
+    belief_state = item.get("current_belief_state") if isinstance(item.get("current_belief_state"), dict) else {}
+    diagnostics = item.get("diagnostics") if isinstance(item.get("diagnostics"), dict) else {}
+    candidate_context = attachment.get("candidate_context") if isinstance(attachment.get("candidate_context"), dict) else {}
+    run_context = attachment.get("run_context") if isinstance(attachment.get("run_context"), dict) else {}
+    return {
+        "claim_id": _clean_text(item.get("claim_id")),
+        "claim_type": _clean_text(claim.get("claim_type"), default="unknown"),
+        "claim_status": _clean_text(claim.get("claim_status"), default="unknown"),
+        "claim_scope": _clean_text(claim.get("claim_scope"), default="unknown"),
+        "claim_text": _clean_text(claim.get("claim_text")) or "Claim detail recorded.",
+        "support_basis_summary": _clean_text(attachment.get("support_basis_summary")) or "Canonical support basis not recorded.",
+        "candidate_label": _clean_text(candidate_context.get("candidate_id") or candidate_context.get("canonical_smiles")),
+        "run_label": _clean_text(run_context.get("session_id")),
+        "experiment_request_count": _safe_int(experiment_detail.get("request_count")),
+        "experiment_result_count": _safe_int(experiment_detail.get("result_count")),
+        "pending_request_count": _safe_int(experiment_detail.get("pending_request_count")),
+        "belief_update_count": _safe_int(belief_update.get("update_count")),
+        "belief_state": _clean_text(belief_state.get("current_state"), default="absent"),
+        "belief_strength": _clean_text(belief_state.get("current_strength"), default="absent"),
+        "unresolved_state": _clean_text(diagnostics.get("experiment_lifecycle_unresolved_state"), default="unknown"),
+    }
+
+
+def _experiment_inspection_payload(item: dict[str, Any]) -> dict[str, Any]:
+    scope = item.get("scope_context") if isinstance(item.get("scope_context"), dict) else {}
+    result_summary = item.get("result_summary") if isinstance(item.get("result_summary"), dict) else {}
+    belief_impact = item.get("latest_belief_impact_summary") if isinstance(item.get("latest_belief_impact_summary"), dict) else {}
+    return {
+        "request_id": _clean_text(item.get("request_id")),
+        "linked_claim_id": next((choice for choice in (item.get("linked_claim_ids") or []) if _clean_text(choice)), ""),
+        "claim_scope": _clean_text(scope.get("claim_scope"), default="unknown"),
+        "candidate_label": _clean_text(scope.get("candidate_id") or scope.get("canonical_smiles")),
+        "run_label": _clean_text(scope.get("session_id")),
+        "status": _clean_text(item.get("status"), default="unknown"),
+        "objective_summary": _clean_text(item.get("objective_summary")) or "Experiment request recorded.",
+        "rationale_summary": _clean_text(item.get("rationale_summary")),
+        "has_result": bool(item.get("has_result")),
+        "result_status": _clean_text(result_summary.get("status"), default="absent"),
+        "result_summary": _clean_text(result_summary.get("summary_text")) or "No result recorded.",
+        "has_belief_update": bool(item.get("has_belief_update")),
+        "belief_summary": _clean_text(belief_impact.get("summary_text")) or "No belief update recorded.",
+        "belief_state": _clean_text(belief_impact.get("belief_state"), default="absent"),
+        "unresolved_state": _clean_text(item.get("unresolved_state"), default="unknown"),
+    }
+
+
 def build_session_epistemic_summary(
     *,
     belief_layer_summary: dict[str, Any] | None,
@@ -293,47 +354,72 @@ def build_focused_claim_inspection(
     selected_claim_id: str | None = None,
 ) -> dict[str, Any]:
     items = claim_detail_items if isinstance(claim_detail_items, list) else []
-    selected = None
     clean_selected_id = _clean_text(selected_claim_id)
-    if clean_selected_id:
-        selected = next((item for item in items if _clean_text((item or {}).get("claim_id")) == clean_selected_id), None)
-    if selected is None and items:
+    choices: list[dict[str, Any]] = []
+    selected = None
+    for index, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            continue
+        choice_payload = _claim_inspection_payload(item)
+        claim_id = choice_payload["claim_id"]
+        summary = choice_payload["claim_text"] or choice_payload["claim_scope"]
+        choices.append(
+            {
+                "claim_id": claim_id,
+                "label": _choice_label("Claim", claim_id, index, summary[:72]),
+                "claim_type": choice_payload["claim_type"],
+                "claim_status": choice_payload["claim_status"],
+                "claim_scope": choice_payload["claim_scope"],
+                "claim_text": choice_payload["claim_text"],
+                "support_basis_summary": choice_payload["support_basis_summary"],
+                "candidate_label": choice_payload["candidate_label"],
+                "run_label": choice_payload["run_label"],
+                "experiment_request_count": choice_payload["experiment_request_count"],
+                "experiment_result_count": choice_payload["experiment_result_count"],
+                "pending_request_count": choice_payload["pending_request_count"],
+                "belief_update_count": choice_payload["belief_update_count"],
+                "belief_state": choice_payload["belief_state"],
+                "belief_strength": choice_payload["belief_strength"],
+                "unresolved_state": choice_payload["unresolved_state"],
+                "selected": False,
+            }
+        )
+        if clean_selected_id and claim_id == clean_selected_id:
+            selected = item
+
+    default_first_fallback_used = False
+    if selected is None:
         selected = next((item for item in items if isinstance(item, dict)), None)
+        default_first_fallback_used = bool(selected and not clean_selected_id)
 
     if not isinstance(selected, dict):
         return {
             "available": False,
             "selected_claim_id": clean_selected_id,
+            "selected_available": False,
+            "choice_count": len(choices),
+            "claim_choices": choices,
+            "multiple_available": len(choices) > 1,
+            "default_first_fallback_used": False,
             "absence_reason": "no_claim_available_for_focused_inspection",
             "provenance": "absent",
         }
 
-    claim = selected.get("claim") if isinstance(selected.get("claim"), dict) else {}
-    attachment = selected.get("attachment_context") if isinstance(selected.get("attachment_context"), dict) else {}
-    experiment_detail = selected.get("experiment_detail") if isinstance(selected.get("experiment_detail"), dict) else {}
-    belief_update = selected.get("belief_update_summary") if isinstance(selected.get("belief_update_summary"), dict) else {}
-    belief_state = selected.get("current_belief_state") if isinstance(selected.get("current_belief_state"), dict) else {}
-    diagnostics = selected.get("diagnostics") if isinstance(selected.get("diagnostics"), dict) else {}
-    candidate_context = attachment.get("candidate_context") if isinstance(attachment.get("candidate_context"), dict) else {}
-    run_context = attachment.get("run_context") if isinstance(attachment.get("run_context"), dict) else {}
+    selected_payload = _claim_inspection_payload(selected)
+    resolved_selected_id = _clean_text(selected.get("claim_id"))
+    for choice in choices:
+        if _clean_text(choice.get("claim_id")) == resolved_selected_id:
+            choice["selected"] = True
 
     return {
         "available": True,
-        "selected_claim_id": _clean_text(selected.get("claim_id")),
-        "claim_type": _clean_text(claim.get("claim_type"), default="unknown"),
-        "claim_status": _clean_text(claim.get("claim_status"), default="unknown"),
-        "claim_scope": _clean_text(claim.get("claim_scope"), default="unknown"),
-        "claim_text": _clean_text(claim.get("claim_text")) or "Claim detail recorded.",
-        "support_basis_summary": _clean_text(attachment.get("support_basis_summary")) or "Canonical support basis not recorded.",
-        "candidate_label": _clean_text(candidate_context.get("candidate_id") or candidate_context.get("canonical_smiles")),
-        "run_label": _clean_text(run_context.get("session_id")),
-        "experiment_request_count": _safe_int(experiment_detail.get("request_count")),
-        "experiment_result_count": _safe_int(experiment_detail.get("result_count")),
-        "pending_request_count": _safe_int(experiment_detail.get("pending_request_count")),
-        "belief_update_count": _safe_int(belief_update.get("update_count")),
-        "belief_state": _clean_text(belief_state.get("current_state"), default="absent"),
-        "belief_strength": _clean_text(belief_state.get("current_strength"), default="absent"),
-        "unresolved_state": _clean_text(diagnostics.get("experiment_lifecycle_unresolved_state"), default="unknown"),
+        "selected_claim_id": resolved_selected_id,
+        "selected_available": True,
+        "choice_count": len(choices),
+        "claim_choices": choices,
+        "multiple_available": len(choices) > 1,
+        "default_first_fallback_used": default_first_fallback_used,
+        **selected_payload,
         "absence_reason": "",
         "provenance": "canonical_epistemic_read_models",
     }
@@ -346,42 +432,72 @@ def build_focused_experiment_inspection(
 ) -> dict[str, Any]:
     lifecycle = experiment_lifecycle_model if isinstance(experiment_lifecycle_model, dict) else {}
     items = lifecycle.get("experiment_items") if isinstance(lifecycle.get("experiment_items"), list) else []
-    selected = None
     clean_selected_id = _clean_text(selected_request_id)
-    if clean_selected_id:
-        selected = next((item for item in items if _clean_text((item or {}).get("request_id")) == clean_selected_id), None)
-    if selected is None and items:
+    choices: list[dict[str, Any]] = []
+    selected = None
+    for index, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            continue
+        choice_payload = _experiment_inspection_payload(item)
+        request_id = choice_payload["request_id"]
+        summary = choice_payload["objective_summary"]
+        choices.append(
+            {
+                "request_id": request_id,
+                "label": _choice_label("Experiment", request_id, index, summary[:72]),
+                "status": choice_payload["status"],
+                "has_result": choice_payload["has_result"],
+                "linked_claim_id": choice_payload["linked_claim_id"],
+                "claim_scope": choice_payload["claim_scope"],
+                "candidate_label": choice_payload["candidate_label"],
+                "run_label": choice_payload["run_label"],
+                "objective_summary": choice_payload["objective_summary"],
+                "rationale_summary": choice_payload["rationale_summary"],
+                "result_status": choice_payload["result_status"],
+                "result_summary": choice_payload["result_summary"],
+                "has_belief_update": choice_payload["has_belief_update"],
+                "belief_summary": choice_payload["belief_summary"],
+                "belief_state": choice_payload["belief_state"],
+                "unresolved_state": choice_payload["unresolved_state"],
+                "selected": False,
+            }
+        )
+        if clean_selected_id and request_id == clean_selected_id:
+            selected = item
+
+    default_first_fallback_used = False
+    if selected is None:
         selected = next((item for item in items if isinstance(item, dict)), None)
+        default_first_fallback_used = bool(selected and not clean_selected_id)
 
     if not isinstance(selected, dict):
         return {
             "available": False,
             "selected_request_id": clean_selected_id,
+            "selected_available": False,
+            "choice_count": len(choices),
+            "experiment_choices": choices,
+            "multiple_available": len(choices) > 1,
+            "default_first_fallback_used": False,
             "absence_reason": "no_experiment_available_for_focused_inspection",
             "provenance": "absent",
         }
 
-    scope = selected.get("scope_context") if isinstance(selected.get("scope_context"), dict) else {}
-    result_summary = selected.get("result_summary") if isinstance(selected.get("result_summary"), dict) else {}
-    belief_impact = selected.get("latest_belief_impact_summary") if isinstance(selected.get("latest_belief_impact_summary"), dict) else {}
+    selected_payload = _experiment_inspection_payload(selected)
+    resolved_selected_id = _clean_text(selected.get("request_id"))
+    for choice in choices:
+        if _clean_text(choice.get("request_id")) == resolved_selected_id:
+            choice["selected"] = True
 
     return {
         "available": True,
-        "selected_request_id": _clean_text(selected.get("request_id")),
-        "linked_claim_id": next((item for item in (selected.get("linked_claim_ids") or []) if _clean_text(item)), ""),
-        "claim_scope": _clean_text(scope.get("claim_scope"), default="unknown"),
-        "candidate_label": _clean_text(scope.get("candidate_id") or scope.get("canonical_smiles")),
-        "run_label": _clean_text(scope.get("session_id")),
-        "status": _clean_text(selected.get("status"), default="unknown"),
-        "objective_summary": _clean_text(selected.get("objective_summary")) or "Experiment request recorded.",
-        "rationale_summary": _clean_text(selected.get("rationale_summary")),
-        "has_result": bool(selected.get("has_result")),
-        "result_status": _clean_text(result_summary.get("status"), default="absent"),
-        "result_summary": _clean_text(result_summary.get("summary_text")) or "No result recorded.",
-        "has_belief_update": bool(selected.get("has_belief_update")),
-        "belief_summary": _clean_text(belief_impact.get("summary_text")) or "No belief update recorded.",
-        "belief_state": _clean_text(belief_impact.get("belief_state"), default="absent"),
-        "unresolved_state": _clean_text(selected.get("unresolved_state"), default="unknown"),
+        "selected_request_id": resolved_selected_id,
+        "selected_available": True,
+        "choice_count": len(choices),
+        "experiment_choices": choices,
+        "multiple_available": len(choices) > 1,
+        "default_first_fallback_used": default_first_fallback_used,
+        **selected_payload,
         "absence_reason": "",
         "provenance": "canonical_epistemic_read_models",
     }

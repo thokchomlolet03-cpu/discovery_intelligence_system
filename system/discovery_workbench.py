@@ -886,6 +886,22 @@ def _claim_detail_candidate_lookup(items: list[dict[str, Any]] | None) -> dict[s
     return lookup
 
 
+def _experiment_candidate_lookup(items: list[dict[str, Any]] | None) -> dict[str, list[dict[str, Any]]]:
+    rows = items if isinstance(items, list) else []
+    lookup: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        scope_context = row.get("scope_context") if isinstance(row.get("scope_context"), dict) else {}
+        candidate_id = str(scope_context.get("candidate_id") or "").strip().lower()
+        canonical_smiles = str(scope_context.get("canonical_smiles") or "").strip().lower()
+        if candidate_id:
+            lookup.setdefault(f"id:{candidate_id}", []).append(row)
+        if canonical_smiles:
+            lookup.setdefault(f"smiles:{canonical_smiles}", []).append(row)
+    return lookup
+
+
 def _restore_candidate_annotations(
     candidate: dict[str, Any],
     *,
@@ -960,6 +976,7 @@ def _attach_belief_candidate_fields(
     *,
     belief_lookup: dict[str, dict[str, Any]],
     claim_detail_lookup: dict[str, list[dict[str, Any]]] | None = None,
+    experiment_lookup: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     merged = dict(candidate)
     candidate_id = str(candidate.get("candidate_id") or "").strip().lower()
@@ -971,6 +988,11 @@ def _attach_belief_candidate_fields(
     claim_details = detail_lookup.get(f"id:{candidate_id}") or detail_lookup.get(f"smiles:{canonical_smiles}") or []
     if claim_details:
         merged["claim_detail_items"] = claim_details
+    experiment_rows = (experiment_lookup if isinstance(experiment_lookup, dict) else {}).get(f"id:{candidate_id}") or (
+        (experiment_lookup if isinstance(experiment_lookup, dict) else {}).get(f"smiles:{canonical_smiles}") or []
+    )
+    if experiment_rows:
+        merged["candidate_experiment_items"] = experiment_rows
     return merged
 
 
@@ -1006,6 +1028,7 @@ def normalize_candidate(
     workspace_memory_history = normalize_workspace_memory_history(candidate.get("workspace_memory_history"))
     claim_summary = candidate.get("claim_summary") if isinstance(candidate.get("claim_summary"), dict) else {}
     claim_detail_items = candidate.get("claim_detail_items") if isinstance(candidate.get("claim_detail_items"), list) else []
+    candidate_experiment_items = candidate.get("candidate_experiment_items") if isinstance(candidate.get("candidate_experiment_items"), list) else []
     reviewed_at = _to_iso(candidate.get("reviewed_at") or review_summary.get("reviewed_at"))
     reviewer = str(candidate.get("reviewer") or review_summary.get("reviewer") or "unassigned")
     review_note = str(candidate.get("review_note") or review_summary.get("note") or "").strip()
@@ -1044,6 +1067,9 @@ def normalize_candidate(
     )
     focused_claim_inspection = build_focused_claim_inspection(
         claim_detail_items=claim_detail_items,
+    )
+    focused_experiment_inspection = build_focused_experiment_inspection(
+        experiment_lifecycle_model={"experiment_items": candidate_experiment_items},
     )
     domain = domain_summary(candidate.get("max_similarity"))
     if candidate.get("domain_status") or candidate.get("domain_label") or candidate.get("domain_summary"):
@@ -1243,6 +1269,7 @@ def normalize_candidate(
         "candidate_epistemic_context": candidate_epistemic_context,
         "candidate_epistemic_detail_reveal": candidate_epistemic_detail_reveal,
         "focused_claim_inspection": focused_claim_inspection,
+        "focused_experiment_inspection": focused_experiment_inspection,
         "carryover_summary": carryover_summary,
         "candidate_state_provenance": str(candidate.get("candidate_state_provenance") or "").strip(),
         "candidate_field_provenance": candidate_field_provenance,
@@ -1592,6 +1619,9 @@ def build_discovery_workbench(
     dataset_version = resolve_dataset_version(session_id, validated_output)
     iteration = int(validated_output.get("iteration") or 0)
     claim_detail_candidate_lookup = _claim_detail_candidate_lookup(claim_detail_items)
+    experiment_candidate_lookup = _experiment_candidate_lookup(
+        experiment_lifecycle_model.get("experiment_items") if isinstance(experiment_lifecycle_model, dict) else []
+    )
 
     candidates = [
         normalize_candidate(
@@ -1604,6 +1634,7 @@ def build_discovery_workbench(
                     ),
                     belief_lookup=belief_candidate_lookup,
                     claim_detail_lookup=claim_detail_candidate_lookup,
+                    experiment_lookup=experiment_candidate_lookup,
                 ),
                 index=index,
                 annotation_lookup=annotation_lookup,

@@ -345,31 +345,164 @@
     if (!Object.keys(claim).length) {
       return "";
     }
+    const claimChoices = Array.isArray(claim.claim_choices) && claim.claim_choices.length
+      ? claim.claim_choices
+      : [{
+          claim_id: claim.selected_claim_id,
+          claim_type: claim.claim_type,
+          claim_status: claim.claim_status,
+          claim_scope: claim.claim_scope,
+          candidate_label: claim.candidate_label,
+          run_label: claim.run_label,
+          claim_text: claim.claim_text,
+          support_basis_summary: claim.support_basis_summary,
+          experiment_request_count: claim.experiment_request_count,
+          experiment_result_count: claim.experiment_result_count,
+          pending_request_count: claim.pending_request_count,
+          belief_update_count: claim.belief_update_count,
+          belief_state: claim.belief_state,
+          unresolved_state: claim.unresolved_state,
+          selected: true,
+        }];
     return `
-      <details class="reasoning-block" data-epistemic-rendered="focused-claim-inspection" data-epistemic-status="${escapeHtml(String(claim.claim_status || "absent"))}">
+      <details class="reasoning-block" data-epistemic-rendered="focused-claim-inspection" data-epistemic-status="${escapeHtml(String(claim.claim_status || "absent"))}" data-epistemic-focus-root data-epistemic-selection-key="candidate:${escapeHtml(String(candidate.candidate_id || candidate.canonical_smiles || "candidate"))}:claim">
         <summary>Inspect one claim</summary>
         ${
           claim.available
             ? `
+              ${
+                claim.multiple_available && claimChoices.length
+                  ? `
+                    <label class="panel-label" for="focused-claim-select-${escapeHtml(String(candidate.candidate_id || candidate.canonical_smiles || "candidate"))}">Claim selection</label>
+                    <select
+                      id="focused-claim-select-${escapeHtml(String(candidate.candidate_id || candidate.canonical_smiles || "candidate"))}"
+                      class="input"
+                      data-epistemic-rendered="focused-claim-selector"
+                      data-epistemic-focus-select
+                    >
+                      ${claimChoices.map((choice) => `<option value="${escapeHtml(String(choice.claim_id || ""))}" ${choice.selected ? "selected" : ""}>${escapeHtml(String(choice.label || choice.claim_id || "Claim"))}</option>`).join("")}
+                    </select>
+                    <p class="helper-copy">Selection stays inside the focused claim layer and does not change recommendation or belief truth.</p>
+                  `
+                  : ""
+              }
+              ${claimChoices.map((choice) => `
+                <div data-claim-choice-panel="${escapeHtml(String(choice.claim_id || ""))}" data-epistemic-focus-panel="${escapeHtml(String(choice.claim_id || ""))}" ${String(choice.claim_id || "") !== String(claim.selected_claim_id || "") ? "hidden" : ""}>
               <div class="decision-primary-context">
-                <span class="data-chip">Claim ${escapeHtml(titleCase(String(claim.claim_type || "unknown").replace(/_/g, " ")))}</span>
-                <span class="data-chip">Status ${escapeHtml(titleCase(String(claim.claim_status || "unknown").replace(/_/g, " ")))}</span>
-                <span class="data-chip">Scope ${escapeHtml(titleCase(String(claim.claim_scope || "unknown").replace(/_/g, " ")))}</span>
-                ${claim.candidate_label ? `<span class="data-chip">Candidate ${escapeHtml(claim.candidate_label)}</span>` : ""}
+                <span class="data-chip">Claim ${escapeHtml(titleCase(String(choice.claim_type || "unknown").replace(/_/g, " ")))}</span>
+                <span class="data-chip">Status ${escapeHtml(titleCase(String(choice.claim_status || "unknown").replace(/_/g, " ")))}</span>
+                <span class="data-chip">Scope ${escapeHtml(titleCase(String(choice.claim_scope || "unknown").replace(/_/g, " ")))}</span>
+                ${choice.candidate_label ? `<span class="data-chip">Candidate ${escapeHtml(choice.candidate_label)}</span>` : ""}
               </div>
-              <p>${escapeHtml(claim.claim_text || "Claim detail recorded.")}</p>
-              <p class="helper-copy">${escapeHtml(claim.support_basis_summary || "Canonical support basis not recorded.")}</p>
+              <p>${escapeHtml(choice.claim_text || "Claim detail recorded.")}</p>
+              <p class="helper-copy">${escapeHtml(choice.support_basis_summary || "Canonical support basis not recorded.")}</p>
               <div class="decision-primary-context">
-                <span class="data-chip">Requests ${escapeHtml(String(claim.experiment_request_count || 0))}</span>
-                <span class="data-chip">Results ${escapeHtml(String(claim.experiment_result_count || 0))}</span>
-                <span class="data-chip">Pending ${escapeHtml(String(claim.pending_request_count || 0))}</span>
-                <span class="data-chip">Belief ${escapeHtml(String(claim.belief_state || "absent"))}</span>
-                <span class="data-chip">Unresolved ${escapeHtml(titleCase(String(claim.unresolved_state || "unknown").replace(/_/g, " ")))}</span>
+                <span class="data-chip">Requests ${escapeHtml(String(choice.experiment_request_count || 0))}</span>
+                <span class="data-chip">Results ${escapeHtml(String(choice.experiment_result_count || 0))}</span>
+                <span class="data-chip">Pending ${escapeHtml(String(choice.pending_request_count || 0))}</span>
+                <span class="data-chip">Belief ${escapeHtml(String(choice.belief_state || "absent"))}</span>
+                <span class="data-chip">Unresolved ${escapeHtml(titleCase(String(choice.unresolved_state || "unknown").replace(/_/g, " ")))}</span>
               </div>
+                </div>
+              `).join("")}
+              ${
+                claim.default_first_fallback_used
+                  ? `<p class="helper-copy">Default-first focused claim fallback is active because no explicit claim selection was provided.</p>`
+                  : ""
+              }
             `
             : `
               <p>No focused claim is available for inspection.</p>
               ${claim.absence_reason ? `<p class="helper-copy">Explicit absence: ${escapeHtml(titleCase(String(claim.absence_reason).replace(/_/g, " ")))}</p>` : ""}
+            `
+        }
+      </details>
+    `;
+  }
+
+  function focusedExperimentInspectionHtml(candidate) {
+    const experiment = candidate.focused_experiment_inspection && typeof candidate.focused_experiment_inspection === "object"
+      ? candidate.focused_experiment_inspection
+      : {};
+    if (!Object.keys(experiment).length) {
+      return "";
+    }
+    const experimentChoices = Array.isArray(experiment.experiment_choices) && experiment.experiment_choices.length
+      ? experiment.experiment_choices
+      : [{
+          request_id: experiment.selected_request_id,
+          status: experiment.status,
+          claim_scope: experiment.claim_scope,
+          linked_claim_id: experiment.linked_claim_id,
+          candidate_label: experiment.candidate_label,
+          run_label: experiment.run_label,
+          objective_summary: experiment.objective_summary,
+          rationale_summary: experiment.rationale_summary,
+          result_status: experiment.result_status,
+          has_belief_update: experiment.has_belief_update,
+          belief_state: experiment.belief_state,
+          unresolved_state: experiment.unresolved_state,
+          result_summary: experiment.result_summary,
+          belief_summary: experiment.belief_summary,
+          selected: true,
+        }];
+    return `
+      <details class="reasoning-block" data-epistemic-rendered="focused-experiment-inspection" data-epistemic-status="${escapeHtml(String(experiment.status || "absent"))}" data-epistemic-focus-root data-epistemic-selection-key="candidate:${escapeHtml(String(candidate.candidate_id || candidate.canonical_smiles || "candidate"))}:experiment">
+        <summary>Inspect one experiment-linked state</summary>
+        ${
+          experiment.available
+            ? `
+              ${
+                experiment.multiple_available && experimentChoices.length
+                  ? `
+                    <label class="panel-label" for="focused-experiment-select-${escapeHtml(String(candidate.candidate_id || candidate.canonical_smiles || "candidate"))}">Experiment selection</label>
+                    <select
+                      id="focused-experiment-select-${escapeHtml(String(candidate.candidate_id || candidate.canonical_smiles || "candidate"))}"
+                      class="input"
+                      data-epistemic-rendered="focused-experiment-selector"
+                      data-epistemic-focus-select
+                    >
+                      ${experimentChoices.map((choice) => `<option value="${escapeHtml(String(choice.request_id || ""))}" ${choice.selected ? "selected" : ""}>${escapeHtml(String(choice.label || choice.request_id || "Experiment"))}</option>`).join("")}
+                    </select>
+                    <p class="helper-copy">Selection stays inside the focused experiment layer and does not imply scheduling or execution workflow.</p>
+                  `
+                  : ""
+              }
+              ${experimentChoices.map((choice) => `
+                <div data-experiment-choice-panel="${escapeHtml(String(choice.request_id || ""))}" data-epistemic-focus-panel="${escapeHtml(String(choice.request_id || ""))}" ${String(choice.request_id || "") !== String(experiment.selected_request_id || "") ? "hidden" : ""}>
+                  <div class="decision-primary-context">
+                    <span class="data-chip">Status ${escapeHtml(titleCase(String(choice.status || "unknown").replace(/_/g, " ")))}</span>
+                    <span class="data-chip">Scope ${escapeHtml(titleCase(String(choice.claim_scope || "unknown").replace(/_/g, " ")))}</span>
+                    ${choice.linked_claim_id ? `<span class="data-chip">Claim ${escapeHtml(choice.linked_claim_id)}</span>` : ""}
+                    ${choice.candidate_label ? `<span class="data-chip">Candidate ${escapeHtml(choice.candidate_label)}</span>` : ""}
+                  </div>
+                  <p>${escapeHtml(choice.objective_summary || "Experiment request recorded.")}</p>
+                  ${choice.rationale_summary ? `<p class="helper-copy">${escapeHtml(choice.rationale_summary)}</p>` : ""}
+                  <div class="decision-primary-context">
+                    <span class="data-chip">Result ${escapeHtml(titleCase(String(choice.result_status || "absent").replace(/_/g, " ")))}</span>
+                    <span class="data-chip">Belief update ${choice.has_belief_update ? "present" : "absent"}</span>
+                    <span class="data-chip">Belief ${escapeHtml(String(choice.belief_state || "absent"))}</span>
+                    <span class="data-chip">Unresolved ${escapeHtml(titleCase(String(choice.unresolved_state || "unknown").replace(/_/g, " ")))}</span>
+                  </div>
+                  <div class="mini-callout">
+                    <span class="panel-label">Result summary</span>
+                    <p>${escapeHtml(choice.result_summary || "No result recorded.")}</p>
+                  </div>
+                  <div class="mini-callout">
+                    <span class="panel-label">Belief linkage</span>
+                    <p>${escapeHtml(choice.belief_summary || "No belief update recorded.")}</p>
+                  </div>
+                </div>
+              `).join("")}
+              ${
+                experiment.default_first_fallback_used
+                  ? `<p class="helper-copy">Default-first focused experiment fallback is active because no explicit experiment selection was provided.</p>`
+                  : ""
+              }
+            `
+            : `
+              <p>No focused experiment-linked state is available for inspection.</p>
+              ${experiment.absence_reason ? `<p class="helper-copy">Explicit absence: ${escapeHtml(titleCase(String(experiment.absence_reason).replace(/_/g, " ")))}</p>` : ""}
             `
         }
       </details>
@@ -663,6 +796,7 @@
                 ${candidateEpistemicContextHtml(candidate)}
                 ${candidateEpistemicDetailRevealHtml(candidate)}
                 ${focusedClaimInspectionHtml(candidate)}
+                ${candidate.focused_experiment_inspection?.available ? focusedExperimentInspectionHtml(candidate) : ""}
 
                 <section class="decision-summary-block">
                   <span class="panel-label">Trust read</span>
@@ -831,6 +965,7 @@
     }
 
     root.innerHTML = state.view === "table" ? buildTableView(visible) : buildCardView(visible);
+    window.discoveryEpistemicFocus?.enhance(root);
   }
 
   function candidateById(candidateId) {
@@ -1057,6 +1192,16 @@
         ${focusedClaimInspectionHtml(candidate)}
       </section>
 
+      ${
+        candidate.focused_experiment_inspection?.available
+          ? `
+            <section class="detail-section">
+              ${focusedExperimentInspectionHtml(candidate)}
+            </section>
+          `
+          : ""
+      }
+
       <section class="detail-section">
         <span class="panel-label">Trust read</span>
         <div class="detail-grid">
@@ -1271,6 +1416,7 @@
 
     `;
 
+    window.discoveryEpistemicFocus?.enhance(contentNode);
     drawer.classList.remove("hidden");
   }
 

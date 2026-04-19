@@ -101,6 +101,12 @@
       "summary": "Governed, versioned representation architecture covering profile selection, runtime support semantics, evaluation, and controlled promotion."
     },
     {
+      "title": "Discovery Intelligence and the Problem of Truth",
+      "path": "01_philosophy/07_discovery_intelligence_and_the_problem_of_truth.md",
+      "category": "Philosophy",
+      "summary": "Position paper defining Discovery Intelligence as an epistemically disciplined system centered on claims, evidence, provenance, context, uncertainty, and belief revision."
+    },
+    {
       "title": "LLM Role and Interaction Boundary",
       "path": "06_ai_interface/llm_role_and_interaction_boundary.md",
       "category": "AI Interface",

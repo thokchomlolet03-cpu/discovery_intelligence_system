@@ -17,6 +17,7 @@ from system.services.epistemic_ui_service import (
 )
 from system.services.run_metadata_service import build_run_provenance
 from system.services.session_identity_service import build_metric_interpretation, build_trust_context
+from system.services.surfaced_experiment_attention_service import apply_surfaced_experiment_attention
 from system.session_report import ranking_policy as build_ranking_policy
 
 
@@ -1557,6 +1558,15 @@ def build_discovery_workbench(
             "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
             "focused_claim_inspection": focused_claim_inspection,
             "focused_experiment_inspection": focused_experiment_inspection,
+            "surfaced_attention_summary": {
+                "attention_candidate_count": 0,
+                "epistemic_attention_count": 0,
+                "epistemic_watch_count": 0,
+                "default_sort": "experiment_value",
+                "ordering_mode": "policy_ranked",
+                "ordering_summary": "",
+                "provenance": "absent",
+            },
             "projection_diagnostics": projection_diagnostics,
         }
 
@@ -1610,6 +1620,15 @@ def build_discovery_workbench(
                 "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
                 "focused_claim_inspection": focused_claim_inspection,
                 "focused_experiment_inspection": focused_experiment_inspection,
+                "surfaced_attention_summary": {
+                    "attention_candidate_count": 0,
+                    "epistemic_attention_count": 0,
+                    "epistemic_watch_count": 0,
+                    "default_sort": "experiment_value",
+                    "ordering_mode": "policy_ranked",
+                    "ordering_summary": "",
+                    "provenance": "absent",
+                },
                 "projection_diagnostics": projection_diagnostics,
             }
         raw_candidates = validated_output.get("top_experiments", [])
@@ -1648,6 +1667,7 @@ def build_discovery_workbench(
         for index, candidate in enumerate(candidates_input)
         if isinstance(candidate, dict)
     ]
+    candidates, surfaced_attention_summary = apply_surfaced_experiment_attention(candidates)
 
     summary = summary_from_candidates(
         candidates,
@@ -1743,5 +1763,6 @@ def build_discovery_workbench(
         "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
         "focused_claim_inspection": focused_claim_inspection,
         "focused_experiment_inspection": focused_experiment_inspection,
+        "surfaced_attention_summary": surfaced_attention_summary,
         "projection_diagnostics": projection_diagnostics,
     }

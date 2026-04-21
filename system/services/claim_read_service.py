@@ -42,6 +42,137 @@ def _support_basis_summary(claim: dict[str, Any]) -> str:
     return "Supported by " + ", ".join(parts) + "."
 
 
+def _link_object_summary(link: dict[str, Any], evidence_lookup: dict[str, dict[str, Any]], model_output_lookup: dict[str, dict[str, Any]], recommendation_lookup: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    linked_object_type = _clean_text(link.get("linked_object_type"))
+    linked_object_id = _clean_text(link.get("linked_object_id"))
+    summary = {
+        "linked_object_type": linked_object_type,
+        "linked_object_id": linked_object_id,
+        "relation_type": _clean_text(link.get("relation_type"), default="context_only"),
+        "summary": _clean_text(link.get("summary")),
+        "available": False,
+        "label": "Linked support line",
+        "context_bits": [],
+    }
+    if linked_object_type == "evidence":
+        evidence = evidence_lookup.get(linked_object_id, {})
+        summary["available"] = bool(evidence)
+        summary["label"] = _clean_text(evidence.get("evidence_type"), default="evidence").replace("_", " ")
+        summary["context_bits"] = [
+            value
+            for value in [
+                f"row {evidence.get('source_row_index')}" if evidence.get("source_row_index") is not None else "",
+                _clean_text(evidence.get("assay")),
+                _clean_text(evidence.get("target_name")),
+                f"value {evidence.get('observed_value')}" if evidence.get("observed_value") is not None else "",
+                f"label {evidence.get('observed_label')}" if evidence.get("observed_label") not in (None, "") else "",
+                _clean_text(evidence.get("source_column")),
+            ]
+            if value
+        ]
+    elif linked_object_type == "model_output":
+        output = model_output_lookup.get(linked_object_id, {})
+        summary["available"] = bool(output)
+        summary["label"] = "model output"
+        summary["context_bits"] = [
+            value
+            for value in [
+                _clean_text(output.get("model_name")),
+                f"confidence {output.get('confidence')}" if output.get("confidence") is not None else "",
+                f"uncertainty {output.get('uncertainty')}" if output.get("uncertainty") is not None else "",
+                f"predicted {output.get('predicted_value')}" if output.get("predicted_value") is not None else "",
+            ]
+            if value
+        ]
+    elif linked_object_type == "recommendation":
+        recommendation = recommendation_lookup.get(linked_object_id, {})
+        summary["available"] = bool(recommendation)
+        summary["label"] = "recommendation"
+        summary["context_bits"] = [
+            value
+            for value in [
+                f"rank {recommendation.get('rank')}" if recommendation.get("rank") not in (None, "") else "",
+                _clean_text(recommendation.get("bucket")),
+                _clean_text(recommendation.get("risk")),
+                _clean_text(recommendation.get("status")),
+                f"priority {recommendation.get('priority_score')}" if recommendation.get("priority_score") is not None else "",
+                f"experiment value {recommendation.get('experiment_value')}" if recommendation.get("experiment_value") is not None else "",
+            ]
+            if value
+        ]
+    return summary
+
+
+def _contradiction_object_summary(
+    contradiction: dict[str, Any],
+    *,
+    evidence_lookup: dict[str, dict[str, Any]],
+    model_output_lookup: dict[str, dict[str, Any]],
+    recommendation_lookup: dict[str, dict[str, Any]],
+    result_lookup: dict[str, dict[str, Any]],
+    update_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    source_object_type = _clean_text(contradiction.get("source_object_type"))
+    source_object_id = _clean_text(contradiction.get("source_object_id"))
+    summary = {
+        "source_object_type": source_object_type,
+        "source_object_id": source_object_id,
+        "label": source_object_type.replace("_", " ") or "contradiction source",
+        "context_bits": [],
+    }
+    if source_object_type == "evidence":
+        evidence = evidence_lookup.get(source_object_id, {})
+        summary["label"] = _clean_text(evidence.get("evidence_type"), default="evidence").replace("_", " ")
+        summary["context_bits"] = [
+            value for value in [
+                f"row {evidence.get('source_row_index')}" if evidence.get("source_row_index") is not None else "",
+                _clean_text(evidence.get("assay")),
+                _clean_text(evidence.get("target_name")),
+                f"value {evidence.get('observed_value')}" if evidence.get("observed_value") is not None else "",
+            ] if value
+        ]
+    elif source_object_type == "model_output":
+        output = model_output_lookup.get(source_object_id, {})
+        summary["label"] = "model output"
+        summary["context_bits"] = [
+            value for value in [
+                _clean_text(output.get("model_name")),
+                f"predicted {output.get('predicted_value')}" if output.get("predicted_value") is not None else "",
+                f"confidence {output.get('confidence')}" if output.get("confidence") is not None else "",
+            ] if value
+        ]
+    elif source_object_type == "recommendation":
+        recommendation = recommendation_lookup.get(source_object_id, {})
+        summary["label"] = "recommendation"
+        summary["context_bits"] = [
+            value for value in [
+                f"rank {recommendation.get('rank')}" if recommendation.get("rank") not in (None, "") else "",
+                _clean_text(recommendation.get("bucket")),
+                _clean_text(recommendation.get("status")),
+            ] if value
+        ]
+    elif source_object_type == "experiment_result":
+        result = result_lookup.get(source_object_id, {})
+        summary["label"] = "experiment result"
+        summary["context_bits"] = [
+            value for value in [
+                _clean_text(result.get("outcome")),
+                f"value {result.get('observed_value')}" if result.get("observed_value") is not None else "",
+                f"label {result.get('observed_label')}" if result.get("observed_label") not in (None, "") else "",
+            ] if value
+        ]
+    elif source_object_type == "belief_update":
+        update = update_lookup.get(source_object_id, {})
+        summary["label"] = "belief update"
+        summary["context_bits"] = [
+            value for value in [
+                _clean_text(update.get("deterministic_rule")),
+                _clean_text(update.get("update_reason")),
+            ] if value
+        ]
+    return summary
+
+
 def _candidate_context_for_claim(claim: dict[str, Any], candidate_states: list[dict[str, Any]]) -> dict[str, Any]:
     candidate_id = _clean_text(claim.get("candidate_id"))
     canonical_smiles = _clean_text(claim.get("canonical_smiles"))
@@ -153,6 +284,8 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
     requests = scientific_state_repository.list_experiment_requests(claim_id=claim_id)
     results = scientific_state_repository.list_experiment_results(claim_id=claim_id)
     updates = scientific_state_repository.list_belief_updates(claim_id=claim_id)
+    claim_links = scientific_state_repository.list_claim_evidence_links(claim_id=claim_id)
+    contradictions = scientific_state_repository.list_contradictions(claim_id=claim_id)
     try:
         belief_state = scientific_state_repository.get_belief_state(claim_id=claim_id)
     except FileNotFoundError:
@@ -170,6 +303,21 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
         _clean_text(item.get("request_id")): item
         for item in experiment_lifecycle.get("experiment_items", [])
         if _clean_text(item.get("request_id"))
+    }
+    evidence_lookup = {
+        _clean_text(item.get("record_id")): item
+        for item in scientific_state_repository.list_evidence_records(session_id=session_id, workspace_id=workspace_id)
+        if _clean_text(item.get("record_id"))
+    }
+    model_output_lookup = {
+        _clean_text(item.get("record_id")): item
+        for item in scientific_state_repository.list_model_outputs(session_id=session_id, workspace_id=workspace_id)
+        if _clean_text(item.get("record_id"))
+    }
+    recommendation_lookup = {
+        _clean_text(item.get("record_id")): item
+        for item in scientific_state_repository.list_recommendations(session_id=session_id, workspace_id=workspace_id)
+        if _clean_text(item.get("record_id"))
     }
 
     claim_scope = _clean_text(claim.get("claim_scope"))
@@ -218,6 +366,12 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
             "result_id": _clean_text(item.get("result_id")),
             "update_reason": _clean_text(item.get("update_reason")),
             "deterministic_rule": _clean_text(item.get("deterministic_rule")),
+            "revision_mode": _clean_text(item.get("revision_mode"), default="bounded_contradiction_aware"),
+            "contradiction_pressure": _clean_text(item.get("contradiction_pressure"), default="none"),
+            "support_balance_summary": _clean_text(item.get("support_balance_summary")),
+            "revision_rationale": _clean_text(item.get("revision_rationale")),
+            "triggering_contradiction_ids": item.get("triggering_contradiction_ids") if isinstance(item.get("triggering_contradiction_ids"), list) else [],
+            "triggering_source_summary": _clean_text(item.get("triggering_source_summary")),
             "pre_belief_state": _as_dict(item.get("pre_belief_state")),
             "post_belief_state": _as_dict(item.get("post_belief_state")),
             "created_at": _to_iso(item.get("created_at")),
@@ -226,6 +380,49 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
         }
         for item in updates
     ]
+    result_lookup = {_clean_text(item.get("result_id")): item for item in results if _clean_text(item.get("result_id"))}
+    update_lookup = {_clean_text(item.get("update_id")): item for item in updates if _clean_text(item.get("update_id"))}
+    link_items = [
+        {
+            "link_id": _clean_text(item.get("link_id")),
+            "linked_object_type": _clean_text(item.get("linked_object_type")),
+            "linked_object_id": _clean_text(item.get("linked_object_id")),
+            "relation_type": _clean_text(item.get("relation_type"), default="context_only"),
+            "summary": _clean_text(item.get("summary")),
+            "created_at": _to_iso(item.get("created_at")),
+            "updated_at": _to_iso(item.get("updated_at")),
+            "object_summary": _link_object_summary(item, evidence_lookup, model_output_lookup, recommendation_lookup),
+            "provenance": "canonical_claim_evidence_link",
+        }
+        for item in claim_links
+    ]
+    contradiction_items = [
+        {
+            "contradiction_id": _clean_text(item.get("contradiction_id")),
+            "contradiction_scope": _clean_text(item.get("contradiction_scope"), default="claim"),
+            "contradiction_type": _clean_text(item.get("contradiction_type"), default="unknown"),
+            "source_object_type": _clean_text(item.get("source_object_type"), default="unknown"),
+            "source_object_id": _clean_text(item.get("source_object_id")),
+            "status": _clean_text(item.get("status"), default="unresolved"),
+            "summary": _clean_text(item.get("summary")),
+            "created_at": _to_iso(item.get("created_at")),
+            "updated_at": _to_iso(item.get("updated_at")),
+            "object_summary": _contradiction_object_summary(
+                item,
+                evidence_lookup=evidence_lookup,
+                model_output_lookup=model_output_lookup,
+                recommendation_lookup=recommendation_lookup,
+                result_lookup=result_lookup,
+                update_lookup=update_lookup,
+            ),
+            "provenance": "canonical_contradiction",
+        }
+        for item in contradictions
+    ]
+    grouped_link_counts: dict[str, int] = {}
+    for item in link_items:
+        relation_type = item["relation_type"]
+        grouped_link_counts[relation_type] = grouped_link_counts.get(relation_type, 0) + 1
 
     return {
         "available": True,
@@ -249,6 +446,12 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
             "run_context": run_context,
             "support_links": _as_dict(claim.get("support_links")),
             "support_basis_summary": _support_basis_summary(claim),
+            "claim_evidence_link_count": len(link_items),
+            "claim_evidence_relation_counts": grouped_link_counts,
+            "claim_evidence_links": link_items,
+            "contradiction_count": len(contradiction_items),
+            "active_contradiction_count": sum(1 for item in contradiction_items if item["status"] in {"active", "unresolved"}),
+            "contradictions": contradiction_items,
             "provenance": "canonical_epistemic_objects",
         },
         "experiment_detail": {
@@ -279,6 +482,9 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
             "current_state": _clean_text(belief_state.get("current_state"), default="absent"),
             "current_strength": _clean_text(belief_state.get("current_strength"), default="absent"),
             "support_basis_summary": _clean_text(belief_state.get("support_basis_summary")),
+            "contradiction_pressure": _clean_text(belief_state.get("contradiction_pressure"), default="none"),
+            "support_balance_summary": _clean_text(belief_state.get("support_balance_summary")),
+            "latest_revision_rationale": _clean_text(belief_state.get("latest_revision_rationale")),
             "latest_update_id": _clean_text(belief_state.get("latest_update_id")),
             "status": _clean_text(belief_state.get("status"), default="absent"),
             "updated_at": _to_iso(belief_state.get("updated_at")),
@@ -287,10 +493,12 @@ def build_claim_detail_read_model(*, claim_id: str) -> dict[str, Any]:
         },
         "diagnostics": {
             "detail_source": "canonical_epistemic_objects",
+            "has_claim_evidence_links": bool(link_items),
             "has_experiment_requests": bool(request_items),
             "has_experiment_results": bool(result_items),
             "has_belief_updates": bool(update_items),
             "has_belief_state": bool(belief_state),
+            "has_contradictions": bool(contradiction_items),
             "experiment_lifecycle_unresolved_state": _clean_text(lifecycle_claim.get("unresolved_state"), default="no_experiment_request"),
         },
     }

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from system.db import ScientificStateRepository
+from system.services.epistemic_experiment_priority_service import assess_epistemic_experiment_priority
 
 
 scientific_state_repository = ScientificStateRepository()
@@ -72,6 +73,7 @@ def _build_experiment_item(
     results: list[dict[str, Any]],
     belief_updates: list[dict[str, Any]],
     belief_state: dict[str, Any],
+    contradictions: list[dict[str, Any]],
 ) -> dict[str, Any]:
     latest_result = results[-1] if results else {}
     latest_update = belief_updates[-1] if belief_updates else {}
@@ -87,10 +89,24 @@ def _build_experiment_item(
     return {
         "request_id": _clean_text(request.get("request_id")),
         "linked_claim_ids": [_clean_text(request.get("claim_id"))] if _clean_text(request.get("claim_id")) else [],
+        "tested_claim_id": _clean_text(request.get("tested_claim_id") or request.get("claim_id")),
         "scope_context": _scope_context(request, claim),
         "objective_summary": _clean_text(request.get("objective")),
         "rationale_summary": _clean_text(request.get("rationale")),
         "requested_measurement": _clean_text(request.get("requested_measurement")),
+        "experiment_intent": _clean_text(request.get("experiment_intent"), default="unknown"),
+        "epistemic_goal_summary": _clean_text(request.get("epistemic_goal_summary")),
+        "existing_context_summary": _clean_text(request.get("existing_context_summary")),
+        "strengthening_outcome_description": _clean_text(request.get("strengthening_outcome_description")),
+        "weakening_outcome_description": _clean_text(request.get("weakening_outcome_description")),
+        "expected_learning_value": _clean_text(request.get("expected_learning_value")),
+        "linked_claim_evidence_snapshot": request.get("linked_claim_evidence_snapshot")
+        if isinstance(request.get("linked_claim_evidence_snapshot"), list)
+        else [],
+        "protocol_context_summary": _clean_text(request.get("protocol_context_summary")),
+        "contradiction_count": len(contradictions),
+        "active_contradiction_count": sum(1 for item in contradictions if _clean_text(item.get("status")) in {"active", "unresolved"}),
+        "contradictions": contradictions,
         "status": _request_status(request, results),
         "has_result": has_result,
         "result_count": len(results),
@@ -109,6 +125,12 @@ def _build_experiment_item(
             "update_id": _clean_text(latest_update.get("update_id")),
             "belief_state": _clean_text(belief_state.get("current_state"), default="absent"),
             "belief_strength": _clean_text(belief_state.get("current_strength"), default="absent"),
+            "contradiction_pressure": _clean_text(latest_update.get("contradiction_pressure") or belief_state.get("contradiction_pressure"), default="none"),
+            "revision_rationale": _clean_text(latest_update.get("revision_rationale")),
+            "support_balance_summary": _clean_text(latest_update.get("support_balance_summary") or belief_state.get("support_balance_summary")),
+            "triggering_contradiction_ids": latest_update.get("triggering_contradiction_ids")
+            if isinstance(latest_update.get("triggering_contradiction_ids"), list)
+            else [],
             "summary_text": _belief_impact_summary(latest_update, belief_state),
             "created_at": _to_iso(latest_update.get("created_at")),
             "provenance": "canonical_belief_update" if has_belief_update else "absent",
@@ -128,6 +150,17 @@ def build_session_experiment_lifecycle_read_model(*, session_id: str, workspace_
     requests = scientific_state_repository.list_experiment_requests(session_id=session_id)
     requests = [item for item in requests if workspace_id is None or _clean_text(item.get("workspace_id")) == workspace_id]
     claim_lookup = {_claim_key(item): item for item in claims if _claim_key(item)}
+    claim_links = scientific_state_repository.list_claim_evidence_links(session_id=session_id, workspace_id=workspace_id)
+    claim_links_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for item in claim_links:
+        claim_id = _clean_text(item.get("claim_id"))
+        if claim_id:
+            claim_links_by_claim.setdefault(claim_id, []).append(item)
+    contradictions_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for item in scientific_state_repository.list_contradictions(session_id=session_id, workspace_id=workspace_id):
+        claim_id = _clean_text(item.get("claim_id"))
+        if claim_id:
+            contradictions_by_claim.setdefault(claim_id, []).append(item)
 
     results_by_request: dict[str, list[dict[str, Any]]] = {}
     updates_by_result: dict[str, list[dict[str, Any]]] = {}
@@ -150,15 +183,24 @@ def build_session_experiment_lifecycle_read_model(*, session_id: str, workspace_
                 belief_state_by_claim[claim_id] = scientific_state_repository.get_belief_state(claim_id=claim_id)
             except FileNotFoundError:
                 belief_state_by_claim[claim_id] = {}
-        experiment_items.append(
-            _build_experiment_item(
-                request,
-                claim=claim_lookup.get(claim_id),
-                results=request_results,
-                belief_updates=belief_updates,
-                belief_state=belief_state_by_claim.get(claim_id, {}),
-            )
+        experiment_item = _build_experiment_item(
+            request,
+            claim=claim_lookup.get(claim_id),
+            results=request_results,
+            belief_updates=belief_updates,
+            belief_state=belief_state_by_claim.get(claim_id, {}),
+            contradictions=contradictions_by_claim.get(claim_id, []),
         )
+        experiment_item["epistemic_priority"] = assess_epistemic_experiment_priority(
+            request=request,
+            claim=claim_lookup.get(claim_id),
+            belief_state=belief_state_by_claim.get(claim_id, {}),
+            claim_links=claim_links_by_claim.get(claim_id, []),
+            unresolved_state=_clean_text(experiment_item.get("unresolved_state"), default="unknown"),
+            result_count=len(request_results),
+            has_belief_update=bool(belief_updates),
+        )
+        experiment_items.append(experiment_item)
 
     claim_items: list[dict[str, Any]] = []
     for claim in claims:
@@ -268,6 +310,11 @@ def build_session_experiment_lifecycle_read_model(*, session_id: str, workspace_
             "result_recorded_count": sum(1 for item in experiment_items if item.get("has_result")),
             "claim_linked_unresolved_count": sum(1 for item in claim_items if item.get("unresolved_state") != "belief_updated"),
             "belief_updated_count": sum(1 for item in experiment_items if item.get("has_belief_update")),
+            "high_epistemic_priority_count": sum(
+                1
+                for item in experiment_items
+                if _clean_text(((item.get("epistemic_priority") or {}) if isinstance(item.get("epistemic_priority"), dict) else {}).get("epistemic_priority_band")) == "high"
+            ),
             "has_experiments": bool(requests),
             "absence_reason": "" if requests else "no_experiments_in_session",
             "provenance": "canonical_experiment_lifecycle" if requests else "absent",

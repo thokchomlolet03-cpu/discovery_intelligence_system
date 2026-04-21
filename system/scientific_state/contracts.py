@@ -39,6 +39,7 @@ class TargetDefinitionRecord(ScientificStateModel):
 
 
 class EvidenceRecord(ScientificStateModel):
+    record_id: int | None = None
     session_id: str
     workspace_id: str
     created_by_user_id: str = ""
@@ -60,6 +61,7 @@ class EvidenceRecord(ScientificStateModel):
 
 
 class ModelOutputRecord(ScientificStateModel):
+    record_id: int | None = None
     session_id: str
     workspace_id: str
     created_by_user_id: str = ""
@@ -90,6 +92,7 @@ class ModelOutputRecord(ScientificStateModel):
 
 
 class RecommendationRecord(ScientificStateModel):
+    record_id: int | None = None
     session_id: str
     workspace_id: str
     created_by_user_id: str = ""
@@ -200,17 +203,58 @@ class ClaimRecord(ScientificStateModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class ClaimEvidenceLinkRecord(ScientificStateModel):
+    link_id: str
+    session_id: str
+    workspace_id: str
+    created_by_user_id: str = ""
+    claim_id: str
+    linked_object_type: str
+    linked_object_id: str
+    relation_type: str
+    summary: str = ""
+    provenance_markers: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class ContradictionRecord(ScientificStateModel):
+    contradiction_id: str
+    session_id: str
+    workspace_id: str
+    created_by_user_id: str = ""
+    claim_id: str = ""
+    contradiction_scope: str = "claim"
+    contradiction_type: str
+    source_object_type: str
+    source_object_id: str
+    status: str = "unresolved"
+    summary: str = ""
+    provenance_markers: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class ExperimentRequestRecord(ScientificStateModel):
     request_id: str
     session_id: str
     workspace_id: str
     created_by_user_id: str = ""
     claim_id: str
+    tested_claim_id: str = ""
     candidate_id: str = ""
     canonical_smiles: str = ""
     objective: str = ""
     rationale: str = ""
     requested_measurement: str = ""
+    experiment_intent: str = ""
+    epistemic_goal_summary: str = ""
+    existing_context_summary: str = ""
+    strengthening_outcome_description: str = ""
+    weakening_outcome_description: str = ""
+    expected_learning_value: str = ""
+    linked_claim_evidence_snapshot: list[dict[str, Any]] = Field(default_factory=list)
+    protocol_context_summary: str = ""
     status: str = "requested"
     provenance_markers: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
@@ -247,6 +291,12 @@ class BeliefUpdateRecord(ScientificStateModel):
     pre_belief_state: dict[str, Any] = Field(default_factory=dict)
     post_belief_state: dict[str, Any] = Field(default_factory=dict)
     deterministic_rule: str = ""
+    revision_mode: str = "bounded_contradiction_aware"
+    contradiction_pressure: str = "none"
+    support_balance_summary: str = ""
+    revision_rationale: str = ""
+    triggering_contradiction_ids: list[str] = Field(default_factory=list)
+    triggering_source_summary: str = ""
     provenance_markers: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
@@ -261,6 +311,9 @@ class BeliefStateRecord(ScientificStateModel):
     current_state: str = "unresolved"
     current_strength: str = "tentative"
     support_basis_summary: str = ""
+    contradiction_pressure: str = "none"
+    support_balance_summary: str = ""
+    latest_revision_rationale: str = ""
     latest_update_id: str = ""
     status: str = "active"
     provenance_markers: dict[str, Any] = Field(default_factory=dict)

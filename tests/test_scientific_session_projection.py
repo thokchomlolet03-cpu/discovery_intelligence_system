@@ -15,13 +15,362 @@ from system.services.epistemic_ui_service import (
     build_session_epistemic_summary,
 )
 from system.services.experiment_read_service import build_session_experiment_lifecycle_read_model
+from system.services.epistemic_experiment_priority_service import assess_epistemic_experiment_priority
 from system.services.claim_service import materialize_session_claims
+from system.services.contradiction_service import build_session_contradictions
+from system.services.belief_state_service import assess_belief_revision
 from system.services.experiment_service import create_experiment_request, record_experiment_result
 from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.scientific_state_service import build_run_metadata_record
 
 
 class ScientificSessionProjectionTest(unittest.TestCase):
+    def test_contradiction_aware_belief_revision_keeps_mixed_structure_unresolved(self):
+        revision = assess_belief_revision(
+            claim={"claim_id": "claim_1", "claim_text": "Candidate cand_1 should remain prioritized."},
+            experiment_result={"result_id": "res_1", "outcome": "supportive"},
+            current_belief_state={"current_state": "unresolved", "current_strength": "tentative"},
+            contradictions=[
+                {
+                    "contradiction_id": "contr_1",
+                    "status": "active",
+                    "contradiction_type": "result_vs_claim",
+                }
+            ],
+            claim_links=[
+                {"relation_type": "supports"},
+                {"relation_type": "weakens"},
+                {"relation_type": "derived_from"},
+            ],
+            prior_updates=[],
+        )
+
+        self.assertEqual(revision["current_state"], "unresolved")
+        self.assertEqual(revision["current_strength"], "mixed")
+        self.assertEqual(revision["contradiction_pressure"], "moderate")
+        self.assertIn("active contradiction", revision["revision_rationale"].lower())
+
+    def test_contradiction_materialization_is_conservative_and_grounded(self):
+        contradictions = build_session_contradictions(
+            session_id="session_1",
+            workspace_id="workspace_1",
+            claims=[
+                {
+                    "claim_id": "claim_1",
+                    "claim_scope": "candidate",
+                    "claim_text": "Candidate cand_1 should remain prioritized.",
+                }
+            ],
+            claim_evidence_links=[
+                {
+                    "claim_id": "claim_1",
+                    "link_id": "link_weak_1",
+                    "linked_object_type": "evidence",
+                    "linked_object_id": "21",
+                    "relation_type": "weakens",
+                    "summary": "Observed measurement undercuts the current candidate-priority claim.",
+                    "provenance_markers": {"link_source": "test"},
+                },
+                {
+                    "claim_id": "claim_1",
+                    "link_id": "link_ctx_1",
+                    "linked_object_type": "recommendation",
+                    "linked_object_id": "9",
+                    "relation_type": "context_only",
+                    "summary": "Recommendation context only.",
+                },
+            ],
+            experiment_results=[
+                {
+                    "result_id": "res_1",
+                    "request_id": "req_1",
+                    "claim_id": "claim_1",
+                    "outcome": "contradictory",
+                    "result_summary": {"summary": "Observed result contradicts expected potency."},
+                    "provenance_markers": {"result_source": "test"},
+                }
+            ],
+            belief_updates=[
+                {
+                    "update_id": "upd_1",
+                    "claim_id": "claim_1",
+                    "deterministic_rule": "contradictory_result_challenges_claim",
+                    "post_belief_state": {"current_state": "challenged"},
+                    "update_reason": "Contradictory result recorded.",
+                    "provenance_markers": {"update_source": "test"},
+                }
+            ],
+        )
+
+        self.assertEqual(len(contradictions), 3)
+        self.assertEqual(
+            {item["contradiction_type"] for item in contradictions},
+            {"evidence_vs_claim", "result_vs_claim", "belief_transition_conflict"},
+        )
+        self.assertEqual(sum(1 for item in contradictions if item["status"] == "active"), 2)
+        self.assertEqual(sum(1 for item in contradictions if item["status"] == "unresolved"), 1)
+
+    def test_epistemic_experiment_priority_assessment_favors_unresolved_thinly_supported_claims(self):
+        request = {
+            "request_id": "req_priority",
+            "claim_id": "claim_priority",
+            "tested_claim_id": "claim_priority",
+            "experiment_intent": "claim_test",
+            "expected_learning_value": "Reduce uncertainty around whether the recommendation-derived claim should remain trusted.",
+            "linked_claim_evidence_snapshot": [
+                {
+                    "linked_object_type": "recommendation",
+                    "relation_type": "derived_from",
+                    "summary": "Derived from ranked recommendation cand_1.",
+                }
+            ],
+        }
+        claim = {"claim_id": "claim_priority", "claim_scope": "candidate"}
+        weak_links = [
+            {
+                "claim_id": "claim_priority",
+                "relation_type": "derived_from",
+                "linked_object_type": "recommendation",
+            }
+        ]
+        strong_links = [
+            {
+                "claim_id": "claim_priority",
+                "relation_type": "supports",
+                "linked_object_type": "evidence",
+            },
+            {
+                "claim_id": "claim_priority",
+                "relation_type": "supports",
+                "linked_object_type": "model_output",
+            },
+            {
+                "claim_id": "claim_priority",
+                "relation_type": "context_only",
+                "linked_object_type": "recommendation",
+            },
+        ]
+
+        unresolved_priority = assess_epistemic_experiment_priority(
+            request=request,
+            claim=claim,
+            belief_state={
+                "current_state": "unresolved",
+                "contradiction_pressure": "moderate",
+                "support_balance_summary": "1 supporting line(s), 1 weakening line(s), 0 context-only line(s), 1 derived line(s); current attached structure is mixed.",
+                "latest_revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
+            },
+            claim_links=weak_links,
+            unresolved_state="no_result_recorded",
+            result_count=0,
+            has_belief_update=False,
+        )
+        settled_priority = assess_epistemic_experiment_priority(
+            request=request,
+            claim=claim,
+            belief_state={
+                "current_state": "supported",
+                "contradiction_pressure": "low",
+                "support_balance_summary": "2 supporting line(s), 0 weakening line(s), 1 context-only line(s), 0 derived line(s); current attached structure leans supportive.",
+                "latest_revision_rationale": "A supportive result increased support because contradiction pressure is currently low.",
+            },
+            claim_links=strong_links,
+            unresolved_state="belief_updated",
+            result_count=1,
+            has_belief_update=True,
+        )
+
+        self.assertEqual(unresolved_priority["epistemic_priority_band"], "high")
+        self.assertGreater(unresolved_priority["epistemic_priority_score"], settled_priority["epistemic_priority_score"])
+        self.assertGreater(unresolved_priority["support_weakness_signal"], settled_priority["support_weakness_signal"])
+        self.assertGreater(unresolved_priority["belief_change_opportunity_signal"], settled_priority["belief_change_opportunity_signal"])
+        self.assertGreater(unresolved_priority["contradiction_attention_signal"], settled_priority["contradiction_attention_signal"])
+        self.assertGreater(unresolved_priority["unresolved_mixed_structure_signal"], settled_priority["unresolved_mixed_structure_signal"])
+
+    def test_claim_detail_includes_grouped_claim_evidence_links(self):
+        claim = {
+            "claim_id": "claim_candidate",
+            "session_id": "session_1",
+            "workspace_id": "workspace_1",
+            "claim_scope": "candidate",
+            "claim_type": "candidate_experiment_priority",
+            "claim_text": "Candidate cand_1 is a priority experimental candidate.",
+            "status": "active",
+            "support_links": {},
+            "source_basis": "recommended",
+            "provenance_markers": {},
+        }
+        with patch(
+            "system.services.claim_read_service.scientific_state_repository.get_claim",
+            return_value=claim,
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_candidate_states",
+            return_value=[{"candidate_id": "cand_1", "canonical_smiles": "CCO"}],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.get_run_metadata",
+            return_value={},
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_experiment_requests",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_experiment_results",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_belief_updates",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.get_belief_state",
+            side_effect=FileNotFoundError("missing"),
+        ), patch(
+            "system.services.claim_read_service.build_session_experiment_lifecycle_read_model",
+            return_value={"claim_items": [], "experiment_items": []},
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_claim_evidence_links",
+            return_value=[
+                {
+                    "link_id": "link_1",
+                    "linked_object_type": "recommendation",
+                    "linked_object_id": "11",
+                    "relation_type": "derived_from",
+                    "summary": "Derived from recommendation",
+                },
+                {
+                    "link_id": "link_2",
+                    "linked_object_type": "evidence",
+                    "linked_object_id": "21",
+                    "relation_type": "context_only",
+                    "summary": "Observed measurement context",
+                },
+            ],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_contradictions",
+            return_value=[
+                {
+                    "contradiction_id": "contr_1",
+                    "claim_id": "claim_candidate",
+                    "contradiction_scope": "claim",
+                    "contradiction_type": "result_vs_claim",
+                    "source_object_type": "experiment_result",
+                    "source_object_id": "res_9",
+                    "status": "active",
+                    "summary": "Recorded result conflicts with the current claim.",
+                    "provenance_markers": {"materialization_rule": "test"},
+                }
+            ],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_evidence_records",
+            return_value=[
+                {
+                    "record_id": 21,
+                    "evidence_type": "observed_measurement",
+                    "source_row_index": 3,
+                    "source_column": "pic50",
+                    "assay": "assay_a",
+                    "target_name": "pIC50",
+                    "observed_value": 7.2,
+                }
+            ],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_model_outputs",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_recommendations",
+            return_value=[
+                {
+                    "record_id": 11,
+                    "rank": 1,
+                    "bucket": "exploit",
+                    "risk": "low",
+                    "status": "approved",
+                    "priority_score": 0.82,
+                    "experiment_value": 0.71,
+                }
+            ],
+        ):
+            detail = build_claim_detail_read_model(claim_id="claim_candidate")
+
+        self.assertEqual(detail["attachment_context"]["claim_evidence_link_count"], 2)
+        self.assertEqual(detail["attachment_context"]["contradiction_count"], 1)
+        self.assertEqual(detail["attachment_context"]["active_contradiction_count"], 1)
+        self.assertEqual(detail["attachment_context"]["claim_evidence_relation_counts"]["derived_from"], 1)
+        self.assertEqual(detail["attachment_context"]["claim_evidence_links"][0]["object_summary"]["label"], "recommendation")
+        self.assertEqual(detail["attachment_context"]["contradictions"][0]["contradiction_type"], "result_vs_claim")
+
+    def test_focused_claim_inspection_exposes_claim_evidence_link_groups(self):
+        focused = build_focused_claim_inspection(
+            claim_detail_items=[
+                {
+                    "claim_id": "claim_candidate",
+                    "claim": {
+                        "claim_type": "candidate_experiment_priority",
+                        "claim_status": "active",
+                        "claim_scope": "candidate",
+                        "claim_text": "Candidate cand_1 is a priority experimental candidate.",
+                    },
+                    "attachment_context": {
+                        "support_basis_summary": "Supported by recommendation record.",
+                        "claim_evidence_link_count": 2,
+                        "claim_evidence_relation_counts": {"derived_from": 1, "context_only": 1},
+                        "contradiction_count": 1,
+                        "active_contradiction_count": 1,
+                        "claim_evidence_links": [
+                            {
+                                "relation_type": "derived_from",
+                                "linked_object_type": "recommendation",
+                                "summary": "Derived from recommendation",
+                                "object_summary": {"label": "recommendation", "context_bits": ["rank 1", "exploit"]},
+                            },
+                            {
+                                "relation_type": "context_only",
+                                "linked_object_type": "evidence",
+                                "summary": "Observed value context",
+                                "object_summary": {"label": "observed measurement", "context_bits": ["row 3", "value 7.2"]},
+                            },
+                        ],
+                        "contradictions": [
+                            {
+                                "contradiction_id": "contr_1",
+                                "contradiction_type": "result_vs_claim",
+                                "status": "active",
+                                "summary": "Recorded result conflicts with the current claim.",
+                                "object_summary": {"label": "experiment result", "context_bits": ["outcome contradictory"]},
+                            }
+                        ],
+                        "candidate_context": {"candidate_id": "cand_1"},
+                        "run_context": {},
+                    },
+                    "experiment_detail": {"request_count": 0, "result_count": 0, "pending_request_count": 0},
+                    "current_belief_state": {
+                        "current_state": "unresolved",
+                        "current_strength": "tentative",
+                        "contradiction_pressure": "moderate",
+                        "support_balance_summary": "1 supporting line(s), 1 weakening line(s), 0 context-only line(s), 0 derived line(s); current attached structure is mixed.",
+                        "latest_revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
+                    },
+                    "belief_update_summary": {
+                        "update_count": 1,
+                        "items": [
+                            {
+                                "revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
+                                "triggering_contradiction_ids": ["contr_1"],
+                            }
+                        ],
+                    },
+                    "diagnostics": {"experiment_lifecycle_unresolved_state": "no_experiment_request"},
+                }
+            ]
+        )
+
+        self.assertEqual(focused["claim_evidence_link_count"], 2)
+        self.assertEqual(focused["contradiction_count"], 1)
+        self.assertEqual(focused["active_contradiction_count"], 1)
+        self.assertEqual(focused["belief_contradiction_pressure"], "moderate")
+        self.assertIn("contradiction pressure", focused["latest_revision_rationale"].lower())
+        self.assertEqual(focused["latest_triggering_contradiction_ids"], ["contr_1"])
+        self.assertEqual(len(focused["contradictions_by_status"]["active"]), 1)
+        self.assertEqual(len(focused["claim_evidence_links_by_relation"]["derived_from"]), 1)
+        self.assertEqual(focused["claim_choices"][0]["claim_evidence_relation_counts"]["context_only"], 1)
+
     def test_projection_prefers_canonical_state_and_keeps_legacy_dependencies_explicit(self):
         canonical_state = {
             "session_id": "session_1",
@@ -605,6 +954,20 @@ class ScientificSessionProjectionTest(unittest.TestCase):
             "system.services.experiment_service.scientific_state_repository.get_claim",
             return_value=claim,
         ), patch(
+            "system.services.experiment_service.scientific_state_repository.list_claim_evidence_links",
+            return_value=[
+                {
+                    "linked_object_type": "recommendation",
+                    "relation_type": "derived_from",
+                    "summary": "Derived from ranked recommendation cand_1.",
+                },
+                {
+                    "linked_object_type": "evidence",
+                    "relation_type": "context_only",
+                    "summary": "Observed assay row for cand_1 is attached as context.",
+                },
+            ],
+        ), patch(
             "system.services.experiment_service.scientific_state_repository.record_experiment_result"
         ) as record_result, patch(
             "system.services.experiment_service.scientific_state_repository.update_experiment_request_status",
@@ -635,6 +998,13 @@ class ScientificSessionProjectionTest(unittest.TestCase):
                 created_by_user_id="user_1",
             )
 
+        self.assertEqual(request["tested_claim_id"], "claim_1")
+        self.assertEqual(request["experiment_intent"], "claim_test")
+        self.assertIn("Reduce uncertainty around the linked claim", request["epistemic_goal_summary"])
+        self.assertIn("Claim basis", request["existing_context_summary"])
+        self.assertIn("would strengthen", request["strengthening_outcome_description"])
+        self.assertIn("would weaken or challenge", request["weakening_outcome_description"])
+        self.assertEqual(len(request["linked_claim_evidence_snapshot"]), 2)
         self.assertEqual(result["outcome"], "supportive")
         self.assertEqual(belief_update["deterministic_rule"], "supportive_result_strengthens_claim")
         self.assertEqual(belief_state["current_state"], "supported")
@@ -832,6 +1202,21 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         ), patch(
             "system.services.claim_read_service.scientific_state_repository.get_belief_state",
             side_effect=FileNotFoundError("missing"),
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_claim_evidence_links",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_evidence_records",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_model_outputs",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_recommendations",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_contradictions",
+            return_value=[],
         ):
             detail = build_claim_detail_read_model(claim_id="claim_candidate")
 
@@ -911,6 +1296,21 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         ), patch(
             "system.services.claim_read_service.scientific_state_repository.get_belief_state",
             return_value=belief_state,
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_claim_evidence_links",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_evidence_records",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_model_outputs",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_recommendations",
+            return_value=[],
+        ), patch(
+            "system.services.claim_read_service.scientific_state_repository.list_contradictions",
+            return_value=[],
         ):
             detail = build_claim_detail_read_model(claim_id="claim_run")
 
@@ -1031,6 +1431,138 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(workbench["experiment_lifecycle_summary"]["experiment_request_count"], 1)
         self.assertEqual(workbench["session_epistemic_summary"]["pending_experiment_count"], 1)
         self.assertEqual(workbench["candidates"][0]["candidate_epistemic_context"]["status"], "pending_experiment")
+
+    def test_workbench_surfaces_epistemic_attention_ahead_of_policy_only_ordering(self):
+        projection = {
+            "target_definition": {"target_name": "pIC50", "target_kind": "regression"},
+            "measurement_summary": {"rows_with_values": 2, "rows_with_labels": 0},
+            "predictive_summary": {},
+            "governance_summary": {},
+            "ranking_diagnostics": {},
+            "recommendation_summary": "Start with the most decision-ready candidate, but keep unresolved claim pressure visible.",
+            "ranking_policy": {"primary_score_label": "Policy priority score", "primary_score": "priority_score"},
+            "run_contract": {"modeling_mode": "regression", "scoring_mode": "balanced"},
+            "comparison_anchors": {"target_name": "pIC50", "target_kind": "regression"},
+            "run_provenance": {},
+            "trust_context": {},
+            "metric_interpretation": [],
+            "diagnostics": {"canonical_projection_used": True},
+            "candidate_projection_rows": [
+                {
+                    "candidate_id": "cand_a",
+                    "canonical_smiles": "CCO",
+                    "bucket": "learn",
+                    "risk": "medium",
+                    "status": "suggested",
+                    "priority_score": 0.60,
+                    "experiment_value": 0.50,
+                },
+                {
+                    "candidate_id": "cand_b",
+                    "canonical_smiles": "CCN",
+                    "bucket": "exploit",
+                    "risk": "low",
+                    "status": "suggested",
+                    "priority_score": 0.90,
+                    "experiment_value": 0.82,
+                },
+            ],
+            "belief_layer_summary": {},
+            "belief_read_model": {},
+            "experiment_lifecycle_summary": {"experiment_request_count": 1, "pending_count": 1},
+            "experiment_lifecycle_model": {
+                "experiment_items": [
+                    {
+                        "request_id": "req_a",
+                        "scope_context": {"candidate_id": "cand_a", "canonical_smiles": "CCO", "claim_scope": "candidate"},
+                        "epistemic_priority": {
+                            "epistemic_priority_score": 0.95,
+                            "epistemic_priority_band": "high",
+                            "summary_rationale": "Prioritized because the claim remains unresolved in the current session.",
+                        },
+                        "unresolved_state": "no_result_recorded",
+                    }
+                ]
+            },
+            "claim_detail_summary": {},
+            "claim_detail_items": [
+                {
+                    "claim_id": "claim_a",
+                    "claim": {"claim_scope": "candidate", "claim_type": "candidate_experiment_priority"},
+                    "attachment_context": {"candidate_context": {"available": True, "candidate_id": "cand_a", "canonical_smiles": "CCO"}},
+                    "experiment_detail": {"has_requests": True, "has_results": False},
+                    "belief_update_summary": {"has_updates": True},
+                    "current_belief_state": {
+                        "available": True,
+                        "current_state": "unresolved",
+                        "current_strength": "mixed",
+                        "contradiction_pressure": "moderate",
+                        "support_balance_summary": "1 supporting line(s), 1 weakening line(s), 0 context-only line(s), 0 derived line(s); current attached structure is mixed.",
+                        "latest_revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
+                    },
+                    "diagnostics": {"detail_source": "canonical_epistemic_objects"},
+                }
+            ],
+            "session_epistemic_summary": {},
+            "epistemic_entry_points": {},
+            "session_epistemic_detail_reveal": {},
+            "focused_claim_inspection": {},
+            "focused_experiment_inspection": {},
+        }
+
+        workbench = build_discovery_workbench(
+            decision_output={
+                "artifact_state": "ok",
+                "source_updated_at": "2026-04-20T09:00:00+00:00",
+                "top_experiments": [
+                    {
+                        "candidate_id": "cand_b",
+                        "bucket": "exploit",
+                        "risk": "low",
+                        "status": "suggested",
+                        "confidence": 0.91,
+                        "uncertainty": 0.12,
+                        "novelty": 0.22,
+                        "experiment_value": 0.82,
+                        "priority_score": 0.90,
+                        "smiles": "CCN",
+                        "canonical_smiles": "CCN",
+                        "explanation": ["Higher policy-ranked candidate."],
+                    },
+                    {
+                        "candidate_id": "cand_a",
+                        "bucket": "learn",
+                        "risk": "medium",
+                        "status": "suggested",
+                        "confidence": 0.62,
+                        "uncertainty": 0.48,
+                        "novelty": 0.41,
+                        "experiment_value": 0.50,
+                        "priority_score": 0.60,
+                        "smiles": "CCO",
+                        "canonical_smiles": "CCO",
+                        "explanation": ["Lower policy-ranked candidate with unresolved claim pressure."],
+                    },
+                ],
+            },
+            analysis_report={},
+            review_queue={},
+            session_id="session_attention",
+            evaluation_summary=None,
+            system_version="test",
+            scientific_session_projection=projection,
+        )
+
+        self.assertEqual(workbench["candidates"][0]["candidate_id"], "cand_a")
+        self.assertTrue(workbench["candidates"][0]["surfaced_attention_active"])
+        self.assertEqual(workbench["candidates"][0]["surfaced_attention_bucket"], "epistemic_attention")
+        self.assertGreater(workbench["candidates"][0]["belief_attention_signal"], 0.7)
+        self.assertIn("contradiction pressure", workbench["candidates"][0]["belief_informed_attention_reason"].lower())
+        self.assertEqual(workbench["candidates"][0]["priority_score"], 0.6)
+        self.assertEqual(workbench["candidates"][1]["candidate_id"], "cand_b")
+        self.assertEqual(workbench["surfaced_attention_summary"]["belief_feedback_count"], 1)
+        self.assertEqual(workbench["surfaced_attention_summary"]["default_sort"], "surfaced_order_score")
+        self.assertEqual(workbench["decision_overview"]["primary_candidate"]["candidate_id"], "cand_a")
         self.assertTrue(workbench["session_epistemic_detail_reveal"]["available"])
         self.assertTrue(workbench["candidates"][0]["focused_claim_inspection"]["available"])
         self.assertTrue(workbench["candidates"][0]["focused_experiment_inspection"]["available"])
@@ -1066,19 +1598,23 @@ class ScientificSessionProjectionTest(unittest.TestCase):
             },
         ]
         requests = [
-            {
-                "request_id": "req_pending",
-                "claim_id": "claim_candidate_pending",
+                {
+                    "request_id": "req_pending",
+                    "claim_id": "claim_candidate_pending",
                 "candidate_id": "cand_1",
                 "canonical_smiles": "CCO",
                 "session_id": "session_exp",
                 "workspace_id": "workspace_1",
-                "objective": "Test candidate priority",
-                "rationale": "Pending confirmation",
-                "requested_measurement": "pIC50",
-                "status": "requested",
-                "provenance_markers": {"request_source": "test"},
-            },
+                    "objective": "Test candidate priority",
+                    "rationale": "Pending confirmation",
+                    "requested_measurement": "pIC50",
+                    "expected_learning_value": "Reduce uncertainty around a mixed and contradiction-exposed claim.",
+                    "linked_claim_evidence_snapshot": [
+                        {"linked_object_type": "recommendation", "relation_type": "derived_from", "summary": "Derived from recommendation context."}
+                    ],
+                    "status": "requested",
+                    "provenance_markers": {"request_source": "test"},
+                },
             {
                 "request_id": "req_done",
                 "claim_id": "claim_run_done",
@@ -1137,6 +1673,18 @@ class ScientificSessionProjectionTest(unittest.TestCase):
                     "current_state": "supported",
                     "current_strength": "strengthened",
                     "support_basis_summary": "Supportive result observed.",
+                    "contradiction_pressure": "low",
+                    "support_balance_summary": "2 supporting line(s), 0 weakening line(s), 0 context-only line(s), 0 derived line(s); current attached structure leans supportive.",
+                    "latest_revision_rationale": "A supportive result increased support because contradiction pressure is currently low.",
+                }
+            if claim_id == "claim_candidate_pending":
+                return {
+                    "current_state": "unresolved",
+                    "current_strength": "mixed",
+                    "support_basis_summary": "Belief remains unresolved because contradiction pressure is still active.",
+                    "contradiction_pressure": "moderate",
+                    "support_balance_summary": "1 supporting line(s), 1 weakening line(s), 0 context-only line(s), 1 derived line(s); current attached structure is mixed.",
+                    "latest_revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
                 }
             raise FileNotFoundError("missing")
 
@@ -1147,6 +1695,25 @@ class ScientificSessionProjectionTest(unittest.TestCase):
             "system.services.experiment_read_service.scientific_state_repository.list_experiment_requests",
             return_value=requests,
         ), patch(
+            "system.services.experiment_read_service.scientific_state_repository.list_claim_evidence_links",
+            return_value=[
+                {
+                    "claim_id": "claim_candidate_pending",
+                    "relation_type": "derived_from",
+                    "linked_object_type": "recommendation",
+                },
+                {
+                    "claim_id": "claim_run_done",
+                    "relation_type": "supports",
+                    "linked_object_type": "evidence",
+                },
+                {
+                    "claim_id": "claim_run_done",
+                    "relation_type": "supports",
+                    "linked_object_type": "model_output",
+                },
+            ],
+        ), patch(
             "system.services.experiment_read_service.scientific_state_repository.list_experiment_results",
             side_effect=list_results,
         ), patch(
@@ -1155,6 +1722,17 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         ), patch(
             "system.services.experiment_read_service.scientific_state_repository.get_belief_state",
             side_effect=get_belief_state,
+        ), patch(
+            "system.services.experiment_read_service.scientific_state_repository.list_contradictions",
+            return_value=[
+                {
+                    "contradiction_id": "contr_pending",
+                    "claim_id": "claim_candidate_pending",
+                    "contradiction_type": "support_structure_conflict",
+                    "status": "unresolved",
+                    "summary": "The claim remains exposed to unresolved contradiction pressure.",
+                }
+            ],
         ):
             model = build_session_experiment_lifecycle_read_model(
                 session_id="session_exp",
@@ -1173,7 +1751,16 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(model["candidate_items"][1]["claim_without_experiment_count"], 1)
         self.assertEqual(model["run_items"][0]["belief_updated_count"], 1)
         self.assertEqual(model["experiment_items"][0]["unresolved_state"], "no_result_recorded")
+        self.assertEqual(model["experiment_items"][0]["active_contradiction_count"], 1)
         self.assertEqual(model["experiment_items"][1]["latest_belief_impact_summary"]["update_id"], "upd_done")
+        self.assertEqual(model["experiment_items"][0]["epistemic_priority"]["epistemic_priority_band"], "high")
+        self.assertGreater(model["experiment_items"][0]["epistemic_priority"]["belief_attention_signal"], 0.7)
+        self.assertGreater(model["experiment_items"][0]["epistemic_priority"]["contradiction_attention_signal"], 0.7)
+        self.assertGreater(
+            model["experiment_items"][0]["epistemic_priority"]["epistemic_priority_score"],
+            model["experiment_items"][1]["epistemic_priority"]["epistemic_priority_score"],
+        )
+        self.assertEqual(model["session_summary"]["high_epistemic_priority_count"], 1)
         self.assertIn("req_pending", model["diagnostics"]["requests_without_results"])
 
     def test_experiment_lifecycle_read_model_marks_absent_state_explicitly(self):
@@ -1182,6 +1769,12 @@ class ScientificSessionProjectionTest(unittest.TestCase):
             return_value=[],
         ), patch(
             "system.services.experiment_read_service.scientific_state_repository.list_experiment_requests",
+            return_value=[],
+        ), patch(
+            "system.services.experiment_read_service.scientific_state_repository.list_claim_evidence_links",
+            return_value=[],
+        ), patch(
+            "system.services.experiment_read_service.scientific_state_repository.list_contradictions",
             return_value=[],
         ):
             model = build_session_experiment_lifecycle_read_model(
@@ -1318,19 +1911,57 @@ class ScientificSessionProjectionTest(unittest.TestCase):
                     "claim_scope": "candidate",
                     "claim_text": "Prioritize this candidate.",
                 },
-                "attachment_context": {"support_basis_summary": "Supported by canonical candidate state."},
+                "attachment_context": {
+                    "support_basis_summary": "Supported by canonical candidate state.",
+                    "contradiction_count": 1,
+                    "active_contradiction_count": 1,
+                    "contradictions": [
+                        {
+                            "contradiction_id": "contr_1",
+                            "contradiction_type": "result_vs_claim",
+                            "status": "active",
+                            "summary": "A recorded result conflicts with the current claim.",
+                            "object_summary": {"label": "experiment result", "context_bits": ["outcome contradictory"]},
+                        }
+                    ],
+                },
                 "experiment_detail": {"request_count": 1, "result_count": 0, "pending_request_count": 1},
-                "belief_update_summary": {"update_count": 0},
-                "current_belief_state": {"current_state": "unresolved", "current_strength": "tentative"},
+                "belief_update_summary": {
+                    "update_count": 1,
+                    "items": [
+                        {
+                            "revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
+                            "triggering_contradiction_ids": ["contr_1"],
+                        }
+                    ],
+                },
+                "current_belief_state": {
+                    "current_state": "unresolved",
+                    "current_strength": "tentative",
+                    "contradiction_pressure": "moderate",
+                    "support_balance_summary": "1 supporting line(s), 1 weakening line(s), 0 context-only line(s), 0 derived line(s); current attached structure is mixed.",
+                    "latest_revision_rationale": "Belief remains unresolved because contradiction pressure is still active.",
+                },
                 "diagnostics": {"experiment_lifecycle_unresolved_state": "pending_result"},
             },
             {
                 "claim_id": "claim_2",
                 "claim": {"claim_type": "run_interpretation_caution", "claim_status": "active", "claim_scope": "run", "claim_text": "Fallback visible."},
-                "attachment_context": {"support_basis_summary": "Supported by run metadata."},
+                "attachment_context": {
+                    "support_basis_summary": "Supported by run metadata.",
+                    "contradiction_count": 0,
+                    "active_contradiction_count": 0,
+                    "contradictions": [],
+                },
                 "experiment_detail": {"request_count": 0, "result_count": 0, "pending_request_count": 0},
                 "belief_update_summary": {"update_count": 0},
-                "current_belief_state": {"current_state": "absent", "current_strength": "absent"},
+                "current_belief_state": {
+                    "current_state": "absent",
+                    "current_strength": "absent",
+                    "contradiction_pressure": "none",
+                    "support_balance_summary": "",
+                    "latest_revision_rationale": "",
+                },
                 "diagnostics": {"experiment_lifecycle_unresolved_state": "no_experiment_request"},
             },
         ]
@@ -1344,6 +1975,8 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(focused_claim["choice_count"], 2)
         self.assertTrue(focused_claim["multiple_available"])
         self.assertFalse(focused_claim["default_first_fallback_used"])
+        self.assertEqual(focused_claim["contradiction_count"], 0)
+        self.assertEqual(focused_claim["belief_contradiction_pressure"], "none")
         self.assertEqual(len(focused_claim["claim_choices"]), 2)
         self.assertTrue(any(choice["selected"] and choice["claim_id"] == "claim_2" for choice in focused_claim["claim_choices"]))
 
@@ -1359,27 +1992,92 @@ class ScientificSessionProjectionTest(unittest.TestCase):
                 {
                     "request_id": "req_1",
                     "linked_claim_ids": ["claim_1"],
+                    "tested_claim_id": "claim_1",
                     "scope_context": {"claim_scope": "candidate", "candidate_id": "cand_1", "session_id": "session_1"},
                     "status": "requested",
                     "objective_summary": "Measure pIC50.",
                     "rationale_summary": "Confirm priority.",
+                    "requested_measurement": "pIC50",
+                    "experiment_intent": "claim_test",
+                    "epistemic_goal_summary": "Reduce uncertainty around claim_1.",
+                    "existing_context_summary": "Claim has recommendation-derived context and one uploaded evidence row.",
+                    "strengthening_outcome_description": "A supportive pIC50 result would strengthen the claim.",
+                    "weakening_outcome_description": "A contradictory pIC50 result would weaken the claim.",
+                    "expected_learning_value": "Clarifies whether recommendation-derived support should remain trusted.",
+                    "protocol_context_summary": "Candidate scope is anchored to CCO.",
+                    "linked_claim_evidence_snapshot": [
+                        {"linked_object_type": "recommendation", "relation_type": "derived_from", "summary": "Derived from ranked recommendation cand_1."},
+                        {"linked_object_type": "evidence", "relation_type": "context_only", "summary": "Observed assay row for cand_1 is attached as context."},
+                    ],
+                    "epistemic_priority": {
+                        "epistemic_priority_score": 0.88,
+                        "epistemic_priority_band": "high",
+                        "summary_rationale": "Prioritized because the claim remains unresolved and attached support is still weak or one-sided.",
+                        "unresolved_claim_signal": 0.95,
+                        "support_weakness_signal": 0.9,
+                        "belief_change_opportunity_signal": 0.95,
+                        "context_thinness_signal": 0.65,
+                    },
+                    "contradiction_count": 1,
+                    "active_contradiction_count": 1,
+                    "has_active_contradiction": True,
                     "has_result": False,
                     "result_summary": {"status": "absent", "summary_text": ""},
                     "has_belief_update": False,
-                    "latest_belief_impact_summary": {"summary_text": "", "belief_state": "absent"},
+                    "latest_belief_impact_summary": {
+                        "summary_text": "",
+                        "belief_state": "absent",
+                        "belief_strength": "absent",
+                        "contradiction_pressure": "moderate",
+                        "revision_rationale": "",
+                        "support_balance_summary": "",
+                        "triggering_contradiction_ids": [],
+                    },
                     "unresolved_state": "no_result_recorded",
                 },
                 {
                     "request_id": "req_2",
                     "linked_claim_ids": ["claim_2"],
+                    "tested_claim_id": "claim_2",
                     "scope_context": {"claim_scope": "run", "session_id": "session_1"},
                     "status": "completed",
                     "objective_summary": "Check fallback behavior.",
                     "rationale_summary": "Run caution review.",
+                    "requested_measurement": "fallback_review",
+                    "experiment_intent": "claim_test",
+                    "epistemic_goal_summary": "Clarify whether fallback behavior remains acceptable.",
+                    "existing_context_summary": "Run-level caution claim is based on bridge-state metadata.",
+                    "strengthening_outcome_description": "A consistent fallback review would strengthen the caution claim.",
+                    "weakening_outcome_description": "A review that removes the caution basis would weaken the claim.",
+                    "expected_learning_value": "Clarifies whether the current caution should remain attached to the run.",
+                    "protocol_context_summary": "",
+                    "linked_claim_evidence_snapshot": [
+                        {"linked_object_type": "recommendation", "relation_type": "derived_from", "summary": "Run caution references the current recommendation set."},
+                    ],
+                    "epistemic_priority": {
+                        "epistemic_priority_score": 0.46,
+                        "epistemic_priority_band": "low",
+                        "summary_rationale": "Prioritized because the claim still deserves follow-up against its current attached context.",
+                        "unresolved_claim_signal": 0.35,
+                        "support_weakness_signal": 0.3,
+                        "belief_change_opportunity_signal": 0.25,
+                        "context_thinness_signal": 0.85,
+                    },
+                    "contradiction_count": 0,
+                    "active_contradiction_count": 0,
+                    "has_active_contradiction": False,
                     "has_result": True,
                     "result_summary": {"status": "recorded", "summary_text": "Supportive assay result."},
                     "has_belief_update": True,
-                    "latest_belief_impact_summary": {"summary_text": "Supportive result recorded.", "belief_state": "supported"},
+                    "latest_belief_impact_summary": {
+                        "summary_text": "Supportive result recorded.",
+                        "belief_state": "supported",
+                        "belief_strength": "strengthened",
+                        "contradiction_pressure": "low",
+                        "revision_rationale": "A supportive result increased support because contradiction pressure is currently low.",
+                        "support_balance_summary": "2 supporting line(s), 0 weakening line(s), 0 context-only line(s), 1 derived line(s); current attached structure leans supportive.",
+                        "triggering_contradiction_ids": [],
+                    },
                     "unresolved_state": "belief_updated",
                 },
             ]
@@ -1395,6 +2093,16 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(focused_experiment["choice_count"], 2)
         self.assertTrue(focused_experiment["multiple_available"])
         self.assertFalse(focused_experiment["default_first_fallback_used"])
+        self.assertEqual(focused_experiment["tested_claim_id"], "claim_2")
+        self.assertEqual(focused_experiment["experiment_intent"], "claim_test")
+        self.assertIn("Clarify whether fallback behavior", focused_experiment["epistemic_goal_summary"])
+        self.assertEqual(focused_experiment["epistemic_priority_band"], "low")
+        self.assertEqual(focused_experiment["epistemic_priority_score"], 0.46)
+        self.assertIn("deserves follow-up", focused_experiment["epistemic_priority_summary"])
+        self.assertFalse(focused_experiment["has_active_contradiction"])
+        self.assertEqual(focused_experiment["belief_contradiction_pressure"], "low")
+        self.assertIn("supportive result increased support", focused_experiment["belief_revision_rationale"].lower())
+        self.assertEqual(len(focused_experiment["linked_claim_evidence_snapshot"]), 1)
         self.assertEqual(len(focused_experiment["experiment_choices"]), 2)
         self.assertTrue(
             any(choice["selected"] and choice["request_id"] == "req_2" for choice in focused_experiment["experiment_choices"])
@@ -1406,6 +2114,7 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertTrue(fallback_experiment["available"])
         self.assertEqual(fallback_experiment["selected_request_id"], "req_1")
         self.assertTrue(fallback_experiment["default_first_fallback_used"])
+        self.assertTrue(fallback_experiment["has_active_contradiction"])
 
         absent_experiment = build_focused_experiment_inspection(
             experiment_lifecycle_model={},

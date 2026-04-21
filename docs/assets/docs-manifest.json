@@ -107,6 +107,18 @@
       "summary": "Position paper defining Discovery Intelligence as an epistemically disciplined system centered on claims, evidence, provenance, context, uncertainty, and belief revision."
     },
     {
+      "title": "Discovery Intelligence Lifetime Canon",
+      "path": "01_philosophy/08_discovery_intelligence_lifetime_canon.md",
+      "category": "Philosophy",
+      "summary": "Long-horizon canon of books, standards, retrieval systems, and chemistry sources for building Discovery Intelligence toward real scientific discovery."
+    },
+    {
+      "title": "Discovery Intelligence First Battlefield Lifetime Canon",
+      "path": "01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+      "category": "Philosophy",
+      "summary": "Doctrine and integrated canon for the first battlefield: a goal-directed polymer and material discovery system grounded in evidence, clarification, retrieval, and experiment discipline."
+    },
+    {
       "title": "LLM Role and Interaction Boundary",
       "path": "06_ai_interface/llm_role_and_interaction_boundary.md",
       "category": "AI Interface",

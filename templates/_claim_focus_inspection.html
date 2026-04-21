@@ -22,7 +22,7 @@
         </select>
         <p class="helper-copy">Selection stays within the focused claim layer and does not change recommendation or belief truth.</p>
       {% endif %}
-      {% for choice in claim.claim_choices or [{'claim_id': claim.selected_claim_id, 'claim_type': claim.claim_type, 'claim_status': claim.claim_status, 'claim_scope': claim.claim_scope, 'candidate_label': claim.candidate_label, 'run_label': claim.run_label, 'claim_text': claim.claim_text, 'support_basis_summary': claim.support_basis_summary, 'experiment_request_count': claim.experiment_request_count, 'experiment_result_count': claim.experiment_result_count, 'pending_request_count': claim.pending_request_count, 'belief_update_count': claim.belief_update_count, 'belief_state': claim.belief_state, 'unresolved_state': claim.unresolved_state}] %}
+      {% for choice in claim.claim_choices or [{'claim_id': claim.selected_claim_id, 'claim_type': claim.claim_type, 'claim_status': claim.claim_status, 'claim_scope': claim.claim_scope, 'candidate_label': claim.candidate_label, 'run_label': claim.run_label, 'claim_text': claim.claim_text, 'support_basis_summary': claim.support_basis_summary, 'experiment_request_count': claim.experiment_request_count, 'experiment_result_count': claim.experiment_result_count, 'pending_request_count': claim.pending_request_count, 'belief_update_count': claim.belief_update_count, 'belief_state': claim.belief_state, 'belief_strength': claim.belief_strength, 'belief_contradiction_pressure': claim.belief_contradiction_pressure, 'belief_support_balance_summary': claim.belief_support_balance_summary, 'latest_revision_rationale': claim.latest_revision_rationale, 'latest_belief_update_rationale': claim.latest_belief_update_rationale, 'latest_triggering_contradiction_ids': claim.latest_triggering_contradiction_ids, 'unresolved_state': claim.unresolved_state, 'contradiction_count': claim.contradiction_count, 'active_contradiction_count': claim.active_contradiction_count, 'contradictions_by_status': claim.contradictions_by_status}] %}
         <div data-claim-choice-panel="{{ choice.claim_id }}" data-epistemic-focus-panel="{{ choice.claim_id }}" {% if choice.claim_id != claim.selected_claim_id %}hidden{% endif %}>
       <div class="dashboard-meta-row">
         <span class="data-chip">Claim {{ choice.claim_type.replace("_", " ") }}</span>
@@ -45,9 +45,71 @@
         <span class="data-chip">Results {{ choice.experiment_result_count or 0 }}</span>
         <span class="data-chip">Pending {{ choice.pending_request_count or 0 }}</span>
         <span class="data-chip">Belief updates {{ choice.belief_update_count or 0 }}</span>
+        <span class="data-chip">Support lines {{ choice.claim_evidence_link_count or 0 }}</span>
+        <span class="data-chip">Contradictions {{ choice.contradiction_count or 0 }}</span>
         <span class="data-chip">Belief {{ choice.belief_state }}</span>
+        <span class="data-chip">Strength {{ choice.belief_strength }}</span>
+        <span class="data-chip">Pressure {{ (choice.belief_contradiction_pressure or 'none').replace("_", " ") }}</span>
         <span class="data-chip">Unresolved {{ choice.unresolved_state.replace("_", " ") }}</span>
       </div>
+      {% if choice.latest_revision_rationale or choice.latest_belief_update_rationale or choice.belief_support_balance_summary %}
+        <div class="mini-callout">
+          <span class="panel-label">Belief revision context</span>
+          {% if choice.latest_revision_rationale %}
+            <p><strong>Current belief rationale:</strong> {{ choice.latest_revision_rationale }}</p>
+          {% endif %}
+          {% if choice.latest_belief_update_rationale %}
+            <p><strong>Recent update rationale:</strong> {{ choice.latest_belief_update_rationale }}</p>
+          {% endif %}
+          {% if choice.belief_support_balance_summary %}
+            <p><strong>Support balance:</strong> {{ choice.belief_support_balance_summary }}</p>
+          {% endif %}
+          {% if choice.latest_triggering_contradiction_ids %}
+            <p><strong>Triggering contradiction ids:</strong> {{ choice.latest_triggering_contradiction_ids|join(", ") }}</p>
+          {% endif %}
+        </div>
+      {% endif %}
+      {% set relation_groups = choice.claim_evidence_links_by_relation or {} %}
+      {% if choice.claim_evidence_link_count %}
+        <div class="mini-callout">
+          <span class="panel-label">Attached support lines</span>
+          {% for relation_type in ["supports", "weakens", "context_only", "derived_from"] %}
+            {% set relation_items = relation_groups.get(relation_type) or [] %}
+            {% if relation_items %}
+              <p class="helper-copy"><strong>{{ relation_type.replace("_", " ").title() }}</strong></p>
+              <ul class="compact-list">
+                {% for item in relation_items %}
+                  <li>
+                    {{ item.label }}{% if item.context_bits %}: {{ item.context_bits|join(" / ") }}{% endif %}
+                    {% if item.summary %}. {{ item.summary }}{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% set contradiction_groups = choice.contradictions_by_status or {} %}
+      {% if choice.contradiction_count %}
+        <div class="mini-callout">
+          <span class="panel-label">Contradiction lines</span>
+          {% for contradiction_status in ["active", "unresolved", "resolved", "superseded"] %}
+            {% set contradiction_items = contradiction_groups.get(contradiction_status) or [] %}
+            {% if contradiction_items %}
+              <p class="helper-copy"><strong>{{ contradiction_status.title() }}</strong></p>
+              <ul class="compact-list">
+                {% for item in contradiction_items %}
+                  <li>
+                    {{ item.contradiction_type.replace("_", " ") }} via {{ item.label }}
+                    {% if item.context_bits %}: {{ item.context_bits|join(" / ") }}{% endif %}
+                    {% if item.summary %}. {{ item.summary }}{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
         </div>
       {% endfor %}
       {% if claim.default_first_fallback_used %}

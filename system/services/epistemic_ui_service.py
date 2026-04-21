@@ -34,6 +34,42 @@ def _claim_inspection_payload(item: dict[str, Any]) -> dict[str, Any]:
     diagnostics = item.get("diagnostics") if isinstance(item.get("diagnostics"), dict) else {}
     candidate_context = attachment.get("candidate_context") if isinstance(attachment.get("candidate_context"), dict) else {}
     run_context = attachment.get("run_context") if isinstance(attachment.get("run_context"), dict) else {}
+    raw_links = attachment.get("claim_evidence_links") if isinstance(attachment.get("claim_evidence_links"), list) else []
+    raw_contradictions = attachment.get("contradictions") if isinstance(attachment.get("contradictions"), list) else []
+    relation_groups = {"supports": [], "weakens": [], "context_only": [], "derived_from": []}
+    for raw_link in raw_links:
+        if not isinstance(raw_link, dict):
+            continue
+        relation_type = _clean_text(raw_link.get("relation_type"), default="context_only")
+        relation_groups.setdefault(relation_type, []).append(
+            {
+                "linked_object_type": _clean_text(raw_link.get("linked_object_type")),
+                "summary": _clean_text(raw_link.get("summary")),
+                "label": _clean_text(((raw_link.get("object_summary") or {}) if isinstance(raw_link.get("object_summary"), dict) else {}).get("label"), default="linked support line"),
+                "context_bits": [
+                    _clean_text(item)
+                    for item in ((((raw_link.get("object_summary") or {}) if isinstance(raw_link.get("object_summary"), dict) else {}).get("context_bits")) or [])
+                    if _clean_text(item)
+                ],
+            }
+        )
+    contradiction_groups = {"active": [], "unresolved": [], "resolved": [], "superseded": []}
+    for raw_contradiction in raw_contradictions:
+        if not isinstance(raw_contradiction, dict):
+            continue
+        status = _clean_text(raw_contradiction.get("status"), default="unresolved")
+        contradiction_groups.setdefault(status, []).append(
+            {
+                "contradiction_type": _clean_text(raw_contradiction.get("contradiction_type")),
+                "summary": _clean_text(raw_contradiction.get("summary")),
+                "label": _clean_text(((raw_contradiction.get("object_summary") or {}) if isinstance(raw_contradiction.get("object_summary"), dict) else {}).get("label"), default="contradiction source"),
+                "context_bits": [
+                    _clean_text(item)
+                    for item in ((((raw_contradiction.get("object_summary") or {}) if isinstance(raw_contradiction.get("object_summary"), dict) else {}).get("context_bits")) or [])
+                    if _clean_text(item)
+                ],
+            }
+        )
     return {
         "claim_id": _clean_text(item.get("claim_id")),
         "claim_type": _clean_text(claim.get("claim_type"), default="unknown"),
@@ -49,7 +85,22 @@ def _claim_inspection_payload(item: dict[str, Any]) -> dict[str, Any]:
         "belief_update_count": _safe_int(belief_update.get("update_count")),
         "belief_state": _clean_text(belief_state.get("current_state"), default="absent"),
         "belief_strength": _clean_text(belief_state.get("current_strength"), default="absent"),
+        "belief_contradiction_pressure": _clean_text(belief_state.get("contradiction_pressure"), default="none"),
+        "belief_support_balance_summary": _clean_text(belief_state.get("support_balance_summary")),
+        "latest_revision_rationale": _clean_text(belief_state.get("latest_revision_rationale")),
+        "latest_belief_update_rationale": _clean_text(((belief_update.get("items") or [{}])[-1] if isinstance(belief_update.get("items"), list) and belief_update.get("items") else {}).get("revision_rationale")),
+        "latest_triggering_contradiction_ids": (
+            ((belief_update.get("items") or [{}])[-1] if isinstance(belief_update.get("items"), list) and belief_update.get("items") else {}).get("triggering_contradiction_ids")
+            if isinstance(((belief_update.get("items") or [{}])[-1] if isinstance(belief_update.get("items"), list) and belief_update.get("items") else {}).get("triggering_contradiction_ids"), list)
+            else []
+        ),
         "unresolved_state": _clean_text(diagnostics.get("experiment_lifecycle_unresolved_state"), default="unknown"),
+        "claim_evidence_link_count": _safe_int(attachment.get("claim_evidence_link_count")),
+        "claim_evidence_relation_counts": attachment.get("claim_evidence_relation_counts") if isinstance(attachment.get("claim_evidence_relation_counts"), dict) else {},
+        "claim_evidence_links_by_relation": relation_groups,
+        "contradiction_count": _safe_int(attachment.get("contradiction_count")),
+        "active_contradiction_count": _safe_int(attachment.get("active_contradiction_count")),
+        "contradictions_by_status": contradiction_groups,
     }
 
 
@@ -57,21 +108,65 @@ def _experiment_inspection_payload(item: dict[str, Any]) -> dict[str, Any]:
     scope = item.get("scope_context") if isinstance(item.get("scope_context"), dict) else {}
     result_summary = item.get("result_summary") if isinstance(item.get("result_summary"), dict) else {}
     belief_impact = item.get("latest_belief_impact_summary") if isinstance(item.get("latest_belief_impact_summary"), dict) else {}
+    priority = item.get("epistemic_priority") if isinstance(item.get("epistemic_priority"), dict) else {}
+    raw_snapshot = item.get("linked_claim_evidence_snapshot") if isinstance(item.get("linked_claim_evidence_snapshot"), list) else []
+    snapshot = []
+    for raw_item in raw_snapshot:
+        if not isinstance(raw_item, dict):
+            continue
+        snapshot.append(
+            {
+                "linked_object_type": _clean_text(raw_item.get("linked_object_type"), default="unknown"),
+                "relation_type": _clean_text(raw_item.get("relation_type"), default="context_only"),
+                "summary": _clean_text(raw_item.get("summary"), default="Linked context recorded."),
+            }
+        )
     return {
         "request_id": _clean_text(item.get("request_id")),
         "linked_claim_id": next((choice for choice in (item.get("linked_claim_ids") or []) if _clean_text(choice)), ""),
+        "tested_claim_id": _clean_text(item.get("tested_claim_id")),
         "claim_scope": _clean_text(scope.get("claim_scope"), default="unknown"),
         "candidate_label": _clean_text(scope.get("candidate_id") or scope.get("canonical_smiles")),
         "run_label": _clean_text(scope.get("session_id")),
         "status": _clean_text(item.get("status"), default="unknown"),
         "objective_summary": _clean_text(item.get("objective_summary")) or "Experiment request recorded.",
         "rationale_summary": _clean_text(item.get("rationale_summary")),
+        "requested_measurement": _clean_text(item.get("requested_measurement")),
+        "experiment_intent": _clean_text(item.get("experiment_intent"), default="unknown"),
+        "epistemic_goal_summary": _clean_text(item.get("epistemic_goal_summary")),
+        "existing_context_summary": _clean_text(item.get("existing_context_summary")),
+        "epistemic_priority_score": item.get("epistemic_priority_score") if item.get("epistemic_priority_score") is not None else priority.get("epistemic_priority_score"),
+        "epistemic_priority_band": _clean_text(item.get("epistemic_priority_band") or priority.get("epistemic_priority_band"), default="unknown"),
+        "epistemic_priority_summary": _clean_text(item.get("epistemic_priority_summary") or priority.get("summary_rationale")),
+        "unresolved_claim_signal": item.get("unresolved_claim_signal") if item.get("unresolved_claim_signal") is not None else priority.get("unresolved_claim_signal"),
+        "support_weakness_signal": item.get("support_weakness_signal") if item.get("support_weakness_signal") is not None else priority.get("support_weakness_signal"),
+        "belief_change_opportunity_signal": item.get("belief_change_opportunity_signal") if item.get("belief_change_opportunity_signal") is not None else priority.get("belief_change_opportunity_signal"),
+        "context_thinness_signal": item.get("context_thinness_signal") if item.get("context_thinness_signal") is not None else priority.get("context_thinness_signal"),
+        "belief_attention_signal": item.get("belief_attention_signal") if item.get("belief_attention_signal") is not None else priority.get("belief_attention_signal"),
+        "contradiction_attention_signal": item.get("contradiction_attention_signal") if item.get("contradiction_attention_signal") is not None else priority.get("contradiction_attention_signal"),
+        "unresolved_mixed_structure_signal": item.get("unresolved_mixed_structure_signal") if item.get("unresolved_mixed_structure_signal") is not None else priority.get("unresolved_mixed_structure_signal"),
+        "belief_informed_attention_reason": _clean_text(item.get("belief_informed_attention_reason") or priority.get("belief_informed_attention_reason")),
+        "strengthening_outcome_description": _clean_text(item.get("strengthening_outcome_description")),
+        "weakening_outcome_description": _clean_text(item.get("weakening_outcome_description")),
+        "expected_learning_value": _clean_text(item.get("expected_learning_value")),
+        "protocol_context_summary": _clean_text(item.get("protocol_context_summary")),
+        "linked_claim_evidence_snapshot": snapshot,
+        "contradiction_count": _safe_int(item.get("contradiction_count")),
+        "active_contradiction_count": _safe_int(item.get("active_contradiction_count")),
+        "has_active_contradiction": _safe_int(item.get("active_contradiction_count")) > 0,
         "has_result": bool(item.get("has_result")),
         "result_status": _clean_text(result_summary.get("status"), default="absent"),
         "result_summary": _clean_text(result_summary.get("summary_text")) or "No result recorded.",
         "has_belief_update": bool(item.get("has_belief_update")),
         "belief_summary": _clean_text(belief_impact.get("summary_text")) or "No belief update recorded.",
         "belief_state": _clean_text(belief_impact.get("belief_state"), default="absent"),
+        "belief_strength": _clean_text(belief_impact.get("belief_strength"), default="absent"),
+        "belief_contradiction_pressure": _clean_text(belief_impact.get("contradiction_pressure"), default="none"),
+        "belief_revision_rationale": _clean_text(belief_impact.get("revision_rationale")),
+        "belief_support_balance_summary": _clean_text(belief_impact.get("support_balance_summary")),
+        "triggering_contradiction_ids": belief_impact.get("triggering_contradiction_ids")
+        if isinstance(belief_impact.get("triggering_contradiction_ids"), list)
+        else [],
         "unresolved_state": _clean_text(item.get("unresolved_state"), default="unknown"),
     }
 
@@ -380,7 +475,18 @@ def build_focused_claim_inspection(
                 "belief_update_count": choice_payload["belief_update_count"],
                 "belief_state": choice_payload["belief_state"],
                 "belief_strength": choice_payload["belief_strength"],
+                "belief_contradiction_pressure": choice_payload["belief_contradiction_pressure"],
+                "belief_support_balance_summary": choice_payload["belief_support_balance_summary"],
+                "latest_revision_rationale": choice_payload["latest_revision_rationale"],
+                "latest_belief_update_rationale": choice_payload["latest_belief_update_rationale"],
+                "latest_triggering_contradiction_ids": choice_payload["latest_triggering_contradiction_ids"],
                 "unresolved_state": choice_payload["unresolved_state"],
+                "claim_evidence_link_count": choice_payload["claim_evidence_link_count"],
+                "claim_evidence_relation_counts": choice_payload["claim_evidence_relation_counts"],
+                "claim_evidence_links_by_relation": choice_payload["claim_evidence_links_by_relation"],
+                "contradiction_count": choice_payload["contradiction_count"],
+                "active_contradiction_count": choice_payload["active_contradiction_count"],
+                "contradictions_by_status": choice_payload["contradictions_by_status"],
                 "selected": False,
             }
         )
@@ -453,11 +559,39 @@ def build_focused_experiment_inspection(
                 "run_label": choice_payload["run_label"],
                 "objective_summary": choice_payload["objective_summary"],
                 "rationale_summary": choice_payload["rationale_summary"],
+                "requested_measurement": choice_payload["requested_measurement"],
+                "experiment_intent": choice_payload["experiment_intent"],
+                "epistemic_goal_summary": choice_payload["epistemic_goal_summary"],
+                "existing_context_summary": choice_payload["existing_context_summary"],
+                "epistemic_priority_score": choice_payload["epistemic_priority_score"],
+                "epistemic_priority_band": choice_payload["epistemic_priority_band"],
+                "epistemic_priority_summary": choice_payload["epistemic_priority_summary"],
+                "unresolved_claim_signal": choice_payload["unresolved_claim_signal"],
+                "support_weakness_signal": choice_payload["support_weakness_signal"],
+                "belief_change_opportunity_signal": choice_payload["belief_change_opportunity_signal"],
+                "context_thinness_signal": choice_payload["context_thinness_signal"],
+                "belief_attention_signal": choice_payload["belief_attention_signal"],
+                "contradiction_attention_signal": choice_payload["contradiction_attention_signal"],
+                "unresolved_mixed_structure_signal": choice_payload["unresolved_mixed_structure_signal"],
+                "belief_informed_attention_reason": choice_payload["belief_informed_attention_reason"],
+                "strengthening_outcome_description": choice_payload["strengthening_outcome_description"],
+                "weakening_outcome_description": choice_payload["weakening_outcome_description"],
+                "expected_learning_value": choice_payload["expected_learning_value"],
+                "protocol_context_summary": choice_payload["protocol_context_summary"],
+                "linked_claim_evidence_snapshot": choice_payload["linked_claim_evidence_snapshot"],
+                "contradiction_count": choice_payload["contradiction_count"],
+                "active_contradiction_count": choice_payload["active_contradiction_count"],
+                "has_active_contradiction": choice_payload["has_active_contradiction"],
                 "result_status": choice_payload["result_status"],
                 "result_summary": choice_payload["result_summary"],
                 "has_belief_update": choice_payload["has_belief_update"],
                 "belief_summary": choice_payload["belief_summary"],
                 "belief_state": choice_payload["belief_state"],
+                "belief_strength": choice_payload["belief_strength"],
+                "belief_contradiction_pressure": choice_payload["belief_contradiction_pressure"],
+                "belief_revision_rationale": choice_payload["belief_revision_rationale"],
+                "belief_support_balance_summary": choice_payload["belief_support_balance_summary"],
+                "triggering_contradiction_ids": choice_payload["triggering_contradiction_ids"],
                 "unresolved_state": choice_payload["unresolved_state"],
                 "selected": False,
             }

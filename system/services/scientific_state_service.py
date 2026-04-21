@@ -7,7 +7,8 @@ import pandas as pd
 
 from system.db import ScientificStateRepository
 from system.db.repositories import ReviewRepository
-from system.services.claim_service import materialize_session_claims
+from system.services.claim_service import build_claim_evidence_links, materialize_session_claims
+from system.services.contradiction_service import build_session_contradictions
 from system.services.data_service import canonicalize_smiles
 from system.services.run_metadata_service import build_run_provenance
 
@@ -689,6 +690,29 @@ def persist_run_scientific_state(
             candidate_states=candidate_states,
         ),
     )
+    claim_evidence_links = scientific_state_repository.replace_claim_evidence_links(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        payloads=build_claim_evidence_links(
+            claims=claims,
+            evidence_records=evidence_records,
+            model_outputs=model_outputs,
+            recommendations=recommendations,
+        ),
+    )
+    contradictions = scientific_state_repository.replace_contradictions(
+        session_id=session_id,
+        workspace_id=workspace_id,
+        payloads=build_session_contradictions(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            created_by_user_id=created_by_user_id,
+            claims=claims,
+            claim_evidence_links=claim_evidence_links,
+            experiment_results=[],
+            belief_updates=[],
+        ),
+    )
     diagnostics.update(
         {
             "canonical_state_written": True,
@@ -700,6 +724,8 @@ def persist_run_scientific_state(
             "candidate_state_count": len(candidate_states),
             "canonical_run_metadata_written": bool(run_metadata),
             "claim_count": len(claims),
+            "claim_evidence_link_count": len(claim_evidence_links),
+            "contradiction_count": len(contradictions),
             "baseline_model_fallback": any(item.get("baseline_fallback_used") for item in model_outputs),
             "baseline_model_fallback_summary": next((item.get("bridge_state_summary") for item in model_outputs if item.get("baseline_fallback_used")), ""),
         }
@@ -777,6 +803,44 @@ def sync_review_into_scientific_state(review: dict[str, Any]) -> None:
                 candidate_states=scientific_state_repository.list_candidate_states(session_id=session_id, workspace_id=workspace_id),
             ),
         )
+        claims = scientific_state_repository.list_claims(session_id=session_id, workspace_id=workspace_id)
+        claim_evidence_links = scientific_state_repository.replace_claim_evidence_links(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            payloads=build_claim_evidence_links(
+                claims=claims,
+                evidence_records=evidence,
+                model_outputs=model_outputs,
+                recommendations=updated,
+            ),
+        )
+        experiment_results = scientific_state_repository.list_experiment_results(claim_id=None)
+        experiment_results = [
+            item
+            for item in experiment_results
+            if str(item.get("session_id") or "").strip() == session_id
+            and str(item.get("workspace_id") or "").strip() == workspace_id
+        ]
+        belief_updates = scientific_state_repository.list_belief_updates(claim_id=None)
+        belief_updates = [
+            item
+            for item in belief_updates
+            if str(item.get("session_id") or "").strip() == session_id
+            and str(item.get("workspace_id") or "").strip() == workspace_id
+        ]
+        scientific_state_repository.replace_contradictions(
+            session_id=session_id,
+            workspace_id=workspace_id,
+            payloads=build_session_contradictions(
+                session_id=session_id,
+                workspace_id=workspace_id,
+                created_by_user_id=str(review.get("actor_user_id") or "").strip() or None,
+                claims=claims,
+                claim_evidence_links=claim_evidence_links,
+                experiment_results=experiment_results,
+                belief_updates=belief_updates,
+            ),
+        )
 
 
 def load_canonical_session_scientific_state(session_id: str, *, workspace_id: str | None = None) -> dict[str, Any]:
@@ -787,6 +851,8 @@ def load_canonical_session_scientific_state(session_id: str, *, workspace_id: st
     carryover = scientific_state_repository.list_carryover_records(session_id=session_id, workspace_id=workspace_id)
     candidate_states = scientific_state_repository.list_candidate_states(session_id=session_id, workspace_id=workspace_id)
     claims = scientific_state_repository.list_claims(session_id=session_id, workspace_id=workspace_id)
+    claim_evidence_links = scientific_state_repository.list_claim_evidence_links(session_id=session_id, workspace_id=workspace_id)
+    contradictions = scientific_state_repository.list_contradictions(session_id=session_id, workspace_id=workspace_id)
     try:
         run_metadata = scientific_state_repository.get_run_metadata(session_id=session_id, workspace_id=workspace_id)
     except FileNotFoundError:
@@ -800,6 +866,8 @@ def load_canonical_session_scientific_state(session_id: str, *, workspace_id: st
         "carryover_records": carryover,
         "candidate_states": candidate_states,
         "claims": claims,
+        "claim_evidence_links": claim_evidence_links,
+        "contradictions": contradictions,
         "run_metadata": run_metadata,
         "diagnostics": {
             "scientific_state_source": "canonical_sql",
@@ -807,6 +875,8 @@ def load_canonical_session_scientific_state(session_id: str, *, workspace_id: st
             "recommendation_count": len(recommendations),
             "candidate_state_count": len(candidate_states),
             "claim_count": len(claims),
+            "claim_evidence_link_count": len(claim_evidence_links),
+            "contradiction_count": len(contradictions),
             "run_metadata_present": bool(run_metadata),
         },
     }

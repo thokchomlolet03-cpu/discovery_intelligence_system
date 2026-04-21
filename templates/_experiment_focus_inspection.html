@@ -22,7 +22,7 @@
         </select>
         <p class="helper-copy">Selection stays inside the focused experiment layer and does not imply scheduling or execution workflow.</p>
       {% endif %}
-      {% for choice in experiment.experiment_choices or [{'request_id': experiment.selected_request_id, 'status': experiment.status, 'claim_scope': experiment.claim_scope, 'linked_claim_id': experiment.linked_claim_id, 'candidate_label': experiment.candidate_label, 'run_label': experiment.run_label, 'objective_summary': experiment.objective_summary, 'rationale_summary': experiment.rationale_summary, 'result_status': experiment.result_status, 'has_belief_update': experiment.has_belief_update, 'belief_state': experiment.belief_state, 'unresolved_state': experiment.unresolved_state, 'result_summary': experiment.result_summary, 'belief_summary': experiment.belief_summary}] %}
+      {% for choice in experiment.experiment_choices or [{'request_id': experiment.selected_request_id, 'status': experiment.status, 'claim_scope': experiment.claim_scope, 'linked_claim_id': experiment.linked_claim_id, 'tested_claim_id': experiment.tested_claim_id, 'candidate_label': experiment.candidate_label, 'run_label': experiment.run_label, 'objective_summary': experiment.objective_summary, 'rationale_summary': experiment.rationale_summary, 'requested_measurement': experiment.requested_measurement, 'experiment_intent': experiment.experiment_intent, 'epistemic_goal_summary': experiment.epistemic_goal_summary, 'existing_context_summary': experiment.existing_context_summary, 'epistemic_priority_score': experiment.epistemic_priority_score, 'epistemic_priority_band': experiment.epistemic_priority_band, 'epistemic_priority_summary': experiment.epistemic_priority_summary, 'unresolved_claim_signal': experiment.unresolved_claim_signal, 'support_weakness_signal': experiment.support_weakness_signal, 'belief_change_opportunity_signal': experiment.belief_change_opportunity_signal, 'context_thinness_signal': experiment.context_thinness_signal, 'belief_attention_signal': experiment.belief_attention_signal, 'contradiction_attention_signal': experiment.contradiction_attention_signal, 'unresolved_mixed_structure_signal': experiment.unresolved_mixed_structure_signal, 'belief_informed_attention_reason': experiment.belief_informed_attention_reason, 'strengthening_outcome_description': experiment.strengthening_outcome_description, 'weakening_outcome_description': experiment.weakening_outcome_description, 'expected_learning_value': experiment.expected_learning_value, 'protocol_context_summary': experiment.protocol_context_summary, 'linked_claim_evidence_snapshot': experiment.linked_claim_evidence_snapshot, 'contradiction_count': experiment.contradiction_count, 'active_contradiction_count': experiment.active_contradiction_count, 'has_active_contradiction': experiment.has_active_contradiction, 'result_status': experiment.result_status, 'has_belief_update': experiment.has_belief_update, 'belief_state': experiment.belief_state, 'belief_strength': experiment.belief_strength, 'belief_contradiction_pressure': experiment.belief_contradiction_pressure, 'belief_revision_rationale': experiment.belief_revision_rationale, 'belief_support_balance_summary': experiment.belief_support_balance_summary, 'triggering_contradiction_ids': experiment.triggering_contradiction_ids, 'unresolved_state': experiment.unresolved_state, 'result_summary': experiment.result_summary, 'belief_summary': experiment.belief_summary}] %}
         <div data-experiment-choice-panel="{{ choice.request_id }}" data-epistemic-focus-panel="{{ choice.request_id }}" {% if choice.request_id != experiment.selected_request_id %}hidden{% endif %}>
           <div class="dashboard-meta-row">
             <span class="data-chip">Status {{ choice.status.replace("_", " ") }}</span>
@@ -36,15 +36,126 @@
             {% if choice.run_label %}
               <span class="data-chip">Run {{ choice.run_label }}</span>
             {% endif %}
+            {% if choice.requested_measurement %}
+              <span class="data-chip">Measurement {{ choice.requested_measurement }}</span>
+            {% endif %}
+            {% if choice.experiment_intent %}
+              <span class="data-chip">Intent {{ choice.experiment_intent.replace("_", " ") }}</span>
+            {% endif %}
+            {% if choice.epistemic_priority_band %}
+              <span class="data-chip">Epistemic priority {{ choice.epistemic_priority_band }}</span>
+            {% endif %}
+            {% if choice.epistemic_priority_score is not none %}
+              <span class="data-chip">Priority score {{ "%.2f"|format(choice.epistemic_priority_score) }}</span>
+            {% endif %}
+            {% if choice.active_contradiction_count %}
+              <span class="data-chip">Contradictions {{ choice.active_contradiction_count }}</span>
+            {% endif %}
           </div>
+          {% if choice.has_active_contradiction %}
+            <div class="mini-callout">
+              <span class="panel-label">Claim contradiction pressure</span>
+              <p>This experiment is linked to a claim with active or unresolved contradiction structure.</p>
+            </div>
+          {% endif %}
+          {% if choice.epistemic_priority_summary %}
+            <div class="mini-callout">
+              <span class="panel-label">Why this deserves attention now</span>
+              <p>{{ choice.epistemic_priority_summary }}</p>
+            </div>
+          {% endif %}
+          {% if choice.unresolved_claim_signal is not none or choice.support_weakness_signal is not none or choice.belief_change_opportunity_signal is not none or choice.context_thinness_signal is not none %}
+            <div class="mini-callout">
+              <span class="panel-label">Epistemic pressure signals</span>
+              <div class="dashboard-meta-row">
+                {% if choice.unresolved_claim_signal is not none %}
+                  <span class="data-chip">Unresolved {{ "%.2f"|format(choice.unresolved_claim_signal) }}</span>
+                {% endif %}
+                {% if choice.support_weakness_signal is not none %}
+                  <span class="data-chip">Weak support {{ "%.2f"|format(choice.support_weakness_signal) }}</span>
+                {% endif %}
+                {% if choice.belief_change_opportunity_signal is not none %}
+                  <span class="data-chip">Belief change {{ "%.2f"|format(choice.belief_change_opportunity_signal) }}</span>
+                {% endif %}
+                {% if choice.context_thinness_signal is not none %}
+                  <span class="data-chip">Thin context {{ "%.2f"|format(choice.context_thinness_signal) }}</span>
+                {% endif %}
+                {% if choice.belief_attention_signal is not none %}
+                  <span class="data-chip">Belief attention {{ "%.2f"|format(choice.belief_attention_signal) }}</span>
+                {% endif %}
+                {% if choice.contradiction_attention_signal is not none %}
+                  <span class="data-chip">Contradiction {{ "%.2f"|format(choice.contradiction_attention_signal) }}</span>
+                {% endif %}
+                {% if choice.unresolved_mixed_structure_signal is not none %}
+                  <span class="data-chip">Mixed structure {{ "%.2f"|format(choice.unresolved_mixed_structure_signal) }}</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+          {% if choice.belief_informed_attention_reason %}
+            <div class="mini-callout">
+              <span class="panel-label">Belief-informed attention</span>
+              <p>{{ choice.belief_informed_attention_reason }}</p>
+            </div>
+          {% endif %}
           <p>{{ choice.objective_summary }}</p>
           {% if choice.rationale_summary %}
             <p class="helper-copy">{{ choice.rationale_summary }}</p>
+          {% endif %}
+          {% if choice.epistemic_goal_summary %}
+            <div class="mini-callout">
+              <span class="panel-label">Why this experiment matters</span>
+              <p>{{ choice.epistemic_goal_summary }}</p>
+            </div>
+          {% endif %}
+          {% if choice.existing_context_summary %}
+            <div class="mini-callout">
+              <span class="panel-label">Current claim context</span>
+              <p>{{ choice.existing_context_summary }}</p>
+            </div>
+          {% endif %}
+          {% if choice.strengthening_outcome_description or choice.weakening_outcome_description %}
+            <div class="mini-callout">
+              <span class="panel-label">Outcome interpretation frame</span>
+              {% if choice.strengthening_outcome_description %}
+                <p><strong>Would strengthen:</strong> {{ choice.strengthening_outcome_description }}</p>
+              {% endif %}
+              {% if choice.weakening_outcome_description %}
+                <p><strong>Would weaken:</strong> {{ choice.weakening_outcome_description }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% if choice.expected_learning_value %}
+            <div class="mini-callout">
+              <span class="panel-label">Expected learning value</span>
+              <p>{{ choice.expected_learning_value }}</p>
+            </div>
+          {% endif %}
+          {% if choice.protocol_context_summary %}
+            <div class="mini-callout">
+              <span class="panel-label">Protocol context</span>
+              <p>{{ choice.protocol_context_summary }}</p>
+            </div>
+          {% endif %}
+          {% if choice.linked_claim_evidence_snapshot %}
+            <div class="mini-callout">
+              <span class="panel-label">Attached claim context lines</span>
+              <ul class="mini-list">
+                {% for link in choice.linked_claim_evidence_snapshot %}
+                  <li>
+                    {{ link.relation_type.replace("_", " ") }} · {{ link.linked_object_type.replace("_", " ") }}
+                    {% if link.summary %}: {{ link.summary }}{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
           {% endif %}
           <div class="dashboard-meta-row">
             <span class="data-chip">Result {{ choice.result_status.replace("_", " ") }}</span>
             <span class="data-chip">Belief update {{ "present" if choice.has_belief_update else "absent" }}</span>
             <span class="data-chip">Belief {{ choice.belief_state }}</span>
+            <span class="data-chip">Strength {{ choice.belief_strength or "absent" }}</span>
+            <span class="data-chip">Pressure {{ (choice.belief_contradiction_pressure or "none").replace("_", " ") }}</span>
             <span class="data-chip">Unresolved {{ choice.unresolved_state.replace("_", " ") }}</span>
           </div>
           <div class="mini-callout">
@@ -54,6 +165,15 @@
           <div class="mini-callout">
             <span class="panel-label">Belief linkage</span>
             <p>{{ choice.belief_summary }}</p>
+            {% if choice.belief_revision_rationale %}
+              <p><strong>Revision rationale:</strong> {{ choice.belief_revision_rationale }}</p>
+            {% endif %}
+            {% if choice.belief_support_balance_summary %}
+              <p><strong>Support balance:</strong> {{ choice.belief_support_balance_summary }}</p>
+            {% endif %}
+            {% if choice.triggering_contradiction_ids %}
+              <p><strong>Triggering contradiction ids:</strong> {{ choice.triggering_contradiction_ids|join(", ") }}</p>
+            {% endif %}
           </div>
         </div>
       {% endfor %}

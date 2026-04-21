@@ -15,6 +15,7 @@ from system.services.epistemic_ui_service import (
     build_session_epistemic_detail_reveal,
     build_session_epistemic_summary,
 )
+from system.services.epistemic_experiment_priority_service import build_session_epistemic_experiment_priority_model
 from system.services.scientific_state_service import load_canonical_session_scientific_state
 from system.services.session_identity_service import build_metric_interpretation, build_session_identity, build_trust_context
 from system.services.status_semantics_service import build_status_semantics
@@ -782,6 +783,10 @@ def build_scientific_session_projection(
         session_id=session_id,
         workspace_id=effective_workspace_id or None,
     )
+    epistemic_experiment_priority_model = build_session_epistemic_experiment_priority_model(
+        session_id=session_id,
+        workspace_id=effective_workspace_id or None,
+    )
     claim_detail_items = (
         build_session_claim_detail_items(
             session_id=session_id,
@@ -820,6 +825,10 @@ def build_scientific_session_projection(
     diagnostics["experiment_lifecycle_source"] = experiment_lifecycle_model.get("session_summary", {}).get("provenance", "absent")
     diagnostics["experiment_lifecycle_present"] = bool(experiment_lifecycle_model.get("session_summary", {}).get("has_experiments"))
     diagnostics["experiment_lifecycle_absent_reason"] = experiment_lifecycle_model.get("session_summary", {}).get("absence_reason", "")
+    diagnostics["epistemic_experiment_priority_source"] = epistemic_experiment_priority_model.get("session_summary", {}).get("provenance", "absent")
+    diagnostics["epistemic_experiment_priority_present"] = bool(
+        epistemic_experiment_priority_model.get("session_summary", {}).get("has_epistemic_priorities")
+    )
     session_epistemic_summary = build_session_epistemic_summary(
         belief_layer_summary=dict((belief_read_model.get("session_summary") if isinstance(belief_read_model, dict) else {}) or {}),
         experiment_lifecycle_summary=dict((experiment_lifecycle_model.get("session_summary") if isinstance(experiment_lifecycle_model, dict) else {}) or {}),
@@ -887,6 +896,10 @@ def build_scientific_session_projection(
         "belief_read_model": belief_read_model,
         "experiment_lifecycle_summary": dict((experiment_lifecycle_model.get("session_summary") if isinstance(experiment_lifecycle_model, dict) else {}) or {}),
         "experiment_lifecycle_model": experiment_lifecycle_model,
+        "epistemic_experiment_priority_summary": dict(
+            (epistemic_experiment_priority_model.get("session_summary") if isinstance(epistemic_experiment_priority_model, dict) else {}) or {}
+        ),
+        "epistemic_experiment_priority_model": epistemic_experiment_priority_model,
         "claim_detail_summary": claim_detail_summary,
         "claim_detail_items": claim_detail_items,
         "session_epistemic_summary": session_epistemic_summary,

@@ -20,6 +20,8 @@ from system.contracts import (
 )
 from system.db.models import (
     ArtifactRecordModel,
+    ClaimEvidenceLinkModel,
+    ContradictionModel,
     BeliefStateModel,
     BeliefUpdateModel,
     BillingWebhookEventModel,
@@ -48,6 +50,8 @@ from system.scientific_state.contracts import (
     CanonicalRunMetadataRecord,
     CarryoverRecord,
     ClaimRecord,
+    ClaimEvidenceLinkRecord,
+    ContradictionRecord,
     EvidenceRecord,
     ExperimentRequestRecord,
     ExperimentResultRecord,
@@ -253,6 +257,7 @@ def _target_definition_record_payload(record: TargetDefinitionRecordModel) -> di
 
 def _evidence_record_payload(record: EvidenceRecordModel) -> dict[str, Any]:
     return EvidenceRecord(
+        record_id=record.id,
         session_id=record.session_id,
         workspace_id=record.workspace_id,
         created_by_user_id=record.created_by_user_id or "",
@@ -276,6 +281,7 @@ def _evidence_record_payload(record: EvidenceRecordModel) -> dict[str, Any]:
 
 def _model_output_record_payload(record: ModelOutputRecordModel) -> dict[str, Any]:
     return ModelOutputRecord(
+        record_id=record.id,
         session_id=record.session_id,
         workspace_id=record.workspace_id,
         created_by_user_id=record.created_by_user_id or "",
@@ -308,6 +314,7 @@ def _model_output_record_payload(record: ModelOutputRecordModel) -> dict[str, An
 
 def _recommendation_record_payload(record: RecommendationRecordModel) -> dict[str, Any]:
     return RecommendationRecord(
+        record_id=record.id,
         session_id=record.session_id,
         workspace_id=record.workspace_id,
         created_by_user_id=record.created_by_user_id or "",
@@ -427,6 +434,42 @@ def _claim_payload(record: ClaimModel) -> dict[str, Any]:
     ).dict()
 
 
+def _claim_evidence_link_payload(record: ClaimEvidenceLinkModel) -> dict[str, Any]:
+    return ClaimEvidenceLinkRecord(
+        link_id=record.link_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        claim_id=record.claim_id,
+        linked_object_type=record.linked_object_type,
+        linked_object_id=record.linked_object_id,
+        relation_type=record.relation_type,
+        summary=record.summary,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _contradiction_payload(record: ContradictionModel) -> dict[str, Any]:
+    return ContradictionRecord(
+        contradiction_id=record.contradiction_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        claim_id=record.claim_id,
+        contradiction_scope=record.contradiction_scope,
+        contradiction_type=record.contradiction_type,
+        source_object_type=record.source_object_type,
+        source_object_id=record.source_object_id,
+        status=record.status,
+        summary=record.summary,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
 def _experiment_request_payload(record: ExperimentRequestModel) -> dict[str, Any]:
     return ExperimentRequestRecord(
         request_id=record.request_id,
@@ -434,11 +477,20 @@ def _experiment_request_payload(record: ExperimentRequestModel) -> dict[str, Any
         workspace_id=record.workspace_id,
         created_by_user_id=record.created_by_user_id or "",
         claim_id=record.claim_id,
+        tested_claim_id=record.tested_claim_id,
         candidate_id=record.candidate_id,
         canonical_smiles=record.canonical_smiles,
         objective=record.objective,
         rationale=record.rationale,
         requested_measurement=record.requested_measurement,
+        experiment_intent=record.experiment_intent,
+        epistemic_goal_summary=record.epistemic_goal_summary,
+        existing_context_summary=record.existing_context_summary,
+        strengthening_outcome_description=record.strengthening_outcome_description,
+        weakening_outcome_description=record.weakening_outcome_description,
+        expected_learning_value=record.expected_learning_value,
+        linked_claim_evidence_snapshot=record.linked_claim_evidence_snapshot_json or [],
+        protocol_context_summary=record.protocol_context_summary,
         status=record.status,
         provenance_markers=record.provenance_markers_json or {},
         created_at=record.created_at,
@@ -479,6 +531,12 @@ def _belief_update_payload(record: BeliefUpdateModel) -> dict[str, Any]:
         pre_belief_state=record.pre_belief_state_json or {},
         post_belief_state=record.post_belief_state_json or {},
         deterministic_rule=record.deterministic_rule,
+        revision_mode=record.revision_mode,
+        contradiction_pressure=record.contradiction_pressure,
+        support_balance_summary=record.support_balance_summary,
+        revision_rationale=record.revision_rationale,
+        triggering_contradiction_ids=record.triggering_contradiction_ids_json or [],
+        triggering_source_summary=record.triggering_source_summary,
         provenance_markers=record.provenance_markers_json or {},
         created_at=record.created_at,
         updated_at=record.updated_at,
@@ -495,6 +553,9 @@ def _belief_state_payload(record: BeliefStateModel) -> dict[str, Any]:
         current_state=record.current_state,
         current_strength=record.current_strength,
         support_basis_summary=record.support_basis_summary,
+        contradiction_pressure=record.contradiction_pressure,
+        support_balance_summary=record.support_balance_summary,
+        latest_revision_rationale=record.latest_revision_rationale,
         latest_update_id=record.latest_update_id,
         status=record.status,
         provenance_markers=record.provenance_markers_json or {},
@@ -1555,6 +1616,33 @@ class ScientificStateRepository:
                 created.append(_claim_payload(record))
             return created
 
+    def replace_claim_evidence_links(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(ClaimEvidenceLinkModel).filter(ClaimEvidenceLinkModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = ClaimEvidenceLinkRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = ClaimEvidenceLinkModel(
+                    link_id=record_payload["link_id"],
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    claim_id=record_payload["claim_id"],
+                    linked_object_type=record_payload["linked_object_type"],
+                    linked_object_id=record_payload["linked_object_id"],
+                    relation_type=record_payload["relation_type"],
+                    summary=record_payload["summary"],
+                    provenance_markers_json=record_payload["provenance_markers"],
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_claim_evidence_link_payload(record))
+            return created
+
     def list_claims(self, *, session_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
         with session_scope() as db:
             statement = select(ClaimModel).where(ClaimModel.session_id == session_id)
@@ -1571,6 +1659,83 @@ class ScientificStateRepository:
                 raise FileNotFoundError(f"No claim found for '{claim_id}'.")
             return _claim_payload(record)
 
+    def list_claim_evidence_links(
+        self,
+        *,
+        claim_id: str | None = None,
+        session_id: str | None = None,
+        workspace_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ClaimEvidenceLinkModel)
+            if claim_id is not None:
+                statement = statement.where(ClaimEvidenceLinkModel.claim_id == claim_id)
+            if session_id is not None:
+                statement = statement.where(ClaimEvidenceLinkModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ClaimEvidenceLinkModel.workspace_id == workspace_id)
+            statement = statement.order_by(ClaimEvidenceLinkModel.created_at.asc(), ClaimEvidenceLinkModel.id.asc())
+            return [_claim_evidence_link_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def replace_contradictions(self, *, session_id: str, workspace_id: str | None, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        effective_workspace_id = self._workspace_id(session_id, workspace_id)
+        with session_scope() as db:
+            db.query(ContradictionModel).filter(ContradictionModel.session_id == session_id).delete()
+            created: list[dict[str, Any]] = []
+            for payload in payloads:
+                record_payload = ContradictionRecord(**payload, session_id=session_id, workspace_id=effective_workspace_id).dict()
+                record = ContradictionModel(
+                    contradiction_id=record_payload["contradiction_id"],
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    claim_id=record_payload.get("claim_id", ""),
+                    contradiction_scope=record_payload.get("contradiction_scope", "claim"),
+                    contradiction_type=record_payload["contradiction_type"],
+                    source_object_type=record_payload["source_object_type"],
+                    source_object_id=record_payload["source_object_id"],
+                    status=record_payload.get("status", "unresolved"),
+                    summary=record_payload.get("summary", ""),
+                    provenance_markers_json=record_payload.get("provenance_markers", {}),
+                    created_at=record_payload["created_at"],
+                    updated_at=record_payload["updated_at"],
+                )
+                db.add(record)
+                db.flush()
+                db.refresh(record)
+                created.append(_contradiction_payload(record))
+            return created
+
+    def list_contradictions(
+        self,
+        *,
+        claim_id: str | None = None,
+        session_id: str | None = None,
+        workspace_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with session_scope() as db:
+            statement = select(ContradictionModel)
+            if claim_id is not None:
+                statement = statement.where(ContradictionModel.claim_id == claim_id)
+            if session_id is not None:
+                statement = statement.where(ContradictionModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(ContradictionModel.workspace_id == workspace_id)
+            statement = statement.order_by(ContradictionModel.created_at.asc(), ContradictionModel.id.asc())
+            return [_contradiction_payload(row) for row in db.execute(statement).scalars().all()]
+
+    def update_contradiction_status(self, *, contradiction_id: str, status: str) -> dict[str, Any]:
+        with session_scope() as db:
+            record = db.execute(select(ContradictionModel).where(ContradictionModel.contradiction_id == contradiction_id)).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No contradiction found for '{contradiction_id}'.")
+            record.status = status
+            record.updated_at = _utc_now()
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _contradiction_payload(record)
+
     def record_experiment_request(self, payload: dict[str, Any]) -> dict[str, Any]:
         record_payload = ExperimentRequestRecord(**payload).dict()
         with session_scope() as db:
@@ -1580,11 +1745,20 @@ class ScientificStateRepository:
                 workspace_id=record_payload["workspace_id"],
                 created_by_user_id=record_payload.get("created_by_user_id") or None,
                 claim_id=record_payload["claim_id"],
+                tested_claim_id=record_payload.get("tested_claim_id", ""),
                 candidate_id=record_payload["candidate_id"],
                 canonical_smiles=record_payload["canonical_smiles"],
                 objective=record_payload["objective"],
                 rationale=record_payload["rationale"],
                 requested_measurement=record_payload["requested_measurement"],
+                experiment_intent=record_payload.get("experiment_intent", ""),
+                epistemic_goal_summary=record_payload.get("epistemic_goal_summary", ""),
+                existing_context_summary=record_payload.get("existing_context_summary", ""),
+                strengthening_outcome_description=record_payload.get("strengthening_outcome_description", ""),
+                weakening_outcome_description=record_payload.get("weakening_outcome_description", ""),
+                expected_learning_value=record_payload.get("expected_learning_value", ""),
+                linked_claim_evidence_snapshot_json=record_payload.get("linked_claim_evidence_snapshot", []),
+                protocol_context_summary=record_payload.get("protocol_context_summary", ""),
                 status=record_payload["status"],
                 provenance_markers_json=record_payload["provenance_markers"],
                 created_at=record_payload["created_at"],
@@ -1667,6 +1841,12 @@ class ScientificStateRepository:
                 pre_belief_state_json=record_payload["pre_belief_state"],
                 post_belief_state_json=record_payload["post_belief_state"],
                 deterministic_rule=record_payload["deterministic_rule"],
+                revision_mode=record_payload["revision_mode"],
+                contradiction_pressure=record_payload["contradiction_pressure"],
+                support_balance_summary=record_payload["support_balance_summary"],
+                revision_rationale=record_payload["revision_rationale"],
+                triggering_contradiction_ids_json=record_payload["triggering_contradiction_ids"],
+                triggering_source_summary=record_payload["triggering_source_summary"],
                 provenance_markers_json=record_payload["provenance_markers"],
                 created_at=record_payload["created_at"],
                 updated_at=record_payload["updated_at"],
@@ -1703,6 +1883,9 @@ class ScientificStateRepository:
             record.current_state = record_payload["current_state"]
             record.current_strength = record_payload["current_strength"]
             record.support_basis_summary = record_payload["support_basis_summary"]
+            record.contradiction_pressure = record_payload["contradiction_pressure"]
+            record.support_balance_summary = record_payload["support_balance_summary"]
+            record.latest_revision_rationale = record_payload["latest_revision_rationale"]
             record.latest_update_id = record_payload["latest_update_id"]
             record.status = record_payload["status"]
             record.provenance_markers_json = record_payload["provenance_markers"]

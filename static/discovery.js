@@ -27,7 +27,7 @@
   const state = {
     candidates: Array.isArray(workbench.candidates) ? workbench.candidates.slice() : [],
     view: "table",
-    sortBy: config.defaultSort || workbench?.ranking_policy?.primary_score || "experiment_value",
+    sortBy: config.surfacedDefaultSort || config.defaultSort || workbench?.ranking_policy?.primary_score || "experiment_value",
     selected: new Set(),
     filters: {
       search: "",
@@ -131,6 +131,9 @@
     }
     if (kind === "experiment_value") {
       return "Policy experiment value";
+    }
+    if (kind === "surfaced_order_score") {
+      return "Surfaced attention order";
     }
     return titleCase(kind);
   }
@@ -648,6 +651,11 @@
       }
       if (state.sortBy === "latest") {
         return String(right.latest_sort_key || "").localeCompare(String(left.latest_sort_key || ""));
+      }
+      if (state.sortBy === "surfaced_order_score") {
+        if (Boolean(right.surfaced_attention_active) !== Boolean(left.surfaced_attention_active)) {
+          return Boolean(right.surfaced_attention_active) ? 1 : -1;
+        }
       }
       return Number(right[state.sortBy] || 0) - Number(left[state.sortBy] || 0);
     });

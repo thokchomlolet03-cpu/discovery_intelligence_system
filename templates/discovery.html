@@ -289,7 +289,16 @@
             <div class="discovery-results-meta">
               <span class="data-chip">Primary ranking signal: {{ workbench.ranking_policy.primary_score_label }}</span>
               <span class="data-chip">Candidates in view: {{ workbench.summary.candidates_displayed }}</span>
+              {% if workbench.surfaced_attention_summary.attention_candidate_count %}
+                <span class="data-chip">Epistemic attention {{ workbench.surfaced_attention_summary.attention_candidate_count }}</span>
+              {% endif %}
+              {% if workbench.surfaced_attention_summary.belief_feedback_count %}
+                <span class="data-chip">Belief feedback {{ workbench.surfaced_attention_summary.belief_feedback_count }}</span>
+              {% endif %}
             </div>
+            {% if workbench.surfaced_attention_summary.ordering_summary %}
+              <p class="helper-copy">{{ workbench.surfaced_attention_summary.ordering_summary }}</p>
+            {% endif %}
           </article>
           {% if workbench.decision_overview.primary_candidate %}
             <article class="decision-primary-candidate">
@@ -299,8 +308,20 @@
                 <span class="data-chip">Rank {{ workbench.decision_overview.primary_candidate.rank }}</span>
                 <span class="data-chip">Policy priority {{ "%.3f"|format(workbench.decision_overview.primary_candidate.priority_score or 0) }}</span>
                 <span class="data-chip">{{ workbench.ranking_policy.primary_score_label }} {{ "%.3f"|format(workbench.decision_overview.primary_candidate.primary_score_value or 0) }}</span>
+                {% if workbench.decision_overview.primary_candidate.surfaced_attention_active %}
+                  <span class="data-chip">Epistemic attention {{ workbench.decision_overview.primary_candidate.surfaced_attention_bucket.replace("_", " ") }}</span>
+                {% endif %}
+                {% if workbench.decision_overview.primary_candidate.belief_attention_signal %}
+                  <span class="data-chip">Belief attention {{ "%.3f"|format(workbench.decision_overview.primary_candidate.belief_attention_signal or 0) }}</span>
+                {% endif %}
               </div>
               <p>{{ workbench.decision_overview.primary_candidate.summary }}</p>
+              {% if workbench.decision_overview.primary_candidate.surfaced_attention_reason %}
+                <p class="helper-copy">{{ workbench.decision_overview.primary_candidate.surfaced_attention_reason }}</p>
+              {% endif %}
+              {% if workbench.decision_overview.primary_candidate.belief_informed_attention_reason %}
+                <p class="helper-copy">{{ workbench.decision_overview.primary_candidate.belief_informed_attention_reason }}</p>
+              {% endif %}
               <div class="decision-primary-context">
                 {% if workbench.decision_overview.primary_candidate.domain_label %}
                   <span class="data-chip">{{ workbench.decision_overview.primary_candidate.domain_label }}</span>
@@ -333,10 +354,22 @@
                   <span class="data-chip">{{ candidate.candidate_id }}</span>
                 </div>
                 <p>{{ candidate.rationale_summary or candidate.decision_summary }}</p>
+                {% if candidate.surfaced_attention_active %}
+                  <p class="helper-copy">{{ candidate.surfaced_attention_reason }}</p>
+                {% endif %}
+                {% if candidate.belief_informed_attention_reason %}
+                  <p class="helper-copy">{{ candidate.belief_informed_attention_reason }}</p>
+                {% endif %}
                 <div class="decision-shortlist-meta">
                   <span class="data-chip">{{ candidate.decision_label }}</span>
                   <span class="data-chip">Policy priority {{ "%.3f"|format(candidate.priority_score or 0) }}</span>
                   <span class="data-chip">{{ candidate.primary_score_label }} {{ "%.3f"|format(candidate.primary_score_value or 0) }}</span>
+                  {% if candidate.surfaced_attention_active %}
+                    <span class="data-chip">Epistemic {{ "%.3f"|format(candidate.surfaced_attention_score or 0) }}</span>
+                  {% endif %}
+                  {% if candidate.belief_attention_signal %}
+                    <span class="data-chip">Belief {{ "%.3f"|format(candidate.belief_attention_signal or 0) }}</span>
+                  {% endif %}
                   {% if candidate.trust_label %}
                     <span class="data-chip">{{ candidate.trust_label }}</span>
                   {% endif %}
@@ -485,6 +518,7 @@
           <label class="control-field">
             <span>Sort</span>
             <select id="sort-by">
+              <option value="surfaced_order_score">Surfaced attention order</option>
               <option value="priority_score">Policy priority score</option>
               <option value="experiment_value">Policy experiment value</option>
               <option value="confidence">{% if workbench.target_definition.target_kind == "regression" %}Ranking compatibility{% else %}Model confidence signal{% endif %}</option>
@@ -710,6 +744,7 @@
       reviewsEndpoint: "/api/reviews",
       downloadUrl: {{ download_url | tojson }},
       defaultSort: {{ (workbench.ranking_policy.primary_score if workbench.ranking_policy else "experiment_value") | tojson }},
+      surfacedDefaultSort: {{ (workbench.surfaced_attention_summary.default_sort if workbench.surfaced_attention_summary else "experiment_value") | tojson }},
       allowExport: {{ (workspace_plan.features.decision_export if workspace_plan else false) | tojson }}
     };
   </script>

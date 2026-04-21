@@ -235,6 +235,71 @@ class ContradictionRecord(ScientificStateModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class MaterialGoalSpecificationRecord(ScientificStateModel):
+    goal_id: str
+    session_id: str
+    workspace_id: str
+    created_by_user_id: str = ""
+    raw_user_goal: str
+    domain_scope: str = "polymer_material"
+    requirement_status: str = "insufficient_needs_clarification"
+    structured_requirements: dict[str, Any] = Field(default_factory=dict)
+    missing_critical_requirements: list[str] = Field(default_factory=list)
+    clarification_questions: list[str] = Field(default_factory=list)
+    scientific_target_summary: str = ""
+    provenance_markers: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class MaterialGoalEvidenceLineRecord(ScientificStateModel):
+    source_object_type: str
+    source_object_id: str
+    candidate_id: str = ""
+    canonical_smiles: str = ""
+    relation_to_goal: str = ""
+    evidence_kind: str = ""
+    summary: str = ""
+    matched_terms: list[str] = Field(default_factory=list)
+    observed_value: float | None = None
+    observed_label: int | None = None
+    predicted_value: float | None = None
+    confidence: float | None = None
+    uncertainty: float | None = None
+    rank: int | None = None
+    provenance: dict[str, Any] = Field(default_factory=dict)
+
+
+class MaterialGoalCandidateDirectionRecord(ScientificStateModel):
+    direction_id: str
+    direction_label: str
+    direction_type: str = "candidate_linked_direction"
+    candidate_id: str = ""
+    canonical_smiles: str = ""
+    matched_terms: list[str] = Field(default_factory=list)
+    support_strength: str = "thin"
+    supporting_evidence_lines: list[MaterialGoalEvidenceLineRecord] = Field(default_factory=list)
+    limitation_lines: list[str] = Field(default_factory=list)
+    contradiction_indicators: list[dict[str, Any]] = Field(default_factory=list)
+    retrieval_match_summary: str = ""
+
+
+class MaterialGoalEvidenceResultRecord(ScientificStateModel):
+    goal_id: str = ""
+    session_id: str
+    workspace_id: str
+    retrieval_status: str = "not_attempted"
+    retrieval_sufficiency: str = "no_grounded_evidence"
+    query_summary: dict[str, Any] = Field(default_factory=dict)
+    candidate_material_directions: list[MaterialGoalCandidateDirectionRecord] = Field(default_factory=list)
+    supporting_evidence_lines: list[MaterialGoalEvidenceLineRecord] = Field(default_factory=list)
+    limitation_lines: list[str] = Field(default_factory=list)
+    contradiction_indicators: list[dict[str, Any]] = Field(default_factory=list)
+    retrieval_provenance: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class ExperimentRequestRecord(ScientificStateModel):
     request_id: str
     session_id: str

@@ -1,24 +1,25 @@
-# DISCOVERY_INTELLIGENCE_FIRST_BATTLEFIELD_LIFETIME_CANON
+# HOW_TO_READ_DISCOVERY_INTELLIGENCE_FIRST_BATTLEFIELD_CANON
 
 ## Purpose
 
-This is the lifetime canon for the first battlefield of Discovery Intelligence.
+This is the guided reading system for the first battlefield of Discovery Intelligence.
 
-The first battlefield is:
+It is not just a canon list.
+It is the operational way to use that canon so it changes:
+
+- how you think
+- how you design the system
+- how you model evidence and uncertainty
+- how you build the polymer/material discovery battlefield
+
+The battlefield remains:
 
 **A goal-directed polymer/material discovery system that interprets user-specified material requirements, asks clarifying questions when critical scientific constraints are missing, searches and organizes evidence, returns the best-supported material answer when current evidence is sufficient, and only requests additional data or experiments when the evidence is insufficient.**
 
-This canon exists to support that exact goal.
-
-It is not a generic AI reading list.
-It is not a startup reading list.
-It is not a general software engineering list.
-
-It is the integrated materials stack required to build the first serious version of Discovery Intelligence in its first real battlefield.
-
 ### Status
 
-This document defines a long-horizon doctrinal and study canon for the first battlefield. It does not claim that the current bridge-state Discovery Intelligence system already implements the full polymer/material discovery architecture described here.
+This document is a guided reading and doctrine-construction program for the first battlefield.
+It does not claim that the current bridge-state Discovery Intelligence runtime already implements the full polymer/material discovery architecture described here.
 
 The live system remains operationally centered on:
 
@@ -29,958 +30,1027 @@ The live system remains operationally centered on:
 - review
 - dashboard
 
-But this canon defines the direction for the first real battlefield.
+But this guide exists to help build the first real battlefield systematically.
 
 ---
 
-# 1. Core doctrine of the first battlefield
+# GUIDED READING SYSTEM FOR DISCOVERY_INTELLIGENCE_FIRST_BATTLEFIELD_LIFETIME_CANON
 
-Discovery Intelligence is being built for discovery, not for generic recommendation, dashboarding, or customer convenience.
+## What this guide is for
 
-The first battlefield is a real-world polymer/material discovery problem-space where the system must be able to:
+You are not reading to finish books.
 
-1. accept a user goal in natural language
-2. detect whether the request is sufficiently specified
-3. ask clarifying questions if critical scientific constraints are missing
-4. translate the clarified request into structured scientific requirements
-5. search evidence and organize candidate directions
-6. return the best-supported material answer if evidence is sufficient
-7. explicitly identify unknowns if evidence is insufficient
-8. request additional data or experiments only when justified
-9. preserve claims, evidence, contradiction, experiments, and belief over time
+You are reading to build the first battlefield of Discovery Intelligence:
 
-This means the canon must support all of the following:
+**a goal-directed polymer/material discovery system that interprets user-specified material requirements, asks clarifying questions when critical scientific constraints are missing, searches and organizes evidence, returns the best-supported material answer when current evidence is sufficient, and only requests additional data or experiments when the evidence is insufficient.**
 
-- epistemic rigor
-- scientific method
-- causality
-- probability and uncertainty
-- machine learning
-- search and experiment selection
-- chemistry and materials reasoning
-- structured scientific memory
-- retrieval and evidence access
-- systems architecture
-- human-interface discipline
-- domain standards and public scientific data
-- long-term internal doctrine
+So every resource must do one of four jobs:
+
+1. shape your mind
+2. shape the system
+3. shape the domain understanding
+4. solve the current bottleneck
 
 ---
 
-# 2. The deepest philosophical and epistemic foundations
+# PART 1 — HOW TO READ
 
-These works shape the soul of Discovery Intelligence.
+## Rule 1: Read in four modes
 
-They are not optional if the system is to remain truth-seeking.
+### 1. Foundation reading
 
-## 2.1 David Deutsch
+For books that change how you think.
 
-### The Beginning of Infinity
+How to read:
 
-Why:
-- explanation-centered worldview
-- knowledge growth
-- criticism and error correction
-- long-range orientation toward discovery
+- slow
+- handwritten or high-quality notes
+- few pages per session
+- stop often and reflect
 
-### The Fabric of Reality
+Use this for:
 
-Why:
-- expands explanation across physics, computation, and epistemology
-- deepens systems-level understanding of knowledge and reality
-
-## 2.2 Karl Popper
-
-### Conjectures and Refutations
-
-Why:
-- science grows through bold claims and criticism
-- excellent foundation for claim-evidence-contradiction logic
-
-### The Logic of Scientific Discovery
-
-Why:
-- scientific method at a stricter operational level
-- testability, risk, falsifiability, criticism
-
-### Objective Knowledge
-
-Why:
-- knowledge as a structured public object
-- relevant for a system that stores and critiques scientific state
-
-## 2.3 Thomas Kuhn
-
-### The Structure of Scientific Revolutions
-
-Why:
-- scientific progress is not purely linear
-- useful for understanding paradigm tension and conceptual rigidity
-
-## 2.4 Imre Lakatos
-
-### The Methodology of Scientific Research Programmes
-
-Why:
-- helps think beyond isolated hypotheses
-- useful for long-term claim families and belief trajectories
-
----
-
-# 3. Scientific reasoning, evidence, and causality
-
-A discovery system must know the difference between pattern, explanation, and intervention.
-
-## 3.1 Judea Pearl
-
-### The Book of Why
-
-Why:
-- moving from correlation to causation
-- intervention logic
-- the why layer of discovery
-
-### Causality
-
-Why:
-- long-term formal causal reasoning foundation
-- essential if Discovery Intelligence grows beyond prioritization into explanation
-
-## 3.2 David Spiegelhalter
-
-### The Art of Statistics
-
-Why:
-- evidence interpretation
-- communicating uncertainty honestly
-- statistical reasoning for real-world decisions
-
-## 3.3 Darrell Huff
-
-### How to Lie with Statistics
-
-Why:
-- defense against misleading evidence
-- teaches vigilance against bad interpretation
-
-## 3.4 Daniel Kahneman
-
-### Thinking, Fast and Slow
-
-Why:
-- human review is biased
-- useful for designing clarifying-question logic and human-system interaction
-
-## 3.5 Philip Tetlock
-
-### Superforecasting
-
-Why:
-- disciplined judgment under uncertainty
-- useful for uncertainty-aware system behavior
-
----
-
-# 4. Probability, inference, and uncertainty
-
-Discovery Intelligence must reason under uncertainty without self-deception.
-
-## 4.1 Blitzstein and Hwang
-
-### Introduction to Probability
-
-Why:
-- intuition for uncertainty
-- essential for belief and evidence reasoning
-
-## 4.2 Larry Wasserman
-
-### All of Statistics
-
-Why:
-- compact but strong foundation in statistical inference
-
-## 4.3 E. T. Jaynes
-
-### Probability Theory: The Logic of Science
-
-Why:
-- deep probabilistic epistemology
-- long-term foundation for belief-state design
-
-## 4.4 Richard McElreath
-
-### Statistical Rethinking
-
-Why:
-- practical inference
-- clear reasoning under uncertainty
-- useful for modern probabilistic thinking
-
-## 4.5 Gelman et al.
-
-### Bayesian Data Analysis
-
-Why:
-- deeper long-term Bayesian inference layer
-- useful when Discovery Intelligence belief-state logic matures further
-
----
-
-# 5. Machine learning and scientific modeling
-
-Discovery Intelligence must model, but not become trapped as a mere predictor.
-
-## 5.1 Christopher Bishop
-
-### Pattern Recognition and Machine Learning
-
-Why:
-- principled ML foundation
-- strong probabilistic perspective
-
-## 5.2 Goodfellow, Bengio, Courville
-
-### Deep Learning
-
-Why:
-- modern neural foundations
-- representation learning
-- optimization and model behavior
-
-## 5.3 Kevin Murphy
-
-### Probabilistic Machine Learning: An Introduction
-
-Why:
-- probability-centered ML
-- Bayesian decision ideas
-- uncertainty and model structure
-
-### Probabilistic Machine Learning: Advanced Topics
-
-Why:
-- advanced probabilistic modeling
-- long-term depth for Discovery Intelligence's scientific core
-
-## 5.4 Christoph Molnar
-
-### Interpretable Machine Learning
-
-Why:
-- Discovery Intelligence must justify, not merely output
-
-## 5.5 Foster Provost and Tom Fawcett
-
-### Data Science for Business
-
-Why:
-- practical framing of predictive systems and decision logic
-- useful as a cautionary bridge, not as final epistemology
-
----
-
-# 6. Search, optimization, and experiment selection
-
-A discovery system is also a search system.
-
-## 6.1 Steven Skiena
-
-### The Algorithm Design Manual
-
-Why:
-- practical search-space thinking
-- excellent engineering intuition
-
-## 6.2 Dasgupta, Papadimitriou, Vazirani
-
-### Algorithms
-
-Why:
-- foundational algorithmic depth
-
-## 6.3 Sutton and Barto
-
-### Reinforcement Learning: An Introduction
-
-Why:
-- exploration vs exploitation
-- sequential decision logic
-
-## 6.4 Burr Settles
-
-### Active Learning
-
-Why:
-- essential for deciding what to test next when experiments are expensive
-
-## 6.5 Rasmussen and Williams
-
-### Gaussian Processes for Machine Learning
-
-Why:
-- uncertainty-aware modeling
-- useful for experiment suggestion and surrogate reasoning
-
-## 6.6 Bayesian Optimization resources
-
-Why:
-- candidate and experiment selection under expensive evaluation
-
-## 6.7 Bandit algorithms resources
-
-Why:
-- choosing what to test next under uncertainty
-
-## 6.8 Multi-objective optimization resources
-
-Why:
-- materials goals are usually tradeoff-bound
-- no real material design problem is one-dimensional
-
----
-
-# 7. Knowledge representation, graphs, and scientific memory
-
-Discovery Intelligence must preserve scientific structure, not only predictions.
-
-## 7.1 Kejriwal, Knoblock, Szekely
-
-### Knowledge Graphs
-
-Why:
-- structured scientific state
-- claim/evidence/experiment graphs
-
-## 7.2 William Hamilton
-
-### Graph Representation Learning
-
-Why:
-- relational learning
-- graph embeddings and GNN foundations
-
-## 7.3 Probabilistic graphical models resources
-
-Why:
-- uncertainty-aware relational reasoning
-- belief dependencies
-
-## 7.4 Ontology and logic resources
-
-Why:
-- disciplined object design
-- precise claim/evidence/contradiction semantics
-
-Suggested areas:
-- description logic
-- ontology engineering
-- formal knowledge representation
-
----
-
-# 8. Retrieval, search, and evidence access
-
-The first battlefield depends on retrieving the right evidence before proposing any answer.
-
-## 8.1 Manning, Raghavan, Schütze
-
-### Introduction to Information Retrieval
-
-Why:
-- retrieval fundamentals
-- ranking, relevance, indexing, evaluation
-
-## 8.2 Retrieval system materials
-
-Study operationally:
-- PostgreSQL full-text search
-- pgvector
-- Elasticsearch / OpenSearch
-- hybrid retrieval
-- metadata-aware filtering
-- scientific evidence indexing
-
-## 8.3 RAG and grounded retrieval papers
-
-Why:
-- the interface layer needs retrieval discipline
-- retrieval must support evidence, not hallucination
-
----
-
-# 9. Systems architecture and software engineering
-
-The first battlefield needs durable architecture.
-
-## 9.1 Martin Kleppmann
-
-### Designing Data-Intensive Applications
-
-Why:
-- one of the most important books for Discovery Intelligence
-- state, storage, provenance, consistency, data flow
-
-## 9.2 Richards and Ford
-
-### Fundamentals of Software Architecture
-
-Why:
-- architectural tradeoffs
-- system design reasoning
-
-## 9.3 Ford, Richards, et al.
-
-### Software Architecture: The Hard Parts
-
-Why:
-- architecture under real constraints
-
-## 9.4 Ford, Parsons, Kua
-
-### Building Evolutionary Architectures
-
-Why:
-- Discovery Intelligence will evolve in stages over years
-
-## 9.5 Robert C. Martin
-
-### Clean Architecture
-
-Why:
-- boundaries and separation of concerns
-- useful if read critically
-
-## 9.6 Percival and Gregory
-
-### Architecture Patterns with Python
-
-Why:
-- repository pattern, services, domain modeling
-- directly relevant to Discovery Intelligence
-
-## 9.7 Luciano Ramalho
-
-### Fluent Python
-
-Why:
-- deep Python fluency for real system building
-
-## 9.8 Brett Slatkin
-
-### Effective Python
-
-Why:
-- code quality and practical correctness
-
-## 9.9 Martin Fowler
-
-### Refactoring
-
-Why:
-- long-term maintainability
-- Discovery Intelligence will constantly evolve
-
-## 9.10 Eric Evans
-
-### Domain-Driven Design
-
-Why:
-- scientific-state objects need disciplined modeling
-
----
-
-# 10. Data handling, experimentation, and scientific computing
-
-## 10.1 Wes McKinney
-
-### Python for Data Analysis
-
-Why:
-- practical data manipulation
-
-## 10.2 Kuhn and Johnson
-
-### Feature Engineering and Selection
-
-Why:
-- structured scientific data discipline
-
-## 10.3 Kohavi, Tang, Xu
-
-### Trustworthy Online Controlled Experiments
-
-Why:
-- disciplined experimental thinking
-- useful structurally even outside web experiments
-
-## 10.4 Research design resources
-
-Why:
-- experiment quality matters
-- Discovery Intelligence must know what makes data scientifically meaningful
-
-Topics to study:
-- confounding
-- internal validity
-- external validity
-- replication
-- measurement reliability
-- intervention design
-
-## 10.5 Experimental design resources
-
-Topics:
-- design of experiments
-- factorial design
-- screening experiments
-- response surfaces
-- uncertainty in measurements
-
----
-
-# 11. Human-interface discipline and clarification logic
-
-The first battlefield explicitly requires the system to ask clarifying questions when critical constraints are missing.
-
-That means the interface itself becomes a scientific responsibility.
-
-## 11.1 Human-computer interaction for expert systems
-
-Need:
-- expert workflow design
-- decision support interaction
-
-## 11.2 Requirements elicitation materials
-
-Need:
-- extracting precise constraints from vague human requests
-
-## 11.3 Dialogue design under uncertainty
-
-Need:
-- asking only necessary clarifying questions
-- never filling in critical scientific gaps silently
-
-## 11.4 Human-AI collaboration literature
-
-Need:
-- preserving human agency while protecting core scientific validity
-
-## 11.5 Decision support systems literature
-
-Need:
-- how systems should assist without pretending certainty
-
----
-
-# 12. LLM-specific materials for the bounded interactive layer
-
-Gemma or any LLM used here is not the scientific core.
-It is the interaction and orchestration layer.
-
-## 12.1 Structured extraction and prompting
-
-Need:
-- converting vague user language into structured requirements
-
-## 12.2 Function calling / structured output patterns
-
-Need:
-- safe handoff from LLM to scientific core
-
-## 12.3 Clarifying-question policy design
-
-Need:
-- detecting which missing inputs are critical
-- refusing to invent them
-
-## 12.4 Tool-use orchestration
-
-Need:
-- retrieval, search, and scientific-state interface orchestration
-
-## 12.5 Hallucination control in scientific settings
-
-Need:
-- never allow the LLM to silently guess critical scientific requirements
-
----
-
-# 13. Chemistry and molecular representation
-
-The first battlefield cannot exist without molecular/material representation.
-
-## 13.1 RDKit documentation and RDKit Book
-
-Why:
-- molecular structures
-- descriptors
-- fingerprints
-- substructures
-- cheminformatics foundations
-
-## 13.2 Molecular representation literature
-
-Need:
-- descriptors
-- fingerprints
-- learned molecular embeddings
-- graph representations
-
-## 13.3 Physicochemical property modeling resources
-
-Need:
-- how material behavior is represented numerically and conceptually
-
----
-
-# 14. Polymer chemistry, polymer physics, and materials science
-
-This is the core domain layer for the first battlefield.
-
-## 14.1 Polymer chemistry textbook
-
-Need:
-- polymerization concepts
-- monomers, copolymers, network structures
-- chemical families and behavior
-
-## 14.2 Polymer physics textbook
-
-Need:
-- chain behavior
-- glass transition
-- morphology
-- diffusion
-- swelling
-- mechanical behavior
-
-## 14.3 Materials science foundational textbook
-
-Need:
-- structure-property relationships
-- transport
-- durability
-- interfaces
-- mechanical behavior
-- processing effects
-
-## 14.4 Soft matter and functional polymers resources
-
-Need:
-- responsive behavior
-- environmental sensitivity
-- transient material logic
-
-## 14.5 Packaging materials science resources
-
-Need:
-- barrier properties
-- moisture interaction
-- wet-use conditions
-- shelf-life constraints
-- food contact or application constraints where relevant
-
-## 14.6 Transport and barrier behavior resources
-
-Need:
-- permeability
-- gas transport
-- water uptake
-- moisture barrier
-- diffusion through polymer systems
-
----
-
-# 15. Degradation, transient behavior, and stimuli-responsive materials
-
-Because the first battlefield may involve:
-- stability under one condition
-- transition under another
-- constrained functional lifetime
-
-## 15.1 Biodegradation science resources
-
-Need:
-- what degradation actually means
-- which assays matter
-- what counts as evidence
-
-## 15.2 Transient materials literature
-
-Need:
-- controlled lifetime behavior
-- designed disappearance or disintegration
-
-## 15.3 Stimuli-responsive polymer literature
-
-Need:
-- pH, humidity, temperature, enzymatic, light, or solvent response
-- trigger-dependent materials behavior
-
-## 15.4 Sustainable materials and green polymer literature
-
-Need:
-- environmental performance
-- circularity
-- persistence tradeoffs
-
----
-
-# 16. Standards, public scientific data, and regulatory reality
-
-These are essential because the first battlefield must stay in contact with real public evidence and standards.
-
-## 16.1 OECD Test Guidelines
-
-Especially:
-- biodegradation/degradation related standards
-- assay structure
-- what evidence counts and how it is obtained
-
-## 16.2 PubChem
-
-Why:
-- structure, assay, and property information
-
-## 16.3 EPA CompTox
-
-Why:
-- chemistry, toxicity, exposure, and prioritization-relevant data
-
-## 16.4 ECHA
-
-Why:
-- regulatory and substance information
-- practical real-world chemical context
-
-## 16.5 Materials databases
-
-Examples:
-- Materials Project
-- polymer/materials-specific public repositories as battlefield narrows
-
-## 16.6 Domain-specific literature databases
-
-Need:
-- papers, review articles, and curated materials datasets
-
----
-
-# 17. Living scientific literature streams
-
-Books are not enough.
-You need a permanent literature habit.
-
-## 17.1 Materials informatics
-## 17.2 Polymer informatics
-## 17.3 Molecular property prediction
-## 17.4 Scientific machine learning
-## 17.5 Active learning for science
-## 17.6 Uncertainty estimation
-## 17.7 Explainability in chemistry/materials ML
-## 17.8 Graph neural networks for molecules/materials
-## 17.9 Experiment planning under uncertainty
-## 17.10 Retrieval and knowledge graphs in science
-## 17.11 Causal inference and scientific reasoning systems
-
----
-
-# 18. Internal Discovery Intelligence doctrine corpus
-
-These are not notes.
-They are part of the actual intellectual machinery of the system.
-
-They must be maintained continuously.
-
-## 18.1 DI constitution / core doctrine
-## 18.2 First battlefield doctrine
-## 18.3 Universal core vs domain-specific layer doctrine
-## 18.4 Claim taxonomy
-## 18.5 Evidence taxonomy
-## 18.6 Contradiction taxonomy
-## 18.7 Belief revision doctrine
-## 18.8 Experiment recommendation doctrine
-## 18.9 Critical missing requirements doctrine
-## 18.10 Clarifying question doctrine
-## 18.11 Scientific core vs LLM boundary doctrine
-## 18.12 Session memory and continuity doctrine
-## 18.13 Provenance doctrine
-## 18.14 Uncertainty doctrine
-## 18.15 Unknown-identification doctrine
-
----
-
-# 19. Essential software and technical docs to treat as primary sources
-
-These are not secondary references.
-They are part of the building material.
-
-## 19.1 FastAPI documentation
-## 19.2 SQLAlchemy documentation
-## 19.3 Alembic documentation
-## 19.4 PostgreSQL documentation
-## 19.5 RDKit documentation
-## 19.6 Plotly documentation
-## 19.7 Docker documentation
-## 19.8 Cloud/infrastructure documentation relevant to deployment
-## 19.9 Testing framework documentation
-## 19.10 Search/retrieval engine documentation
-
----
-
-# 20. The non-negotiable core stack
-
-If everything above is too large to hold in view at once, this is the condensed non-negotiable stack for the first battlefield.
-
-## Epistemology and science
-
-- The Beginning of Infinity
-- Conjectures and Refutations
-- The Logic of Scientific Discovery
-- The Book of Why
-- Causality
-- The Art of Statistics
-
-## Probability and inference
-
-- Introduction to Probability
-- All of Statistics
-- Probability Theory: The Logic of Science
-- Statistical Rethinking
-
-## Machine learning
-
-- Pattern Recognition and Machine Learning
-- Deep Learning
-- Probabilistic Machine Learning: An Introduction
-- Interpretable Machine Learning
-
-## Search and decision
-
-- The Algorithm Design Manual
-- Reinforcement Learning: An Introduction
-- Active Learning
-- Bayesian optimization resources
-- bandit resources
-
-## Representation and retrieval
-
-- Introduction to Information Retrieval
-- Knowledge Graphs
-- Graph Representation Learning
-
-## Systems
-
-- Designing Data-Intensive Applications
-- Architecture Patterns with Python
-- Fluent Python
-- Domain-Driven Design
-- Refactoring
-
-## Domain
-
-- RDKit docs
-- polymer chemistry
-- polymer physics
-- materials science
-- packaging materials science
-- transient/stimuli-responsive materials literature
-- degradation science
-- OECD / PubChem / EPA / ECHA
-
-## Internal doctrine
-
-- DI constitution
-- battlefield doctrine
-- claim/evidence/contradiction/belief/experiment doctrines
-- LLM boundary doctrine
-- clarifying-question doctrine
-
----
-
-# 21. Order of life-dedication
-
-This canon is large, so the right way to dedicate a life to it is not random reading.
-It is layered engagement.
-
-## Layer 1: identity and epistemology
-
-Build the mind:
 - Deutsch
 - Popper
 - Pearl
 - Spiegelhalter
 
-## Layer 2: uncertainty and reasoning
+### 2. Operational reading
 
-Build the scientific judgment:
-- probability
-- statistics
-- Bayesian reasoning
-- causality
+For books and docs that should immediately affect the codebase.
 
-## Layer 3: ML and search
+How to read:
 
-Build the computational intelligence:
-- Bishop
-- Goodfellow
-- Murphy
-- active learning
-- optimization
-- sequential decision-making
+- keep the code open
+- read one section
+- apply one thing
+- write one DI note
 
-## Layer 4: architecture and software
+Use this for:
 
-Build the durable system:
 - DDIA
-- architecture books
 - Fluent Python
-- DDD
-- RDKit
-- infrastructure docs
+- Architecture Patterns with Python
+- FastAPI docs
+- SQLAlchemy docs
+- RDKit docs
 
-## Layer 5: domain grounding
+### 3. Reference reading
 
-Build contact with reality:
-- polymer chemistry
-- materials science
-- packaging
-- degradation
-- transient behavior
-- standards and public data
+For deeper technical works you revisit when the system reaches a specific problem.
 
-## Layer 6: internal doctrine
+How to read:
 
-Build the long-term scientific system mind:
-- the internal Discovery Intelligence doctrine corpus
-- refinement through implementation
-- repeated contact with failure and ambiguity
+- do not force cover-to-cover first
+- read targeted chapters
+- return later
+
+Use this for:
+
+- Causality
+- Jaynes
+- Murphy
+- Bayesian Data Analysis
+- polymer textbooks
+
+### 4. Live literature reading
+
+For papers, standards, and current sources tied to the active bottleneck.
+
+How to read:
+
+- selective
+- problem-driven
+- tied to current implementation
+
+Use this for:
+
+- active learning papers
+- materials informatics
+- packaging science
+- OECD standards
+- RDKit examples
+- retrieval papers
 
 ---
 
-# 22. Final doctrine
+## Rule 2: Every reading session must produce a DI note
 
-The first battlefield will be won not by reading isolated books, but by integrating:
+Use this template every time:
 
-- explanatory philosophy
-- scientific criticism
-- causal reasoning
-- probabilistic judgment
-- machine learning
-- search and experiment strategy
-- retrieval and knowledge structure
-- software architecture
-- chemistry and materials science
-- standards and public evidence
-- disciplined interaction design
-- doctrine and implementation history
+### Source
 
-This canon exists so that Discovery Intelligence can become:
+Book / chapter / paper / standard / doc
 
-**a goal-directed polymer/material discovery system that interprets user-specified material requirements, asks clarifying questions when critical scientific constraints are missing, searches and organizes evidence, returns the best-supported material answer when current evidence is sufficient, and only requests additional data or experiments when the evidence is insufficient.**
+### Core idea
 
-That is the first battlefield.
-That is the current life-direction.
-And until that battlefield is reached, no other Discovery Intelligence goal takes priority.
+What is the main truth here?
+
+### Why it matters for DI
+
+What does this change in the first battlefield?
+
+### DI implications
+
+What changes in:
+
+- goal intake
+- clarification logic
+- structured requirements
+- evidence retrieval
+- claim formation
+- contradiction
+- belief revision
+- answer-if-sufficient logic
+- unknown detection
+- experiment request
+
+### Immediate action
+
+What should change now in:
+
+- doctrine
+- code
+- schema
+- prompt
+- architecture
+- reading priorities
+
+### Open questions
+
+What remains unclear?
+
+Without this, reading stays passive.
+
+---
+
+## Rule 3: Never read the whole canon at once
+
+At any given time, keep only these active:
+
+- 1 epistemology/philosophy book
+- 1 probability/statistics/ML book
+- 1 architecture/software book
+- 1 domain science source
+- 1 live paper/standard stream
+
+That is enough.
+
+---
+
+# PART 2 — THE PHASES
+
+---
+
+## PHASE A — BUILD THE MIND OF DISCOVERY
+
+### Goal of this phase
+
+Make sure DI never collapses into:
+
+- ranking only
+- prediction only
+- dashboarding only
+- answer generation without epistemic discipline
+
+### Read in this order
+
+#### A1. The Beginning of Infinity — David Deutsch
+
+Verified link:
+[Official site / book page](https://www.thebeginningofinfinity.com/)
+
+Why first:
+
+- explanation over prediction
+- error correction
+- progress through knowledge growth
+
+What to extract:
+
+- What counts as a good explanation in DI?
+- Why DI must not become a mere recommender
+- Why criticism is a growth mechanism
+
+Output:
+
+- `DI_EXPLANATION_DOCTRINE.md`
+
+How to read:
+
+- 10–20 pages per session
+- after each session, write:
+- one idea about explanation
+- one idea about error correction
+- one consequence for DI
+
+#### A2. Conjectures and Refutations — Karl Popper
+
+Verified link:
+[Routledge book page](https://www.routledge.com/Conjectures-and-Refutations-The-Growth-of-Scientific-Knowledge/Popper/p/book/9780415285940)
+
+Why second:
+
+- claims
+- criticism
+- refutation
+- scientific growth through challenge
+
+What to extract:
+
+- What is a claim in DI?
+- Why contradiction is necessary
+- Why criticism is not failure
+
+Output:
+
+- `DI_CLAIM_DOCTRINE.md`
+- `DI_CONTRADICTION_DOCTRINE.md`
+
+How to read:
+
+- do not read as abstract philosophy
+- map each chapter into:
+- claim
+- criticism
+- refutation
+- growth
+
+#### A3. The Book of Why — Judea Pearl, Dana Mackenzie
+
+Verified link:
+[Pearl book page](https://bayes.cs.ucla.edu/WHY/)
+
+Why third:
+
+Your first battlefield is not just what material correlates with property X.
+It is:
+
+- what should be used
+- under what conditions
+- what is still unknown
+- what next evidence matters
+
+That requires moving beyond association.
+
+What to extract:
+
+- association vs intervention
+- what DI can and cannot claim causally
+- why experiments are not just data collection
+
+Output:
+
+- `DI_CAUSALITY_BOUNDARY.md`
+
+How to read:
+
+After each major section, ask:
+
+- what kind of causal reasoning belongs in the first battlefield now?
+- what must wait until later?
+
+#### A4. The Art of Statistics — David Spiegelhalter
+
+Use a legal publisher or library edition.
+
+Why fourth:
+
+- evidence
+- uncertainty
+- confidence boundaries
+- best-supported answer vs weak evidence
+
+What to extract:
+
+- What does sufficient evidence mean?
+- How should DI express uncertainty?
+- What should never be hidden?
+
+Output:
+
+- `DI_UNCERTAINTY_DOCTRINE.md`
+
+#### A5. The Logic of Scientific Discovery — Karl Popper
+
+Use a legal publisher or library edition.
+
+Why fifth:
+
+- testability
+- scientific risk
+- falsifiability
+- when DI should answer vs defer
+
+Output:
+
+- refine `DI_CLAIM_DOCTRINE.md`
+- refine `DI_EXPERIMENT_DOCTRINE.md`
+
+---
+
+## PHASE B — BUILD UNCERTAINTY, INFERENCE, AND BELIEF
+
+### Goal of this phase
+
+Prevent DI from being naive about evidence and belief.
+
+### Read in this order
+
+#### B1. Introduction to Probability — Blitzstein & Hwang
+
+Verified link:
+[Harvard Stat 110 / book reference](https://projects.iq.harvard.edu/stat110)
+
+Why first:
+
+- uncertainty
+- conditional reasoning
+- dependence
+- evidence effects
+
+What to extract:
+
+- what changes belief
+- what does not
+- what conditional dependence means for evidence
+
+Output:
+
+- `DI_PROBABILITY_INTUITION_NOTES.md`
+
+#### B2. All of Statistics — Larry Wasserman
+
+Use a legal edition.
+
+Why second:
+
+- weak evidence vs strong evidence
+- uncertainty intervals
+- inference logic
+- data quality implications
+
+Output:
+
+- `DI_EVIDENCE_SUFFICIENCY_DOCTRINE.md`
+
+#### B3. Statistical Rethinking — Richard McElreath
+
+Use a legal edition.
+
+Why third:
+
+- model assumptions
+- uncertainty overconfidence
+- belief movement under ambiguity
+
+Output:
+
+- refine `DI_BELIEF_REVISION_DOCTRINE.md`
+
+#### B4. Probability Theory: The Logic of Science — E. T. Jaynes
+
+Use as reference, not as a first-pass linear read.
+
+Why now:
+
+This is for long-term epistemic architecture, not quick implementation.
+
+Output:
+
+- `DI_LONG_TERM_BELIEF_ARCHITECTURE.md`
+
+#### B5. Bayesian Data Analysis — Gelman et al.
+
+Later-stage reference.
+
+Use when:
+
+- belief revision becomes more formal
+- uncertainty aggregation becomes a bottleneck
+
+---
+
+## PHASE C — BUILD THE COMPUTATIONAL CORE
+
+### Goal of this phase
+
+Understand what modeling can do for DI and where it must stop.
+
+### Read in this order
+
+#### C1. Pattern Recognition and Machine Learning — Christopher Bishop
+
+Verified link:
+[Springer book page](https://link.springer.com/book/10.1007/978-0-387-45528-0)
+
+Why first:
+
+- predictive models
+- probabilistic modeling
+- uncertainty in modeling
+- model limitations
+
+Output:
+
+- `DI_MODELING_BOUNDARIES.md`
+
+#### C2. Deep Learning — Goodfellow, Bengio, Courville
+
+Verified link:
+[Official free online book](https://www.deeplearningbook.org/)
+
+Why second:
+
+- representation learning
+- when deep learning helps
+- when it is overkill
+- where DI should remain symbolic or structured
+
+Output:
+
+- `DI_NEURAL_BOUNDARY_DOCTRINE.md`
+
+#### C3. Probabilistic Machine Learning: An Introduction — Kevin Murphy
+
+Use a legal edition.
+
+Why third:
+
+- probability
+- modeling
+- decision ideas
+
+Output:
+
+- refine `DI_MODELING_BOUNDARIES.md`
+- refine `DI_BELIEF_REVISION_DOCTRINE.md`
+
+#### C4. Interpretable Machine Learning — Christoph Molnar
+
+Verified link:
+[Official online book](https://christophm.github.io/interpretable-ml-book/)
+
+Why fourth:
+
+DI must justify, not only output.
+
+Output:
+
+- `DI_MODEL_EXPLANATION_POLICY.md`
+
+#### C5. Data Science for Business — Provost & Fawcett
+
+Use as a cautionary bridge, not a final worldview.
+
+Why:
+
+This helps clarify what ordinary data systems do, so DI can go beyond them.
+
+---
+
+## PHASE D — BUILD SEARCH, EXPERIMENT SELECTION, AND ACTIVE DISCOVERY
+
+### Goal of this phase
+
+Turn DI from a static model system into a search-and-next-step system.
+
+### Read in this order
+
+#### D1. The Algorithm Design Manual — Steven Skiena
+
+Use a legal edition.
+
+What to extract:
+
+- search-space thinking
+- combinatorial discipline
+- practical algorithmic reasoning
+
+Output:
+
+- `DI_SEARCH_SPACE_NOTES.md`
+
+#### D2. Reinforcement Learning: An Introduction — Sutton & Barto
+
+Use the official or author-hosted version if available legally.
+
+What to extract:
+
+- exploration vs exploitation
+- sequential choice
+- why next-step selection is hard
+
+Output:
+
+- `DI_EXPLORATION_EXPLOITATION_DOCTRINE.md`
+
+#### D3. Burr Settles — Active Learning / survey
+
+Verified link:
+[Free survey PDF](https://burrsettles.com/pub/settles.activelearning.pdf)
+
+Why this is critical:
+
+Your first battlefield explicitly needs:
+
+- answer if sufficient
+- ask for more data or experiment only if insufficient
+
+That is active-learning territory.
+
+Output:
+
+- `DI_ASK_FOR_MORE_ONLY_IF_NEEDED.md`
+
+#### D4. Gaussian Processes / Bayesian Optimization resources
+
+Use legal editions or tutorials.
+
+What to extract:
+
+- surrogate reasoning
+- expensive-query selection
+- uncertainty-aware experiment choice
+
+Output:
+
+- `DI_EXPERIMENT_SELECTION_LONG_TERM.md`
+
+#### D5. Bandits and multi-objective optimization
+
+Use later, when experiment choice becomes more mature.
+
+---
+
+## PHASE E — BUILD SCIENTIFIC MEMORY, RETRIEVAL, AND STRUCTURE
+
+### Goal of this phase
+
+Make DI a structured scientific memory, not a bag of outputs.
+
+### Read in this order
+
+#### E1. Introduction to Information Retrieval — Manning, Raghavan, Schütze
+
+Verified link:
+[Cambridge / Stanford reference page](https://nlp.stanford.edu/IR-book/)
+
+What to extract:
+
+- retrieval quality
+- evidence lookup
+- indexing
+- ranking vs relevance
+- search evaluation
+
+Output:
+
+- `DI_EVIDENCE_RETRIEVAL_DOCTRINE.md`
+
+#### E2. Knowledge Graphs — Kejriwal, Knoblock, Szekely
+
+Use a legal edition.
+
+What to extract:
+
+- graph-structured scientific memory
+- explicit relations
+- typed nodes and edges
+- why scientific state should not be flattened
+
+Output:
+
+- `DI_SCIENTIFIC_MEMORY_GRAPH.md`
+
+#### E3. Graph Representation Learning — William Hamilton
+
+Use the author or publisher page or a legal edition.
+
+What to extract:
+
+- relational learning
+- graph embeddings
+- where graph learning might later help DI
+
+Output:
+
+- `DI_GRAPH_LEARNING_BOUNDARY.md`
+
+#### E4. Ontology / logic / probabilistic graphical models
+
+Reference phase.
+
+What to build from this:
+
+- claim ontology
+- evidence ontology
+- contradiction ontology
+- belief-state precision
+
+---
+
+## PHASE F — BUILD THE SOFTWARE ARCHITECTURE
+
+### Goal of this phase
+
+Make DI durable enough to survive growth.
+
+### Read in this order
+
+#### F1. Designing Data-Intensive Applications — Martin Kleppmann
+
+Verified link:
+[Official book site](https://dataintensive.net/)
+
+Why this is one of the most important:
+
+DI is fundamentally a scientific-state system.
+
+What to extract:
+
+- truth boundaries
+- storage
+- consistency
+- state transition discipline
+- provenance implications
+
+Output:
+
+- `DI_DATA_AND_STATE_DOCTRINE.md`
+
+#### F2. Architecture Patterns with Python — Percival & Gregory
+
+Use a legal edition.
+
+What to extract:
+
+- repositories
+- services
+- domain objects
+- boundaries
+
+Output:
+
+- `DI_DOMAIN_MODELING_NOTES.md`
+
+#### F3. Fluent Python — Luciano Ramalho
+
+Use a legal edition.
+
+What to extract:
+
+- Python depth
+- language power
+- implementation maturity
+
+Output:
+
+- `DI_PYTHON_IMPLEMENTATION_NOTES.md`
+
+#### F4. Domain-Driven Design — Eric Evans
+
+Use a legal edition.
+
+What to extract:
+
+- bounded contexts
+- ubiquitous language
+- domain object discipline
+
+Output:
+
+- refine `DI_DOMAIN_MODELING_NOTES.md`
+
+#### F5. Refactoring — Martin Fowler
+
+Use as continuous support, not a one-time read.
+
+Output:
+
+- `DI_REFACTORING_POLICY.md`
+
+#### F6. FastAPI documentation
+
+Verified link:
+[Official FastAPI docs](https://fastapi.tiangolo.com/)
+
+#### F7. RDKit documentation
+
+Verified link:
+[Official RDKit docs](https://www.rdkit.org/docs/)
+
+Use both as operational reading, not passive reading.
+
+---
+
+## PHASE G — BUILD CONTACT WITH THE DOMAIN
+
+### Goal of this phase
+
+Make the first battlefield scientifically real.
+
+### Read in this order
+
+#### G1. RDKit docs and RDKit Book
+
+Verified link:
+[Official RDKit docs](https://www.rdkit.org/docs/)
+
+What to extract:
+
+- structure representation
+- fingerprints
+- descriptors
+- substructures
+- chemistry-aware operations
+
+Output:
+
+- `DI_MOLECULAR_REPRESENTATION_DOCTRINE.md`
+
+#### G2. Polymer chemistry textbook
+
+Legal edition.
+
+What to extract:
+
+- monomers
+- copolymers
+- polymer families
+- network structures
+- chemistry-to-property intuition
+
+Output:
+
+- `DI_POLYMER_CHEMISTRY_NOTES.md`
+
+#### G3. Polymer physics textbook
+
+Legal edition.
+
+What to extract:
+
+- chain behavior
+- morphology
+- glass transition
+- swelling
+- mechanical response
+- diffusion
+
+Output:
+
+- `DI_POLYMER_PHYSICS_NOTES.md`
+
+#### G4. Materials science foundational text
+
+Legal edition.
+
+What to extract:
+
+- structure-property relationships
+- transport
+- interfaces
+- durability
+- failure modes
+
+Output:
+
+- `DI_MATERIALS_FOUNDATION_NOTES.md`
+
+#### G5. Packaging materials science / transport / barrier behavior
+
+Use papers and applied sources.
+
+What to extract:
+
+- wet-use constraints
+- barrier requirements
+- moisture behavior
+- lifetime constraints
+- application realism
+
+Output:
+
+- `DI_PACKAGING_AND_BARRIER_NOTES.md`
+
+#### G6. Transient / stimuli-responsive / degradation literature
+
+Use papers, reviews, and standards.
+
+What to extract:
+
+- trigger-dependent behavior
+- transition under condition change
+- functional lifetime
+- what evidence counts
+
+Output:
+
+- `DI_TRANSIENT_MATERIALS_NOTES.md`
+
+#### G7. OECD, PubChem, EPA CompTox, ECHA
+
+Use as living evidence sources and standards.
+
+Why:
+
+These keep DI attached to real public scientific structure and assay reality.
+
+Output:
+
+- `DI_PUBLIC_EVIDENCE_SOURCES.md`
+
+---
+
+## PHASE H — BUILD THE INTERACTIVE LAYER CORRECTLY
+
+### Goal of this phase
+
+Make the LLM interface disciplined enough not to corrupt the scientific core.
+
+### Read in this order
+
+#### H1. Requirements elicitation / expert-system interaction
+
+Use HCI and expert-system materials.
+
+What to extract:
+
+- how to ask precise questions
+- how to detect missing information
+- how to avoid vague interaction
+
+Output:
+
+- `DI_CLARIFYING_QUESTION_DOCTRINE.md`
+
+#### H2. Dialogue design under uncertainty
+
+Use HCI and dialogue-system materials.
+
+What to extract:
+
+- ask only what is necessary
+- avoid conversational filler
+- avoid hidden assumptions
+
+Output:
+
+- refine `DI_CLARIFYING_QUESTION_DOCTRINE.md`
+
+#### H3. Structured extraction / tool orchestration / hallucination control
+
+Use modern LLM engineering references and docs.
+
+What to extract:
+
+- LLM for orchestration only
+- structured extraction
+- no silent filling of critical scientific constraints
+
+Output:
+
+- `DI_SCIENTIFIC_CORE_VS_LLM_BOUNDARY.md`
+
+---
+
+# PART 3 — WEEKLY READING SYSTEM
+
+## Daily structure
+
+30 min — philosophy / epistemology
+
+One of:
+
+- Deutsch
+- Popper
+- Pearl
+- Spiegelhalter
+
+30 min — math / ML / uncertainty
+
+One of:
+
+- probability
+- stats
+- Bishop
+- Murphy
+- active learning
+
+30 min — system / domain
+
+One of:
+
+- DDIA
+- Python / architecture
+- RDKit
+- polymer/materials science
+- standards
+
+---
+
+## Weekly structure
+
+### 3 sessions
+
+Normal reading plus DI notes
+
+### 1 integration session
+
+Ask:
+
+- what changed in my understanding this week?
+- what should change in DI because of it?
+- what doctrine file needs an update?
+- what implementation prompt becomes possible now?
+
+### 1 battlefield reality session
+
+Read:
+
+- standards
+- papers
+- domain literature
+- public datasets and sources
+
+Purpose:
+
+keep the system attached to the real battlefield
+
+---
+
+# PART 4 — WHAT TO READ NOW
+
+If you want the best immediate stack, start with this exact set:
+
+## Track 1 — worldview
+
+- [The Beginning of Infinity](https://www.thebeginningofinfinity.com/)
+- [Conjectures and Refutations](https://www.routledge.com/Conjectures-and-Refutations-The-Growth-of-Scientific-Knowledge/Popper/p/book/9780415285940)
+
+## Track 2 — causality and evidence
+
+- [The Book of Why](https://bayes.cs.ucla.edu/WHY/)
+- The Art of Statistics
+
+## Track 3 — uncertainty
+
+- [Introduction to Probability](https://projects.iq.harvard.edu/stat110)
+
+## Track 4 — systems
+
+- [Designing Data-Intensive Applications](https://dataintensive.net/)
+- [FastAPI docs](https://fastapi.tiangolo.com/)
+- [RDKit docs](https://www.rdkit.org/docs/)
+
+## Track 5 — modeling
+
+- [Pattern Recognition and Machine Learning](https://link.springer.com/book/10.1007/978-0-387-45528-0)
+- [Deep Learning](https://www.deeplearningbook.org/)
+
+## Track 6 — experiment logic
+
+- [Burr Settles’ active-learning survey](https://burrsettles.com/pub/settles.activelearning.pdf)
+
+## Track 7 — domain
+
+- RDKit docs again
+- polymer and materials overview sources obtained legally
+- OECD / PubChem / EPA / ECHA as ongoing sources
+
+---
+
+# PART 5 — THE GOLDEN RULE
+
+At the end of every week, produce exactly these five outputs:
+
+1. one DI doctrine update
+2. one architecture insight
+3. one domain insight
+4. one open scientific question
+5. one implementation consequence
+
+If your reading does not produce those, you are reading too passively.
+
+---
+
+## Final doctrine
+
+The canon should be read as a construction program, not as a bookshelf.
+
+The correct sequence is:
+
+- shape the mind
+- shape uncertainty
+- shape modeling
+- shape search
+- shape retrieval
+- shape the architecture
+- shape the domain grounding
+- shape the interface discipline
+- translate everything into DI doctrine and code
+
+That is how to systematically read for the first battlefield.
+
+If needed later, this guide can also be split into a separate operational reading document while keeping the main battlefield canon as the doctrinal reference.

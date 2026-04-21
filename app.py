@@ -65,6 +65,7 @@ from system.services.session_identity_service import build_session_identity
 from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.status_semantics_service import build_status_semantics, persisted_status_snapshot
 from system.services.workspace_feedback_service import annotate_candidates_with_workspace_memory
+from system.services.material_goal_service import persist_material_goal_specification
 from system.session_history import build_session_history_context
 from system.session_artifacts import (
     load_analysis_report_payload,
@@ -1183,6 +1184,25 @@ async def discovery_page(
         workspace_plan=workspace_plan,
         scientific_session_projection=projection,
     )
+
+
+@app.post("/discovery/material-goal")
+async def save_material_goal(
+    request: Request,
+    session_id: str = Form(...),
+    raw_user_goal: str = Form(...),
+) -> Response:
+    auth = require_auth_context(request)
+    require_csrf(request)
+    _ensure_session_access(session_id, auth.workspace_id)
+    _persist_active_session(request, auth.workspace_id, str(session_id))
+    persist_material_goal_specification(
+        session_id=str(session_id),
+        workspace_id=auth.workspace_id,
+        raw_user_goal=str(raw_user_goal or ""),
+        created_by_user_id=auth.user_id,
+    )
+    return RedirectResponse(url=f"/discovery?session_id={session_id}", status_code=303)
 
 
 @app.post("/api/reviews")

@@ -32,6 +32,134 @@
       <p>These results are recommendations, not experimental truth. Use them to prioritize review and testing.</p>
     </section>
 
+    {% set goal_spec = workbench.material_goal_specification or {} %}
+    {% set goal_retrieval = workbench.material_goal_retrieval or {} %}
+    <section class="panel discovery-state-panel">
+      <div class="section-header">
+        <div>
+          <h2>First-Battlefield Goal Intake</h2>
+          <p class="helper-copy">This intake layer decides whether a polymer or material request is sufficiently specified for scientific retrieval, or whether clarification is still required.</p>
+        </div>
+      </div>
+      {% if session_view.session_id %}
+        <form method="post" action="/discovery/material-goal" class="stack gap-12">
+          <input type="hidden" name="session_id" value="{{ session_view.session_id }}" />
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <label class="panel-label" for="material-goal-input">Material goal request</label>
+          <textarea id="material-goal-input" name="raw_user_goal" class="input" rows="5" placeholder="Describe the polymer or material goal, intended use, required properties, environment, and lifecycle constraints.">{{ goal_spec.raw_user_goal or "" }}</textarea>
+          <div class="cta-row">
+            <button class="button button-primary" type="submit">Evaluate goal sufficiency</button>
+          </div>
+        </form>
+        {% if goal_spec.available %}
+          <div class="dashboard-meta-row" style="margin-top: 12px;">
+            <span class="data-chip">Status {{ (goal_spec.requirement_status or "absent").replace("_", " ") }}</span>
+            <span class="data-chip">Domain {{ goal_spec.domain_scope or "polymer_material" }}</span>
+            <span class="data-chip">Missing critical {{ (goal_spec.missing_critical_requirements or [])|length }}</span>
+          </div>
+          {% if goal_spec.scientific_target_summary %}
+            <div class="mini-callout">
+              <span class="panel-label">Scientific target summary</span>
+              <p>{{ goal_spec.scientific_target_summary }}</p>
+            </div>
+          {% endif %}
+          {% if goal_spec.missing_critical_requirements %}
+            <div class="mini-callout">
+              <span class="panel-label">Missing critical requirements</span>
+              <ul class="compact-list">
+                {% for item in goal_spec.missing_critical_requirements %}
+                  <li>{{ item.replace("_", " ") }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+          {% if goal_spec.clarification_questions %}
+            <div class="mini-callout">
+              <span class="panel-label">Clarification questions</span>
+              <ul class="compact-list">
+                {% for item in goal_spec.clarification_questions %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+          {% if goal_spec.structured_requirements %}
+            <details class="mini-callout">
+              <summary>Structured requirement view</summary>
+              <pre>{{ goal_spec.structured_requirements | tojson(indent=2) }}</pre>
+            </details>
+          {% endif %}
+        {% endif %}
+      {% else %}
+        <p>Open a session before recording a first-battlefield material goal.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel discovery-state-panel">
+      <div class="section-header">
+        <div>
+          <h2>First-Battlefield Evidence Retrieval</h2>
+          <p class="helper-copy">A sufficiently specified material goal can now drive bounded session-grounded retrieval. This panel shows candidate material directions only when current session evidence actually supports them.</p>
+        </div>
+      </div>
+      {% if goal_retrieval.available %}
+        <div class="dashboard-meta-row" style="margin-top: 12px;">
+          <span class="data-chip">Retrieval {{ (goal_retrieval.retrieval_status or "absent").replace("_", " ") }}</span>
+          <span class="data-chip">Sufficiency {{ (goal_retrieval.retrieval_sufficiency or "no_grounded_evidence").replace("_", " ") }}</span>
+          <span class="data-chip">Directions {{ (goal_retrieval.candidate_material_directions or [])|length }}</span>
+        </div>
+        {% if goal_retrieval.query_summary %}
+          <details class="mini-callout">
+            <summary>Retrieval query summary</summary>
+            <pre>{{ goal_retrieval.query_summary | tojson(indent=2) }}</pre>
+          </details>
+        {% endif %}
+        {% if goal_retrieval.candidate_material_directions %}
+          <div class="mini-callout">
+            <span class="panel-label">Candidate material directions</span>
+            <ul class="compact-list">
+              {% for direction in goal_retrieval.candidate_material_directions %}
+                <li>
+                  <strong>{{ direction.direction_label }}</strong>
+                  ({{ (direction.direction_type or "candidate_linked_direction").replace("_", " ") }},
+                  support {{ (direction.support_strength or "thin").replace("_", " ") }})
+                  {% if direction.retrieval_match_summary %}<div>{{ direction.retrieval_match_summary }}</div>{% endif %}
+                  {% if direction.supporting_evidence_lines %}
+                    <div>Support lines:</div>
+                    <ul class="compact-list">
+                      {% for line in direction.supporting_evidence_lines[:3] %}
+                        <li>{{ line.summary }}</li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                  {% if direction.limitation_lines %}
+                    <div>Limitations:</div>
+                    <ul class="compact-list">
+                      {% for item in direction.limitation_lines %}
+                        <li>{{ item }}</li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_retrieval.limitation_lines %}
+          <div class="mini-callout">
+            <span class="panel-label">Retrieval limitations</span>
+            <ul class="compact-list">
+              {% for item in goal_retrieval.limitation_lines %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% elif session_view.session_id %}
+        <p>Record a sufficiently specified material goal to enable bounded evidence retrieval for the first battlefield.</p>
+      {% endif %}
+    </section>
+
     {% with session_epistemic_summary=workbench.session_epistemic_summary, epistemic_entry_points=workbench.epistemic_entry_points, section_title="Epistemic Session Summary", section_copy="This compact summary keeps claims, experiment follow-through, unresolved state, and belief linkage visible without turning Discovery into a workflow screen." %}
       {% include "_epistemic_session_summary.html" %}
     {% endwith %}

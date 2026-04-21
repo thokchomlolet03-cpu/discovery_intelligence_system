@@ -22,6 +22,7 @@ from system.db.models import (
     ArtifactRecordModel,
     ClaimEvidenceLinkModel,
     ContradictionModel,
+    MaterialGoalSpecificationModel,
     BeliefStateModel,
     BeliefUpdateModel,
     BillingWebhookEventModel,
@@ -55,6 +56,7 @@ from system.scientific_state.contracts import (
     EvidenceRecord,
     ExperimentRequestRecord,
     ExperimentResultRecord,
+    MaterialGoalSpecificationRecord,
     ModelOutputRecord,
     RecommendationRecord,
     TargetDefinitionRecord,
@@ -558,6 +560,25 @@ def _belief_state_payload(record: BeliefStateModel) -> dict[str, Any]:
         latest_revision_rationale=record.latest_revision_rationale,
         latest_update_id=record.latest_update_id,
         status=record.status,
+        provenance_markers=record.provenance_markers_json or {},
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    ).dict()
+
+
+def _material_goal_specification_payload(record: MaterialGoalSpecificationModel) -> dict[str, Any]:
+    return MaterialGoalSpecificationRecord(
+        goal_id=record.goal_id,
+        session_id=record.session_id,
+        workspace_id=record.workspace_id,
+        created_by_user_id=record.created_by_user_id or "",
+        raw_user_goal=record.raw_user_goal,
+        domain_scope=record.domain_scope,
+        requirement_status=record.requirement_status,
+        structured_requirements=record.structured_requirements_json or {},
+        missing_critical_requirements=record.missing_critical_requirements_json or [],
+        clarification_questions=record.clarification_questions_json or [],
+        scientific_target_summary=record.scientific_target_summary,
         provenance_markers=record.provenance_markers_json or {},
         created_at=record.created_at,
         updated_at=record.updated_at,
@@ -1705,6 +1726,45 @@ class ScientificStateRepository:
                 db.refresh(record)
                 created.append(_contradiction_payload(record))
             return created
+
+    def upsert_material_goal_specification(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record_payload = MaterialGoalSpecificationRecord(**payload).dict()
+        with session_scope() as db:
+            statement = select(MaterialGoalSpecificationModel).where(MaterialGoalSpecificationModel.session_id == record_payload["session_id"])
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                record = MaterialGoalSpecificationModel(
+                    goal_id=record_payload["goal_id"],
+                    session_id=record_payload["session_id"],
+                    workspace_id=record_payload["workspace_id"],
+                    created_by_user_id=record_payload.get("created_by_user_id") or None,
+                    created_at=record_payload["created_at"],
+                )
+            record.workspace_id = record_payload["workspace_id"]
+            record.created_by_user_id = record_payload.get("created_by_user_id") or record.created_by_user_id
+            record.raw_user_goal = record_payload["raw_user_goal"]
+            record.domain_scope = record_payload["domain_scope"]
+            record.requirement_status = record_payload["requirement_status"]
+            record.structured_requirements_json = record_payload["structured_requirements"]
+            record.missing_critical_requirements_json = record_payload["missing_critical_requirements"]
+            record.clarification_questions_json = record_payload["clarification_questions"]
+            record.scientific_target_summary = record_payload["scientific_target_summary"]
+            record.provenance_markers_json = record_payload["provenance_markers"]
+            record.updated_at = _utc_now()
+            db.add(record)
+            db.flush()
+            db.refresh(record)
+            return _material_goal_specification_payload(record)
+
+    def get_material_goal_specification(self, *, session_id: str, workspace_id: str | None = None) -> dict[str, Any]:
+        with session_scope() as db:
+            statement = select(MaterialGoalSpecificationModel).where(MaterialGoalSpecificationModel.session_id == session_id)
+            if workspace_id is not None:
+                statement = statement.where(MaterialGoalSpecificationModel.workspace_id == workspace_id)
+            record = db.execute(statement).scalar_one_or_none()
+            if record is None:
+                raise FileNotFoundError(f"No material goal specification found for '{session_id}'.")
+            return _material_goal_specification_payload(record)
 
     def list_contradictions(
         self,

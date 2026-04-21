@@ -854,6 +854,10 @@ def load_canonical_session_scientific_state(session_id: str, *, workspace_id: st
     claim_evidence_links = scientific_state_repository.list_claim_evidence_links(session_id=session_id, workspace_id=workspace_id)
     contradictions = scientific_state_repository.list_contradictions(session_id=session_id, workspace_id=workspace_id)
     try:
+        material_goal_specification = scientific_state_repository.get_material_goal_specification(session_id=session_id, workspace_id=workspace_id)
+    except FileNotFoundError:
+        material_goal_specification = {}
+    try:
         run_metadata = scientific_state_repository.get_run_metadata(session_id=session_id, workspace_id=workspace_id)
     except FileNotFoundError:
         run_metadata = {}
@@ -868,6 +872,7 @@ def load_canonical_session_scientific_state(session_id: str, *, workspace_id: st
         "claims": claims,
         "claim_evidence_links": claim_evidence_links,
         "contradictions": contradictions,
+        "material_goal_specification": material_goal_specification,
         "run_metadata": run_metadata,
         "diagnostics": {
             "scientific_state_source": "canonical_sql",
@@ -877,6 +882,7 @@ def load_canonical_session_scientific_state(session_id: str, *, workspace_id: st
             "claim_count": len(claims),
             "claim_evidence_link_count": len(claim_evidence_links),
             "contradiction_count": len(contradictions),
+            "material_goal_specification_present": bool(material_goal_specification),
             "run_metadata_present": bool(run_metadata),
         },
     }

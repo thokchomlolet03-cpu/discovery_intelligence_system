@@ -19,12 +19,172 @@ from system.services.epistemic_experiment_priority_service import assess_epistem
 from system.services.claim_service import materialize_session_claims
 from system.services.contradiction_service import build_session_contradictions
 from system.services.belief_state_service import assess_belief_revision
+from system.services.material_goal_service import build_material_goal_specification
+from system.services.material_goal_retrieval_service import build_material_goal_evidence_result
 from system.services.experiment_service import create_experiment_request, record_experiment_result
 from system.services.scientific_session_projection_service import build_scientific_session_projection
 from system.services.scientific_state_service import build_run_metadata_record
 
 
 class ScientificSessionProjectionTest(unittest.TestCase):
+    def test_material_goal_specification_requires_clarification_when_critical_constraints_are_missing(self):
+        spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal="I need a biodegradable polymer for packaging.",
+        )
+
+        self.assertEqual(spec["requirement_status"], "insufficient_needs_clarification")
+        self.assertIn("desired_properties", spec["missing_critical_requirements"])
+        self.assertIn("operating_environment", spec["missing_critical_requirements"])
+        self.assertGreater(len(spec["clarification_questions"]), 0)
+        self.assertFalse(spec["provenance_markers"]["silent_fill_of_critical_requirements"])
+
+    def test_material_goal_specification_builds_structured_target_when_sufficient(self):
+        spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+
+        self.assertEqual(spec["requirement_status"], "sufficiently_specified")
+        self.assertEqual(spec["missing_critical_requirements"], [])
+        self.assertIn("packaging", spec["structured_requirements"]["target_material_function"])
+        self.assertIn("barrier", " ".join(spec["structured_requirements"]["desired_properties"]))
+        self.assertIn("humid", " ".join(spec["structured_requirements"]["operating_environment"]))
+        self.assertIn("months", " ".join(spec["structured_requirements"]["lifecycle_window"]))
+
+    def test_material_goal_retrieval_blocks_when_goal_is_not_sufficiently_specified(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal="Need a biodegradable polymer for packaging.",
+        )
+
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[],
+            model_outputs=[],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+
+        self.assertEqual(retrieval["retrieval_status"], "blocked_goal_insufficient")
+        self.assertEqual(retrieval["retrieval_sufficiency"], "no_grounded_evidence")
+        self.assertEqual(retrieval["candidate_material_directions"], [])
+        self.assertIn("clarified", retrieval["limitation_lines"][0].lower())
+
+    def test_material_goal_retrieval_organizes_grounded_candidate_directions(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid storage",
+                        "lifecycle": "stable for months before composting",
+                    },
+                }
+            ],
+            model_outputs=[
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "predicted_value": 0.81,
+                    "confidence": 0.74,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "humid food packaging",
+                    },
+                }
+            ],
+            recommendations=[
+                {
+                    "record_id": 3,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "rank": 1,
+                    "bucket": "learn",
+                    "rationale_summary": "Packaging film direction with oxygen barrier and compostable end-of-life context.",
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                    },
+                }
+            ],
+            claims=[{"claim_id": "claim_1", "candidate_id": "cand_pack", "canonical_smiles": "CCO"}],
+            contradictions=[],
+        )
+
+        self.assertEqual(retrieval["retrieval_status"], "retrieval_complete")
+        self.assertEqual(retrieval["retrieval_sufficiency"], "candidate_directions_available")
+        self.assertEqual(len(retrieval["candidate_material_directions"]), 1)
+        self.assertIn("compostable polyester film", retrieval["candidate_material_directions"][0]["direction_label"])
+        self.assertGreaterEqual(len(retrieval["candidate_material_directions"][0]["supporting_evidence_lines"]), 2)
+
+    def test_material_goal_retrieval_surfaces_weak_partial_evidence_without_claiming_answer(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[],
+            model_outputs=[
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_partial",
+                    "canonical_smiles": "CCC",
+                    "predicted_value": 0.61,
+                    "confidence": 0.59,
+                    "payload": {
+                        "application": "humid packaging film",
+                        "properties": ["oxygen barrier"],
+                    },
+                }
+            ],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+
+        self.assertEqual(retrieval["retrieval_sufficiency"], "weak_partial_evidence")
+        self.assertEqual(len(retrieval["candidate_material_directions"]), 1)
+        self.assertIn("does not yet justify a best-supported material answer", " ".join(retrieval["limitation_lines"]).lower())
+
     def test_contradiction_aware_belief_revision_keeps_mixed_structure_unresolved(self):
         revision = assess_belief_revision(
             claim={"claim_id": "claim_1", "claim_text": "Candidate cand_1 should remain prioritized."},
@@ -1323,12 +1483,67 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         canonical_state = {
             "session_id": "session_claim_detail",
             "target_definition": {"target_name": "pIC50", "target_kind": "regression"},
-            "evidence_records": [],
-            "model_outputs": [],
-            "recommendations": [],
+            "evidence_records": [
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_1",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid packaging barrier assay",
+                    "observed_value": 0.14,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["moisture barrier", "biodegradable"],
+                        "environment": "humid",
+                        "lifecycle": "months",
+                    },
+                }
+            ],
+            "model_outputs": [
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_1",
+                    "canonical_smiles": "CCO",
+                    "predicted_value": 0.79,
+                    "confidence": 0.82,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "humid packaging film",
+                    },
+                }
+            ],
+            "recommendations": [
+                {
+                    "record_id": 3,
+                    "candidate_id": "cand_1",
+                    "canonical_smiles": "CCO",
+                    "rank": 1,
+                    "bucket": "learn",
+                    "rationale_summary": "Packaging film direction with moisture barrier context.",
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                    },
+                }
+            ],
             "carryover_records": [],
             "candidate_states": [],
             "claims": [{"claim_id": "claim_candidate"}],
+            "material_goal_specification": {
+                "goal_id": "goal_1",
+                "raw_user_goal": "Need a biodegradable packaging film with moisture barrier for humid use.",
+                "domain_scope": "polymer_material",
+                "requirement_status": "insufficient_needs_clarification",
+                "structured_requirements": {
+                    "target_material_function": ["packaging", "film"],
+                    "desired_properties": ["biodegradable", "barrier", "moisture"],
+                    "operating_environment": ["humid"],
+                },
+                "missing_critical_requirements": ["lifecycle_window"],
+                "clarification_questions": ["What stability or lifetime window is required before degradation becomes acceptable?"],
+                "scientific_target_summary": "Material goal remains insufficiently specified for scientific retrieval because critical constraints are still missing.",
+            },
             "run_metadata": {},
         }
         belief_read_model = {
@@ -1396,6 +1611,10 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertTrue(projection["session_epistemic_detail_reveal"]["available"])
         self.assertTrue(projection["focused_claim_inspection"]["available"])
         self.assertTrue(projection["focused_experiment_inspection"]["available"])
+        self.assertTrue(projection["material_goal_specification"]["available"])
+        self.assertEqual(projection["material_goal_specification"]["requirement_status"], "insufficient_needs_clarification")
+        self.assertTrue(projection["material_goal_retrieval"]["available"])
+        self.assertEqual(projection["material_goal_retrieval"]["retrieval_status"], "blocked_goal_insufficient")
 
         workbench = build_discovery_workbench(
             decision_output={
@@ -1429,6 +1648,8 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(workbench["claim_detail_summary"]["claim_detail_count"], 1)
         self.assertEqual(workbench["candidates"][0]["claim_detail_items"][0]["claim_id"], "claim_candidate")
         self.assertEqual(workbench["experiment_lifecycle_summary"]["experiment_request_count"], 1)
+        self.assertEqual(workbench["material_goal_specification"]["requirement_status"], "insufficient_needs_clarification")
+        self.assertEqual(workbench["material_goal_retrieval"]["retrieval_status"], "blocked_goal_insufficient")
         self.assertEqual(workbench["session_epistemic_summary"]["pending_experiment_count"], 1)
         self.assertEqual(workbench["candidates"][0]["candidate_epistemic_context"]["status"], "pending_experiment")
 

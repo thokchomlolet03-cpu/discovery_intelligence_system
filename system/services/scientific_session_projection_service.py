@@ -16,6 +16,7 @@ from system.services.epistemic_ui_service import (
     build_session_epistemic_summary,
 )
 from system.services.epistemic_experiment_priority_service import build_session_epistemic_experiment_priority_model
+from system.services.material_goal_retrieval_service import build_material_goal_evidence_result
 from system.services.scientific_state_service import load_canonical_session_scientific_state
 from system.services.session_identity_service import build_metric_interpretation, build_session_identity, build_trust_context
 from system.services.status_semantics_service import build_status_semantics
@@ -54,6 +55,61 @@ def _to_iso(value: Any) -> str:
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _material_goal_summary(goal_spec: dict[str, Any]) -> dict[str, Any]:
+    payload = goal_spec if isinstance(goal_spec, dict) else {}
+    if not payload:
+        return {
+            "available": False,
+            "requirement_status": "absent",
+            "missing_critical_requirements": [],
+            "clarification_questions": [],
+            "scientific_target_summary": "",
+            "provenance": "absent",
+        }
+    structured = payload.get("structured_requirements") if isinstance(payload.get("structured_requirements"), dict) else {}
+    return {
+        "available": True,
+        "goal_id": _clean_text(payload.get("goal_id")),
+        "raw_user_goal": _clean_text(payload.get("raw_user_goal")),
+        "domain_scope": _clean_text(payload.get("domain_scope"), default="polymer_material"),
+        "requirement_status": _clean_text(payload.get("requirement_status"), default="insufficient_needs_clarification"),
+        "structured_requirements": structured,
+        "missing_critical_requirements": payload.get("missing_critical_requirements") if isinstance(payload.get("missing_critical_requirements"), list) else [],
+        "clarification_questions": payload.get("clarification_questions") if isinstance(payload.get("clarification_questions"), list) else [],
+        "scientific_target_summary": _clean_text(payload.get("scientific_target_summary")),
+        "provenance": "canonical_material_goal_specification",
+    }
+
+
+def _material_goal_retrieval_summary(retrieval_result: dict[str, Any]) -> dict[str, Any]:
+    payload = retrieval_result if isinstance(retrieval_result, dict) else {}
+    if not payload:
+        return {
+            "available": False,
+            "retrieval_status": "absent",
+            "retrieval_sufficiency": "no_grounded_evidence",
+            "candidate_material_directions": [],
+            "supporting_evidence_lines": [],
+            "limitation_lines": [],
+            "contradiction_indicators": [],
+            "query_summary": {},
+            "provenance": "absent",
+        }
+    return {
+        "available": True,
+        "goal_id": _clean_text(payload.get("goal_id")),
+        "retrieval_status": _clean_text(payload.get("retrieval_status"), default="not_attempted"),
+        "retrieval_sufficiency": _clean_text(payload.get("retrieval_sufficiency"), default="no_grounded_evidence"),
+        "query_summary": _as_dict(payload.get("query_summary")),
+        "candidate_material_directions": payload.get("candidate_material_directions") if isinstance(payload.get("candidate_material_directions"), list) else [],
+        "supporting_evidence_lines": payload.get("supporting_evidence_lines") if isinstance(payload.get("supporting_evidence_lines"), list) else [],
+        "limitation_lines": payload.get("limitation_lines") if isinstance(payload.get("limitation_lines"), list) else [],
+        "contradiction_indicators": payload.get("contradiction_indicators") if isinstance(payload.get("contradiction_indicators"), list) else [],
+        "provenance": "recomputed_material_goal_retrieval",
+        "retrieval_provenance": _as_dict(payload.get("retrieval_provenance")),
+    }
 
 
 def _evidence_summary(evidence_records: list[dict[str, Any]], target_definition: dict[str, Any]) -> dict[str, Any]:
@@ -850,6 +906,26 @@ def build_scientific_session_projection(
     focused_experiment_inspection = build_focused_experiment_inspection(
         experiment_lifecycle_model=experiment_lifecycle_model,
     )
+    material_goal_specification = _material_goal_summary(canonical_state.get("material_goal_specification"))
+    material_goal_retrieval = _material_goal_retrieval_summary(
+        build_material_goal_evidence_result(
+            session_id=session_id,
+            workspace_id=effective_workspace_id,
+            goal_specification=canonical_state.get("material_goal_specification"),
+            evidence_records=evidence_records,
+            model_outputs=model_outputs,
+            recommendations=recommendations,
+            claims=claims,
+            contradictions=canonical_state.get("contradictions"),
+        )
+    )
+    diagnostics["material_goal_specification_available"] = bool(material_goal_specification.get("available"))
+    diagnostics["material_goal_requirement_status"] = material_goal_specification.get("requirement_status")
+    diagnostics["material_goal_missing_critical_count"] = len(material_goal_specification.get("missing_critical_requirements") or [])
+    diagnostics["material_goal_retrieval_available"] = bool(material_goal_retrieval.get("available"))
+    diagnostics["material_goal_retrieval_status"] = material_goal_retrieval.get("retrieval_status")
+    diagnostics["material_goal_retrieval_sufficiency"] = material_goal_retrieval.get("retrieval_sufficiency")
+    diagnostics["material_goal_candidate_direction_count"] = len(material_goal_retrieval.get("candidate_material_directions") or [])
     diagnostics["session_epistemic_summary_available"] = bool(session_epistemic_summary.get("available"))
     diagnostics["session_epistemic_summary_status"] = session_epistemic_summary.get("status")
     diagnostics["session_epistemic_detail_affordance_available"] = bool(session_epistemic_detail_reveal.get("available"))
@@ -892,6 +968,8 @@ def build_scientific_session_projection(
         "candidate_projection_rows": candidate_projection_rows,
         "candidate_states": candidate_states,
         "claims": claims,
+        "material_goal_specification": material_goal_specification,
+        "material_goal_retrieval": material_goal_retrieval,
         "belief_layer_summary": dict((belief_read_model.get("session_summary") if isinstance(belief_read_model, dict) else {}) or {}),
         "belief_read_model": belief_read_model,
         "experiment_lifecycle_summary": dict((experiment_lifecycle_model.get("session_summary") if isinstance(experiment_lifecycle_model, dict) else {}) or {}),

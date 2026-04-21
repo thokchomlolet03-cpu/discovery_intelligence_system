@@ -1510,6 +1510,8 @@ def build_discovery_workbench(
     focused_experiment_inspection = projection.get("focused_experiment_inspection") if isinstance(projection.get("focused_experiment_inspection"), dict) else build_focused_experiment_inspection(
         experiment_lifecycle_model=experiment_lifecycle_model,
     )
+    material_goal_specification = projection.get("material_goal_specification") if isinstance(projection.get("material_goal_specification"), dict) else {}
+    material_goal_retrieval = projection.get("material_goal_retrieval") if isinstance(projection.get("material_goal_retrieval"), dict) else {}
     if artifact_state == "error":
         state = {
             "kind": "error",
@@ -1558,6 +1560,8 @@ def build_discovery_workbench(
             "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
             "focused_claim_inspection": focused_claim_inspection,
             "focused_experiment_inspection": focused_experiment_inspection,
+            "material_goal_specification": material_goal_specification,
+            "material_goal_retrieval": material_goal_retrieval,
             "surfaced_attention_summary": {
                 "attention_candidate_count": 0,
                 "epistemic_attention_count": 0,
@@ -1620,6 +1624,8 @@ def build_discovery_workbench(
                 "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
                 "focused_claim_inspection": focused_claim_inspection,
                 "focused_experiment_inspection": focused_experiment_inspection,
+                "material_goal_specification": material_goal_specification,
+                "material_goal_retrieval": material_goal_retrieval,
                 "surfaced_attention_summary": {
                     "attention_candidate_count": 0,
                     "epistemic_attention_count": 0,
@@ -1763,6 +1769,8 @@ def build_discovery_workbench(
         "session_epistemic_detail_reveal": session_epistemic_detail_reveal,
         "focused_claim_inspection": focused_claim_inspection,
         "focused_experiment_inspection": focused_experiment_inspection,
+        "material_goal_specification": material_goal_specification,
+        "material_goal_retrieval": material_goal_retrieval,
         "surfaced_attention_summary": surfaced_attention_summary,
         "projection_diagnostics": projection_diagnostics,
     }

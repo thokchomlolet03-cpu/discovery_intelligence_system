@@ -395,6 +395,25 @@ class ContradictionModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
 
+class MaterialGoalSpecificationModel(Base):
+    __tablename__ = "material_goal_specifications"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    goal_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.session_id"), nullable=False, index=True)
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.workspace_id"), nullable=False, index=True)
+    created_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"), nullable=True, index=True)
+    raw_user_goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    domain_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="polymer_material")
+    requirement_status: Mapped[str] = mapped_column(String(64), nullable=False, default="insufficient_needs_clarification", index=True)
+    structured_requirements_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    missing_critical_requirements_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    clarification_questions_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    scientific_target_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    provenance_markers_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
 class ExperimentRequestModel(Base):
     __tablename__ = "experiment_requests"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

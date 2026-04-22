@@ -16,6 +16,9 @@ from system.services.epistemic_ui_service import (
     build_session_epistemic_summary,
 )
 from system.services.epistemic_experiment_priority_service import build_session_epistemic_experiment_priority_model
+from system.services.material_goal_answer_service import build_material_goal_answer_decision
+from system.services.material_goal_coverage_service import build_material_goal_coverage
+from system.services.material_goal_support_trace_service import build_material_goal_support_trace
 from system.services.material_goal_retrieval_service import build_material_goal_evidence_result
 from system.services.scientific_state_service import load_canonical_session_scientific_state
 from system.services.session_identity_service import build_metric_interpretation, build_session_identity, build_trust_context
@@ -55,6 +58,10 @@ def _to_iso(value: Any) -> str:
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _as_list(value: Any) -> list[Any]:
+    return list(value) if isinstance(value, list) else []
 
 
 def _material_goal_summary(goal_spec: dict[str, Any]) -> dict[str, Any]:
@@ -109,6 +116,99 @@ def _material_goal_retrieval_summary(retrieval_result: dict[str, Any]) -> dict[s
         "contradiction_indicators": payload.get("contradiction_indicators") if isinstance(payload.get("contradiction_indicators"), list) else [],
         "provenance": "recomputed_material_goal_retrieval",
         "retrieval_provenance": _as_dict(payload.get("retrieval_provenance")),
+    }
+
+
+def _material_goal_answer_summary(answer_decision: dict[str, Any]) -> dict[str, Any]:
+    payload = answer_decision if isinstance(answer_decision, dict) else {}
+    if not payload:
+        return {
+            "available": False,
+            "answer_status": "absent",
+            "answer_sufficiency": "insufficient_evidence",
+            "coverage_summary": {},
+            "best_supported_material_answer": "",
+            "best_supported_direction": {},
+            "supporting_rationale": [],
+            "answer_limitations": [],
+            "explicit_unknowns": [],
+            "insufficiency_reasons": [],
+            "required_additional_data": [],
+            "required_experiments": [],
+            "provenance": "absent",
+        }
+    return {
+        "available": True,
+        "goal_id": _clean_text(payload.get("goal_id")),
+        "answer_status": _clean_text(payload.get("answer_status"), default="not_ready"),
+        "answer_sufficiency": _clean_text(payload.get("answer_sufficiency"), default="insufficient_evidence"),
+        "coverage_summary": _as_dict(payload.get("coverage_summary")),
+        "best_supported_material_answer": _clean_text(payload.get("best_supported_material_answer")),
+        "best_supported_direction": _as_dict(payload.get("best_supported_direction")),
+        "supporting_rationale": _as_list(payload.get("supporting_rationale")),
+        "answer_limitations": _as_list(payload.get("answer_limitations")),
+        "explicit_unknowns": _as_list(payload.get("explicit_unknowns")),
+        "insufficiency_reasons": _as_list(payload.get("insufficiency_reasons")),
+        "required_additional_data": _as_list(payload.get("required_additional_data")),
+        "required_experiments": _as_list(payload.get("required_experiments")),
+        "provenance": "recomputed_material_goal_answer_decision",
+        "decision_provenance": _as_dict(payload.get("decision_provenance")),
+    }
+
+
+def _material_goal_coverage_summary(coverage_result: dict[str, Any]) -> dict[str, Any]:
+    payload = coverage_result if isinstance(coverage_result, dict) else {}
+    if not payload:
+        return {
+            "available": False,
+            "top_direction_label": "",
+            "top_direction_support_strength": "thin",
+            "requirement_coverages": [],
+            "supported_requirement_count": 0,
+            "partially_supported_requirement_count": 0,
+            "unknown_requirement_count": 0,
+            "contradicted_requirement_count": 0,
+            "critical_unknowns": [],
+            "blocking_gaps": [],
+            "provenance": "absent",
+        }
+    return {
+        "available": True,
+        "goal_id": _clean_text(payload.get("goal_id")),
+        "top_direction_id": _clean_text(payload.get("top_direction_id")),
+        "top_direction_label": _clean_text(payload.get("top_direction_label")),
+        "top_direction_support_strength": _clean_text(payload.get("top_direction_support_strength"), default="thin"),
+        "requirement_coverages": _as_list(payload.get("requirement_coverages")),
+        "supported_requirement_count": _safe_int(payload.get("supported_requirement_count")),
+        "partially_supported_requirement_count": _safe_int(payload.get("partially_supported_requirement_count")),
+        "unknown_requirement_count": _safe_int(payload.get("unknown_requirement_count")),
+        "contradicted_requirement_count": _safe_int(payload.get("contradicted_requirement_count")),
+        "critical_unknowns": _as_list(payload.get("critical_unknowns")),
+        "blocking_gaps": _as_list(payload.get("blocking_gaps")),
+        "provenance": "recomputed_material_goal_coverage",
+        "coverage_provenance": _as_dict(payload.get("coverage_provenance")),
+    }
+
+
+def _material_goal_support_trace_summary(trace_result: dict[str, Any]) -> dict[str, Any]:
+    payload = trace_result if isinstance(trace_result, dict) else {}
+    if not payload:
+        return {
+            "available": False,
+            "top_direction_label": "",
+            "top_direction_support_strength": "thin",
+            "requirement_traces": [],
+            "provenance": "absent",
+        }
+    return {
+        "available": True,
+        "goal_id": _clean_text(payload.get("goal_id")),
+        "top_direction_id": _clean_text(payload.get("top_direction_id")),
+        "top_direction_label": _clean_text(payload.get("top_direction_label")),
+        "top_direction_support_strength": _clean_text(payload.get("top_direction_support_strength"), default="thin"),
+        "requirement_traces": _as_list(payload.get("requirement_traces")),
+        "provenance": "recomputed_material_goal_support_trace",
+        "trace_provenance": _as_dict(payload.get("trace_provenance")),
     }
 
 
@@ -907,16 +1007,40 @@ def build_scientific_session_projection(
         experiment_lifecycle_model=experiment_lifecycle_model,
     )
     material_goal_specification = _material_goal_summary(canonical_state.get("material_goal_specification"))
-    material_goal_retrieval = _material_goal_retrieval_summary(
-        build_material_goal_evidence_result(
+    raw_material_goal_retrieval = build_material_goal_evidence_result(
+        session_id=session_id,
+        workspace_id=effective_workspace_id,
+        goal_specification=canonical_state.get("material_goal_specification"),
+        evidence_records=evidence_records,
+        model_outputs=model_outputs,
+        recommendations=recommendations,
+        claims=claims,
+        contradictions=canonical_state.get("contradictions"),
+    )
+    material_goal_retrieval = _material_goal_retrieval_summary(raw_material_goal_retrieval)
+    raw_material_goal_support_trace = build_material_goal_support_trace(
+        session_id=session_id,
+        workspace_id=effective_workspace_id,
+        goal_specification=canonical_state.get("material_goal_specification"),
+        retrieval_result=raw_material_goal_retrieval,
+    )
+    material_goal_support_trace = _material_goal_support_trace_summary(raw_material_goal_support_trace)
+    raw_material_goal_coverage = build_material_goal_coverage(
+        session_id=session_id,
+        workspace_id=effective_workspace_id,
+        goal_specification=canonical_state.get("material_goal_specification"),
+        retrieval_result=raw_material_goal_retrieval,
+        support_trace_result=raw_material_goal_support_trace,
+    )
+    material_goal_coverage = _material_goal_coverage_summary(raw_material_goal_coverage)
+    material_goal_answer_decision = _material_goal_answer_summary(
+        build_material_goal_answer_decision(
             session_id=session_id,
             workspace_id=effective_workspace_id,
             goal_specification=canonical_state.get("material_goal_specification"),
-            evidence_records=evidence_records,
-            model_outputs=model_outputs,
-            recommendations=recommendations,
-            claims=claims,
-            contradictions=canonical_state.get("contradictions"),
+            retrieval_result=raw_material_goal_retrieval,
+            coverage_result=raw_material_goal_coverage,
+            support_trace_result=raw_material_goal_support_trace,
         )
     )
     diagnostics["material_goal_specification_available"] = bool(material_goal_specification.get("available"))
@@ -926,6 +1050,16 @@ def build_scientific_session_projection(
     diagnostics["material_goal_retrieval_status"] = material_goal_retrieval.get("retrieval_status")
     diagnostics["material_goal_retrieval_sufficiency"] = material_goal_retrieval.get("retrieval_sufficiency")
     diagnostics["material_goal_candidate_direction_count"] = len(material_goal_retrieval.get("candidate_material_directions") or [])
+    diagnostics["material_goal_support_trace_available"] = bool(material_goal_support_trace.get("available"))
+    diagnostics["material_goal_support_trace_dimension_count"] = len(material_goal_support_trace.get("requirement_traces") or [])
+    diagnostics["material_goal_coverage_available"] = bool(material_goal_coverage.get("available"))
+    diagnostics["material_goal_coverage_supported_count"] = _safe_int(material_goal_coverage.get("supported_requirement_count"))
+    diagnostics["material_goal_coverage_unknown_count"] = _safe_int(material_goal_coverage.get("unknown_requirement_count"))
+    diagnostics["material_goal_coverage_contradicted_count"] = _safe_int(material_goal_coverage.get("contradicted_requirement_count"))
+    diagnostics["material_goal_answer_available"] = bool(material_goal_answer_decision.get("available"))
+    diagnostics["material_goal_answer_status"] = material_goal_answer_decision.get("answer_status")
+    diagnostics["material_goal_answer_sufficiency"] = material_goal_answer_decision.get("answer_sufficiency")
+    diagnostics["material_goal_answer_unknown_count"] = len(material_goal_answer_decision.get("explicit_unknowns") or [])
     diagnostics["session_epistemic_summary_available"] = bool(session_epistemic_summary.get("available"))
     diagnostics["session_epistemic_summary_status"] = session_epistemic_summary.get("status")
     diagnostics["session_epistemic_detail_affordance_available"] = bool(session_epistemic_detail_reveal.get("available"))
@@ -970,6 +1104,9 @@ def build_scientific_session_projection(
         "claims": claims,
         "material_goal_specification": material_goal_specification,
         "material_goal_retrieval": material_goal_retrieval,
+        "material_goal_support_trace": material_goal_support_trace,
+        "material_goal_coverage": material_goal_coverage,
+        "material_goal_answer_decision": material_goal_answer_decision,
         "belief_layer_summary": dict((belief_read_model.get("session_summary") if isinstance(belief_read_model, dict) else {}) or {}),
         "belief_read_model": belief_read_model,
         "experiment_lifecycle_summary": dict((experiment_lifecycle_model.get("session_summary") if isinstance(experiment_lifecycle_model, dict) else {}) or {}),

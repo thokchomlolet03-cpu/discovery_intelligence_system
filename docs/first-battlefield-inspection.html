@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>First Battlefield Inspection | Discovery Intelligence</title>
+    <meta
+      name="description"
+      content="Interactive strategic inspection surface for measuring Discovery Intelligence readiness against the fixed first-battlefield goal."
+    />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("di-docs-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {}
+    </script>
+    <link rel="stylesheet" href="./assets/docs-site.css" />
+    <link rel="stylesheet" href="./assets/first-battlefield-inspection.css" />
+  </head>
+  <body class="inspection-body">
+    <header class="site-header">
+      <div class="brand-lockup">
+        <div>
+          <p class="eyebrow">Strategic Inspection Surface</p>
+          <h1>First Battlefield Inspection</h1>
+          <p class="site-subtitle">
+            Measure how far Discovery Intelligence is from a real goal-directed polymer/material discovery system, and inspect the exact capability gaps that still block battlefield readiness.
+          </p>
+        </div>
+      </div>
+      <div class="site-actions">
+        <a class="ghost-button" href="./index.html">Documentation Portal</a>
+        <a class="ghost-button" href="./media.html">Media</a>
+        <button id="reset-filters" class="ghost-button" type="button">Reset Filters</button>
+        <button id="theme-toggle" class="ghost-button" type="button">Light mode</button>
+      </div>
+    </header>
+
+    <main class="inspection-shell">
+      <section class="inspection-hero">
+        <div class="inspection-hero-copy">
+          <p class="eyebrow">Fixed Battlefield Goal</p>
+          <h2>Can the system already behave like a disciplined polymer/material discovery engine?</h2>
+          <p>
+            This page treats battlefield readiness as a connected scientific systems problem, not a feature checklist. Every node, dependency, score, blocker, and recommendation is tied to the fixed first-battlefield goal:
+          </p>
+          <p>
+            <strong>
+              interpret user-specified material requirements, ask clarifying questions when critical scientific constraints are missing, search and organize evidence, return the best-supported material answer when current evidence is sufficient, and request additional data or experiments only when evidence is insufficient.
+            </strong>
+          </p>
+          <div class="inspection-pill-row">
+            <span class="inspection-chip">Connected capability graph</span>
+            <span class="inspection-chip">Critical-path readiness</span>
+            <span class="inspection-chip">Blocker ranking</span>
+            <span class="inspection-chip">Dependency-aware detail inspector</span>
+          </div>
+        </div>
+        <div class="inspection-hero-highlight">
+          <article class="inspection-score-card">
+            <p class="inspection-card-label">Instrument Logic</p>
+            <p class="inspection-helper">
+              Weighted readiness is derived from connected capability families, then penalized when critical blockers remain weak. The score is intended to be interpretable, not flattering.
+            </p>
+          </article>
+          <article class="inspection-score-card">
+            <p class="inspection-card-label">What To Look For</p>
+            <ul class="inspection-list">
+              <li>Which scientific-core capabilities still block answer trustworthiness?</li>
+              <li>Which layers are structurally present but still weak?</li>
+              <li>Which next move would create the most downstream readiness lift?</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="inspection-score-grid">
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Overall Readiness Index</p>
+          <p id="overall-score" class="inspection-metric-value">0</p>
+          <div class="inspection-score-bar"><div id="overall-fill" class="inspection-score-fill"></div></div>
+          <p id="overall-summary" class="inspection-helper"></p>
+        </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Critical-Path Readiness</p>
+          <p id="critical-score" class="inspection-metric-value">0</p>
+          <div class="inspection-score-bar"><div id="critical-fill" class="inspection-score-fill"></div></div>
+          <p id="critical-summary" class="inspection-helper"></p>
+        </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Scientific-Core Readiness</p>
+          <p id="core-score" class="inspection-metric-value">0</p>
+          <div class="inspection-score-bar"><div id="core-fill" class="inspection-score-fill"></div></div>
+          <p id="core-summary" class="inspection-helper"></p>
+        </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Inspectability Readiness</p>
+          <p id="inspectability-score" class="inspection-metric-value">0</p>
+          <div class="inspection-score-bar"><div id="inspectability-fill" class="inspection-score-fill"></div></div>
+          <p id="inspectability-summary" class="inspection-helper"></p>
+        </article>
+      </section>
+
+      <section class="inspection-filter-bar">
+        <label class="inspection-toolbar">
+          <span>Family</span>
+          <select id="family-filter">
+            <option value="all">All families</option>
+            <option value="goal-understanding">Goal Understanding</option>
+            <option value="requirement-structuring">Requirement Structuring</option>
+            <option value="clarification">Clarification</option>
+            <option value="evidence-retrieval">Evidence Retrieval</option>
+            <option value="traceability">Coverage and Traceability</option>
+            <option value="contradiction-unknowns">Contradictions and Unknowns</option>
+            <option value="answer-decision">Answer Decision</option>
+            <option value="continuity-inspection">Continuity and UI Legibility</option>
+            <option value="epistemic-conservatism">Epistemic Conservatism</option>
+          </select>
+        </label>
+        <label class="inspection-toolbar">
+          <span>Maturity State</span>
+          <select id="maturity-filter">
+            <option value="all">All maturity states</option>
+            <option value="missing">Missing</option>
+            <option value="minimal">Minimal</option>
+            <option value="partial">Partial</option>
+            <option value="substantial">Substantial</option>
+            <option value="strong">Strong</option>
+            <option value="battlefield_ready">Battlefield ready</option>
+          </select>
+        </label>
+        <label class="inspection-toolbar">
+          <span>Inspection Scope</span>
+          <select id="scope-filter">
+            <option value="all">All capabilities</option>
+            <option value="critical">Critical-path only</option>
+            <option value="scientific_core">Scientific core only</option>
+            <option value="surface_and_governance">UI / inspectability only</option>
+            <option value="blockers">Missing or weak only</option>
+          </select>
+        </label>
+        <label class="inspection-toolbar">
+          <span>Search</span>
+          <input id="inspection-search" type="search" placeholder="Search capability, blocker, or next step" />
+        </label>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Live Filter State</p>
+          <p id="filtered-capability-count" class="inspection-metric-value">0</p>
+          <p class="inspection-helper">Capabilities in the current filtered inspection set.</p>
+          <p class="inspection-card-label">Critical blockers</p>
+          <p id="critical-blocker-count" class="inspection-metric-value">0</p>
+        </article>
+      </section>
+
+      <section class="inspection-main-grid">
+        <div class="inspection-stack">
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">View A</p>
+                <h3 class="inspection-section-title">Capability Dependency Graph</h3>
+              </div>
+              <p class="inspection-helper">Select a node to synchronize every other view. Drag to pan. Use zoom to inspect dependency chains.</p>
+            </div>
+            <div class="inspection-graph-shell">
+              <div class="inspection-graph-controls">
+                <button id="graph-zoom-out" type="button">-</button>
+                <button id="graph-reset" type="button">Reset</button>
+                <button id="graph-zoom-in" type="button">+</button>
+              </div>
+              <svg id="inspection-graph" class="inspection-graph-svg" aria-label="First battlefield capability dependency graph"></svg>
+            </div>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">View B</p>
+                <h3 class="inspection-section-title">Family Readiness Matrix</h3>
+              </div>
+              <p class="inspection-helper">Click any family/maturity intersection to pivot the graph and detail views.</p>
+            </div>
+            <div id="inspection-heatmap" class="inspection-heatmap"></div>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">View C</p>
+                <h3 class="inspection-section-title">Weighted Readiness by Family</h3>
+              </div>
+              <p class="inspection-helper">This view separates “many pieces exist” from “critical families are actually ready.”</p>
+            </div>
+            <div id="inspection-readiness-bars" class="inspection-bar-stack"></div>
+          </section>
+        </div>
+
+        <div class="inspection-side-grid">
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">View D</p>
+                <h3 class="inspection-section-title">Critical Blockers</h3>
+              </div>
+              <p class="inspection-helper">Ranked by dependency importance, current weakness, and critical-path impact.</p>
+            </div>
+            <ul id="inspection-blocker-list" class="inspection-list"></ul>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">View E</p>
+                <h3 class="inspection-section-title">Highest-Leverage Next Moves</h3>
+              </div>
+              <p class="inspection-helper">These are the most strategic implementation gaps to close next.</p>
+            </div>
+            <ul id="highest-leverage-list" class="inspection-list"></ul>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">Inspector</p>
+                <h3 class="inspection-section-title">Capability Detail</h3>
+              </div>
+              <p class="inspection-helper">Selection-driven deep inspection.</p>
+            </div>
+            <div id="inspection-detail-panel"></div>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">Linked Detail</p>
+                <h3 class="inspection-section-title">Dependency Chain</h3>
+              </div>
+              <p class="inspection-helper">What this capability needs before it can mature further.</p>
+            </div>
+            <div id="inspection-dependency-chain"></div>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">Linked Detail</p>
+                <h3 class="inspection-section-title">Downstream Impact</h3>
+              </div>
+              <p class="inspection-helper">Which downstream capabilities remain constrained by the current selected gap.</p>
+            </div>
+            <div id="inspection-downstream-impact"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./assets/theme-toggle.js"></script>
+    <script type="module" src="./assets/first-battlefield-inspection.js"></script>
+  </body>
+</html>

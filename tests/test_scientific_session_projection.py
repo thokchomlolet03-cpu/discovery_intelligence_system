@@ -20,6 +20,9 @@ from system.services.claim_service import materialize_session_claims
 from system.services.contradiction_service import build_session_contradictions
 from system.services.belief_state_service import assess_belief_revision
 from system.services.material_goal_service import build_material_goal_specification
+from system.services.material_goal_answer_service import build_material_goal_answer_decision
+from system.services.material_goal_coverage_service import build_material_goal_coverage
+from system.services.material_goal_support_trace_service import build_material_goal_support_trace
 from system.services.material_goal_retrieval_service import build_material_goal_evidence_result
 from system.services.experiment_service import create_experiment_request, record_experiment_result
 from system.services.scientific_session_projection_service import build_scientific_session_projection
@@ -184,6 +187,666 @@ class ScientificSessionProjectionTest(unittest.TestCase):
         self.assertEqual(retrieval["retrieval_sufficiency"], "weak_partial_evidence")
         self.assertEqual(len(retrieval["candidate_material_directions"]), 1)
         self.assertIn("does not yet justify a best-supported material answer", " ".join(retrieval["limitation_lines"]).lower())
+
+    def test_material_goal_coverage_marks_requirement_dimensions_supported_when_grounded(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "stable for months before composting",
+                    },
+                },
+                {
+                    "record_id": 4,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "compostable packaging validation",
+                    "observed_value": 0.18,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["compostable", "oxygen barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "months compostable after use",
+                    },
+                },
+            ],
+            model_outputs=[],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+        coverage = build_material_goal_coverage(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+
+        statuses = {item["requirement_key"]: item["status"] for item in coverage["requirement_coverages"]}
+        self.assertEqual(statuses["desired_properties"], "supported")
+        self.assertEqual(statuses["operating_environment"], "supported")
+        self.assertEqual(statuses["lifecycle_window"], "supported")
+        self.assertEqual(coverage["critical_unknowns"], [])
+
+    def test_material_goal_support_trace_exposes_dimension_support_basis(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "stable for months before composting",
+                    },
+                },
+                {
+                    "record_id": 4,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "compostable packaging validation",
+                    "observed_value": 0.18,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["compostable", "oxygen barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "months compostable after use",
+                    },
+                },
+            ],
+            model_outputs=[],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+        trace = build_material_goal_support_trace(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+        )
+
+        properties_trace = next(item for item in trace["requirement_traces"] if item["requirement_key"] == "desired_properties")
+        self.assertEqual(properties_trace["support_status"], "supported")
+        self.assertEqual(properties_trace["support_basis_classification"], "observed_dimension_support")
+        self.assertGreaterEqual(len(properties_trace["matched_support_lines"]), 1)
+        self.assertGreaterEqual(len(properties_trace["observed_support_lines"]), 1)
+        self.assertEqual(properties_trace["uncovered_requirement_terms"], [])
+
+    def test_material_goal_coverage_marks_uncovered_dimensions_unknown_in_weak_retrieval(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[],
+            model_outputs=[
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_partial",
+                    "canonical_smiles": "CCC",
+                    "predicted_value": 0.61,
+                    "confidence": 0.59,
+                    "payload": {
+                        "application": "humid packaging film",
+                        "properties": ["oxygen barrier"],
+                    },
+                }
+            ],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+        coverage = build_material_goal_coverage(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+
+        statuses = {item["requirement_key"]: item["status"] for item in coverage["requirement_coverages"]}
+        self.assertIn(statuses["desired_properties"], {"partially_supported", "unknown"})
+        self.assertEqual(statuses["lifecycle_window"], "unknown")
+        self.assertIn("weak_lifecycle_match", coverage["critical_unknowns"])
+        self.assertIn("sparse_evidence_basis", coverage["blocking_gaps"])
+
+    def test_material_goal_support_trace_marks_indirect_only_and_uncovered_terms(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[],
+            model_outputs=[
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_partial",
+                    "canonical_smiles": "CCC",
+                    "predicted_value": 0.61,
+                    "confidence": 0.59,
+                    "payload": {
+                        "application": "humid packaging film",
+                        "properties": ["oxygen barrier"],
+                    },
+                }
+            ],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+        trace = build_material_goal_support_trace(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+        )
+
+        properties_trace = next(item for item in trace["requirement_traces"] if item["requirement_key"] == "desired_properties")
+        self.assertEqual(properties_trace["support_status"], "partially_supported")
+        self.assertEqual(properties_trace["support_basis_classification"], "partial_or_indirect_dimension_support")
+        self.assertEqual(len(properties_trace["observed_support_lines"]), 0)
+        self.assertGreaterEqual(len(properties_trace["indirect_support_lines"]), 1)
+        self.assertIn("barrier", " ".join(properties_trace["uncovered_requirement_terms"]))
+
+    def test_material_goal_answer_decision_returns_best_supported_answer_only_when_grounded(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid storage",
+                        "lifecycle": "stable for months before composting",
+                    },
+                },
+                {
+                    "record_id": 4,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "compostable packaging validation",
+                    "observed_value": 0.18,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["compostable", "oxygen barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "months compostable after use",
+                    },
+                },
+            ],
+            model_outputs=[
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "predicted_value": 0.81,
+                    "confidence": 0.74,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "humid food packaging",
+                    },
+                }
+            ],
+            recommendations=[
+                {
+                    "record_id": 3,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "rank": 1,
+                    "bucket": "learn",
+                    "rationale_summary": "Packaging film direction with oxygen barrier and compostable end-of-life context.",
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                    },
+                }
+            ],
+            claims=[{"claim_id": "claim_1", "candidate_id": "cand_pack", "canonical_smiles": "CCO"}],
+            contradictions=[],
+        )
+        decision = build_material_goal_answer_decision(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            coverage_result=build_material_goal_coverage(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+                support_trace_result=build_material_goal_support_trace(
+                    session_id="session_goal",
+                    workspace_id="workspace_1",
+                    goal_specification=goal_spec,
+                    retrieval_result=retrieval,
+                ),
+            ),
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+
+        self.assertEqual(decision["answer_status"], "best_supported_answer_available")
+        self.assertEqual(decision["answer_sufficiency"], "answer_supported")
+        self.assertIn("Current best-supported material direction", decision["best_supported_material_answer"])
+        self.assertEqual(decision["required_additional_data"], [])
+        self.assertEqual(decision["required_experiments"], [])
+
+    def test_material_goal_answer_decision_does_not_fabricate_answer_from_weak_partial_evidence(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[],
+            model_outputs=[
+                {
+                    "record_id": 2,
+                    "candidate_id": "cand_partial",
+                    "canonical_smiles": "CCC",
+                    "predicted_value": 0.61,
+                    "confidence": 0.59,
+                    "payload": {
+                        "application": "humid packaging film",
+                        "properties": ["oxygen barrier"],
+                    },
+                }
+            ],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+        decision = build_material_goal_answer_decision(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            coverage_result=build_material_goal_coverage(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+                support_trace_result=build_material_goal_support_trace(
+                    session_id="session_goal",
+                    workspace_id="workspace_1",
+                    goal_specification=goal_spec,
+                    retrieval_result=retrieval,
+                ),
+            ),
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+
+        self.assertEqual(decision["answer_status"], "insufficient_evidence_requires_followup")
+        self.assertEqual(decision["answer_sufficiency"], "insufficient_evidence")
+        self.assertEqual(decision["best_supported_material_answer"], "")
+        self.assertIn("sparse_evidence_basis", decision["explicit_unknowns"])
+        self.assertTrue(decision["required_additional_data"] or decision["required_experiments"])
+
+    def test_material_goal_answer_decision_respects_contradiction_pressure(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid storage",
+                        "lifecycle": "stable for months before composting",
+                    },
+                },
+                {
+                    "record_id": 4,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "compostable packaging validation",
+                    "observed_value": 0.18,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["compostable", "oxygen barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "months compostable after use",
+                    },
+                },
+            ],
+            model_outputs=[],
+            recommendations=[],
+            claims=[{"claim_id": "claim_1", "candidate_id": "cand_pack", "canonical_smiles": "CCO"}],
+            contradictions=[
+                {
+                    "contradiction_id": "contr_1",
+                    "claim_id": "claim_1",
+                    "status": "active",
+                    "contradiction_type": "result_vs_claim",
+                    "summary": "Packaging stability result conflicts with the current claim.",
+                }
+            ],
+        )
+        decision = build_material_goal_answer_decision(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            coverage_result=build_material_goal_coverage(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+                support_trace_result=build_material_goal_support_trace(
+                    session_id="session_goal",
+                    workspace_id="workspace_1",
+                    goal_specification=goal_spec,
+                    retrieval_result=retrieval,
+                ),
+            ),
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+
+        self.assertEqual(decision["best_supported_material_answer"], "")
+        self.assertIn("unresolved_contradiction_pressure", decision["explicit_unknowns"])
+        self.assertTrue(any(item["request_kind"] == "contradiction_resolving_experiment" for item in decision["required_experiments"]))
+
+    def test_material_goal_answer_decision_requires_coverage_of_critical_dimensions(self):
+        goal_spec = build_material_goal_specification(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            raw_user_goal=(
+                "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                "for humid food packaging, stable for 6 months and compostable after use."
+            ),
+        )
+        retrieval = build_material_goal_evidence_result(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            evidence_records=[
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid food packaging",
+                    },
+                },
+                {
+                    "record_id": 4,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "second humid barrier test",
+                    "observed_value": 0.18,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier"],
+                        "environment": "humid food packaging",
+                    },
+                },
+            ],
+            model_outputs=[],
+            recommendations=[],
+            claims=[],
+            contradictions=[],
+        )
+        coverage = build_material_goal_coverage(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+        decision = build_material_goal_answer_decision(
+            session_id="session_goal",
+            workspace_id="workspace_1",
+            goal_specification=goal_spec,
+            retrieval_result=retrieval,
+            coverage_result=coverage,
+            support_trace_result=build_material_goal_support_trace(
+                session_id="session_goal",
+                workspace_id="workspace_1",
+                goal_specification=goal_spec,
+                retrieval_result=retrieval,
+            ),
+        )
+
+        self.assertEqual(decision["answer_status"], "insufficient_evidence_requires_followup")
+        self.assertEqual(decision["best_supported_material_answer"], "")
+        self.assertIn("weak_lifecycle_match", decision["explicit_unknowns"])
+
+    def test_scientific_session_projection_surfaces_material_goal_answer_decision_for_session_reopen(self):
+        session_record = {
+            "session_id": "session_projection",
+            "workspace_id": "workspace_1",
+            "source_name": "materials.csv",
+            "upload_metadata": {},
+        }
+        canonical_state = {
+            "target_definition": {},
+            "evidence_records": [
+                {
+                    "record_id": 1,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "humid food packaging barrier test",
+                    "observed_value": 0.12,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["oxygen barrier", "moisture barrier"],
+                        "environment": "humid storage",
+                        "lifecycle": "stable for months before composting",
+                    },
+                },
+                {
+                    "record_id": 4,
+                    "candidate_id": "cand_pack",
+                    "canonical_smiles": "CCO",
+                    "evidence_type": "observed_measurement",
+                    "assay": "compostable packaging validation",
+                    "observed_value": 0.18,
+                    "payload": {
+                        "material_family": "compostable polyester film",
+                        "application": "food packaging film",
+                        "properties": ["compostable", "oxygen barrier"],
+                        "environment": "humid food packaging",
+                        "lifecycle": "months compostable after use",
+                    },
+                },
+            ],
+            "model_outputs": [],
+            "recommendations": [],
+            "carryover_records": [],
+            "candidate_states": [],
+            "claims": [],
+            "contradictions": [],
+            "run_metadata": {},
+            "material_goal_specification": build_material_goal_specification(
+                session_id="session_projection",
+                workspace_id="workspace_1",
+                raw_user_goal=(
+                    "Need a polymer packaging film with oxygen barrier and moisture barrier "
+                    "for humid food packaging, stable for 6 months and compostable after use."
+                ),
+            ),
+            "diagnostics": {"scientific_state_source": "test"},
+        }
+
+        with patch(
+            "system.services.scientific_session_projection_service.load_canonical_session_scientific_state",
+            return_value=canonical_state,
+        ), patch(
+            "system.services.scientific_session_projection_service.load_decision_artifact_payload",
+            return_value={},
+        ), patch(
+            "system.services.scientific_session_projection_service.load_analysis_report_payload",
+            return_value={},
+        ), patch(
+            "system.services.scientific_session_projection_service.build_session_belief_read_model",
+            return_value={"session_summary": {}, "candidate_items": []},
+        ), patch(
+            "system.services.scientific_session_projection_service.build_session_claim_detail_items",
+            return_value=[],
+        ), patch(
+            "system.services.scientific_session_projection_service.build_session_experiment_lifecycle_read_model",
+            return_value={"session_summary": {}, "claim_items": [], "experiment_items": []},
+        ), patch(
+            "system.services.scientific_session_projection_service.build_session_epistemic_experiment_priority_model",
+            return_value={"session_summary": {}},
+        ), patch(
+            "system.services.scientific_session_projection_service.build_session_workspace_memory",
+            return_value={},
+        ):
+            projection = build_scientific_session_projection(
+                session_record=session_record,
+                workspace_id="workspace_1",
+                upload_metadata={},
+                current_job={},
+            )
+
+        self.assertIn("material_goal_support_trace", projection)
+        self.assertTrue(projection["material_goal_support_trace"]["available"])
+        self.assertIn("material_goal_coverage", projection)
+        self.assertTrue(projection["material_goal_coverage"]["available"])
+        self.assertIn("material_goal_answer_decision", projection)
+        self.assertTrue(projection["material_goal_answer_decision"]["available"])
+        self.assertEqual(projection["diagnostics"]["material_goal_answer_status"], projection["material_goal_answer_decision"]["answer_status"])
 
     def test_contradiction_aware_belief_revision_keeps_mixed_structure_unresolved(self):
         revision = assess_belief_revision(

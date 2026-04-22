@@ -34,6 +34,9 @@
 
     {% set goal_spec = workbench.material_goal_specification or {} %}
     {% set goal_retrieval = workbench.material_goal_retrieval or {} %}
+    {% set goal_support_trace = workbench.material_goal_support_trace or {} %}
+    {% set goal_coverage = workbench.material_goal_coverage or {} %}
+    {% set goal_answer = workbench.material_goal_answer_decision or {} %}
     <section class="panel discovery-state-panel">
       <div class="section-header">
         <div>
@@ -92,6 +95,55 @@
         {% endif %}
       {% else %}
         <p>Open a session before recording a first-battlefield material goal.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel discovery-state-panel">
+      <div class="section-header">
+        <div>
+          <h2>First-Battlefield Support Trace</h2>
+          <p class="helper-copy">This trace shows exactly what support basis, contradiction basis, and remaining gaps were attached to each requirement dimension for the leading material direction.</p>
+        </div>
+      </div>
+      {% if goal_support_trace.available %}
+        <div class="dashboard-meta-row" style="margin-top: 12px;">
+          <span class="data-chip">Top direction {{ goal_support_trace.top_direction_label or "not recorded" }}</span>
+          <span class="data-chip">Support {{ (goal_support_trace.top_direction_support_strength or "thin").replace("_", " ") }}</span>
+          <span class="data-chip">Dimensions {{ (goal_support_trace.requirement_traces or [])|length }}</span>
+        </div>
+        {% if goal_support_trace.requirement_traces %}
+          <div class="mini-callout">
+            <span class="panel-label">Per-dimension support basis</span>
+            <ul class="compact-list">
+              {% for item in goal_support_trace.requirement_traces %}
+                {% if item.support_status != "not_applicable" %}
+                  <li>
+                    <strong>{{ item.requirement_label }}</strong>
+                    : {{ (item.support_status or "unknown").replace("_", " ") }}
+                    <div class="helper-copy">Basis {{ (item.support_basis_classification or "not recorded").replace("_", " ") }}</div>
+                    {% if item.rationale_summary %}
+                      <div>{{ item.rationale_summary }}</div>
+                    {% endif %}
+                    <div class="helper-copy">
+                      Support lines {{ (item.matched_support_lines or [])|length }},
+                      observed {{ (item.observed_support_lines or [])|length }},
+                      indirect {{ (item.indirect_support_lines or [])|length }},
+                      contradictions {{ (item.contradiction_indicators or [])|length }}
+                    </div>
+                    {% if item.uncovered_requirement_terms %}
+                      <div class="helper-copy">Uncovered terms: {{ item.uncovered_requirement_terms | join(", ") }}</div>
+                    {% endif %}
+                    {% if item.gap_codes %}
+                      <div class="helper-copy">Gaps: {{ item.gap_codes | join(", ") }}</div>
+                    {% endif %}
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% elif session_view.session_id %}
+        <p>The support-trace layer becomes available once the system has a leading material direction to inspect.</p>
       {% endif %}
     </section>
 
@@ -157,6 +209,161 @@
         {% endif %}
       {% elif session_view.session_id %}
         <p>Record a sufficiently specified material goal to enable bounded evidence retrieval for the first battlefield.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel discovery-state-panel">
+      <div class="section-header">
+        <div>
+          <h2>First-Battlefield Requirement Coverage</h2>
+          <p class="helper-copy">This layer shows which stated requirement dimensions are currently supported, partially supported, unknown, or contradicted for the leading material direction.</p>
+        </div>
+      </div>
+      {% if goal_coverage.available %}
+        <div class="dashboard-meta-row" style="margin-top: 12px;">
+          <span class="data-chip">Top direction {{ goal_coverage.top_direction_label or "not recorded" }}</span>
+          <span class="data-chip">Supported {{ goal_coverage.supported_requirement_count or 0 }}</span>
+          <span class="data-chip">Partial {{ goal_coverage.partially_supported_requirement_count or 0 }}</span>
+          <span class="data-chip">Unknown {{ goal_coverage.unknown_requirement_count or 0 }}</span>
+          <span class="data-chip">Contradicted {{ goal_coverage.contradicted_requirement_count or 0 }}</span>
+        </div>
+        {% if goal_coverage.requirement_coverages %}
+          <div class="mini-callout">
+            <span class="panel-label">Requirement dimensions</span>
+            <ul class="compact-list">
+              {% for item in goal_coverage.requirement_coverages %}
+                {% if item.status != "not_applicable" %}
+                  <li>
+                    <strong>{{ item.requirement_label }}</strong>
+                    : {{ (item.status or "unknown").replace("_", " ") }}
+                    {% if item.requirement_terms %}
+                      <div class="helper-copy">Terms: {{ item.requirement_terms | join(", ") }}</div>
+                    {% endif %}
+                    {% if item.rationale_summary %}
+                      <div>{{ item.rationale_summary }}</div>
+                    {% endif %}
+                    {% if item.gap_codes %}
+                      <div class="helper-copy">Gaps: {{ item.gap_codes | join(", ") }}</div>
+                    {% endif %}
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_coverage.critical_unknowns %}
+          <div class="mini-callout">
+            <span class="panel-label">Critical unknowns</span>
+            <ul class="compact-list">
+              {% for item in goal_coverage.critical_unknowns %}
+                <li>{{ item.replace("_", " ") }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% elif session_view.session_id %}
+        <p>The requirement-coverage layer becomes available once the system has a material goal and a retrieval result to evaluate.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel discovery-state-panel">
+      <div class="section-header">
+        <div>
+          <h2>First-Battlefield Answer Decision</h2>
+          <p class="helper-copy">This layer decides whether the current grounded evidence basis can support a best-supported material answer now, or whether explicit unknowns still require more data or experiments.</p>
+        </div>
+      </div>
+      {% if goal_answer.available %}
+        <div class="dashboard-meta-row" style="margin-top: 12px;">
+          <span class="data-chip">Answer {{ (goal_answer.answer_status or "not_ready").replace("_", " ") }}</span>
+          <span class="data-chip">Sufficiency {{ (goal_answer.answer_sufficiency or "insufficient_evidence").replace("_", " ") }}</span>
+          <span class="data-chip">Unknowns {{ (goal_answer.explicit_unknowns or [])|length }}</span>
+        </div>
+        {% if goal_answer.coverage_summary %}
+          <div class="mini-callout">
+            <span class="panel-label">Coverage summary used for the decision</span>
+            <p>
+              Supported {{ goal_answer.coverage_summary.supported_requirement_count or 0 }},
+              partial {{ goal_answer.coverage_summary.partially_supported_requirement_count or 0 }},
+              unknown {{ goal_answer.coverage_summary.unknown_requirement_count or 0 }},
+              contradicted {{ goal_answer.coverage_summary.contradicted_requirement_count or 0 }}.
+            </p>
+          </div>
+        {% endif %}
+        {% if goal_answer.best_supported_material_answer %}
+          <div class="mini-callout">
+            <span class="panel-label">Best-supported material answer</span>
+            <p>{{ goal_answer.best_supported_material_answer }}</p>
+            {% if goal_answer.best_supported_direction %}
+              <p class="helper-copy">
+                Direction {{ goal_answer.best_supported_direction.direction_label or "not recorded" }}
+                with support {{ (goal_answer.best_supported_direction.support_strength or "unknown").replace("_", " ") }}.
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if goal_answer.supporting_rationale %}
+          <div class="mini-callout">
+            <span class="panel-label">Why this answer is currently supportable</span>
+            <ul class="compact-list">
+              {% for item in goal_answer.supporting_rationale %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_answer.explicit_unknowns %}
+          <div class="mini-callout">
+            <span class="panel-label">Explicit unknowns</span>
+            <ul class="compact-list">
+              {% for item in goal_answer.explicit_unknowns %}
+                <li>{{ item.replace("_", " ") }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_answer.insufficiency_reasons %}
+          <div class="mini-callout">
+            <span class="panel-label">Why no trustworthy answer is returned yet</span>
+            <ul class="compact-list">
+              {% for item in goal_answer.insufficiency_reasons %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_answer.required_additional_data %}
+          <div class="mini-callout">
+            <span class="panel-label">Required additional data</span>
+            <ul class="compact-list">
+              {% for item in goal_answer.required_additional_data %}
+                <li>{{ item.summary }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_answer.required_experiments %}
+          <div class="mini-callout">
+            <span class="panel-label">Required experiments</span>
+            <ul class="compact-list">
+              {% for item in goal_answer.required_experiments %}
+                <li>{{ item.summary }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if goal_answer.answer_limitations %}
+          <div class="mini-callout">
+            <span class="panel-label">Decision limitations</span>
+            <ul class="compact-list">
+              {% for item in goal_answer.answer_limitations %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% elif session_view.session_id %}
+        <p>The answer-decision layer becomes available once a material goal and its retrieval result can be evaluated.</p>
       {% endif %}
     </section>
 

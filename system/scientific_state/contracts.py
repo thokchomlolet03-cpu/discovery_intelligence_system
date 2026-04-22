@@ -300,6 +300,98 @@ class MaterialGoalEvidenceResultRecord(ScientificStateModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class MaterialGoalAnswerRequestRecord(ScientificStateModel):
+    request_kind: str
+    priority: str = "medium"
+    summary: str
+    linked_unknowns: list[str] = Field(default_factory=list)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+
+
+class MaterialGoalRequirementSupportTraceRecord(ScientificStateModel):
+    requirement_key: str
+    requirement_label: str
+    requirement_terms: list[str] = Field(default_factory=list)
+    support_status: str = "unknown"
+    support_basis_classification: str = ""
+    rationale_summary: str = ""
+    matched_support_lines: list[MaterialGoalEvidenceLineRecord] = Field(default_factory=list)
+    observed_support_lines: list[MaterialGoalEvidenceLineRecord] = Field(default_factory=list)
+    indirect_support_lines: list[MaterialGoalEvidenceLineRecord] = Field(default_factory=list)
+    contradiction_indicators: list[dict[str, Any]] = Field(default_factory=list)
+    uncovered_requirement_terms: list[str] = Field(default_factory=list)
+    gap_codes: list[str] = Field(default_factory=list)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+
+
+class MaterialGoalSupportTraceRecord(ScientificStateModel):
+    goal_id: str = ""
+    session_id: str
+    workspace_id: str
+    top_direction_id: str = ""
+    top_direction_label: str = ""
+    top_direction_support_strength: str = "thin"
+    requirement_traces: list[MaterialGoalRequirementSupportTraceRecord] = Field(default_factory=list)
+    trace_provenance: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class MaterialGoalRequirementCoverageRecord(ScientificStateModel):
+    requirement_key: str
+    requirement_label: str
+    requirement_terms: list[str] = Field(default_factory=list)
+    status: str = "unknown"
+    rationale_basis: str = ""
+    rationale_summary: str = ""
+    matched_terms: list[str] = Field(default_factory=list)
+    supporting_evidence_lines: list[MaterialGoalEvidenceLineRecord] = Field(default_factory=list)
+    contradiction_indicators: list[dict[str, Any]] = Field(default_factory=list)
+    gap_codes: list[str] = Field(default_factory=list)
+    support_trace: dict[str, Any] = Field(default_factory=dict)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+
+
+class MaterialGoalCoverageRecord(ScientificStateModel):
+    goal_id: str = ""
+    session_id: str
+    workspace_id: str
+    retrieval_status: str = "not_attempted"
+    top_direction_id: str = ""
+    top_direction_label: str = ""
+    top_direction_support_strength: str = "thin"
+    requirement_coverages: list[MaterialGoalRequirementCoverageRecord] = Field(default_factory=list)
+    supported_requirement_count: int = 0
+    partially_supported_requirement_count: int = 0
+    unknown_requirement_count: int = 0
+    contradicted_requirement_count: int = 0
+    critical_unknowns: list[str] = Field(default_factory=list)
+    blocking_gaps: list[str] = Field(default_factory=list)
+    coverage_provenance: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class MaterialGoalAnswerDecisionRecord(ScientificStateModel):
+    goal_id: str = ""
+    session_id: str
+    workspace_id: str
+    answer_status: str = "not_ready"
+    answer_sufficiency: str = "insufficient_evidence"
+    coverage_summary: dict[str, Any] = Field(default_factory=dict)
+    best_supported_material_answer: str = ""
+    best_supported_direction: dict[str, Any] = Field(default_factory=dict)
+    supporting_rationale: list[str] = Field(default_factory=list)
+    answer_limitations: list[str] = Field(default_factory=list)
+    explicit_unknowns: list[str] = Field(default_factory=list)
+    insufficiency_reasons: list[str] = Field(default_factory=list)
+    required_additional_data: list[MaterialGoalAnswerRequestRecord] = Field(default_factory=list)
+    required_experiments: list[MaterialGoalAnswerRequestRecord] = Field(default_factory=list)
+    decision_provenance: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class ExperimentRequestRecord(ScientificStateModel):
     request_id: str
     session_id: str

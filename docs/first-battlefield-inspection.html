@@ -62,14 +62,14 @@
           <article class="inspection-score-card">
             <p class="inspection-card-label">Instrument Logic</p>
             <p class="inspection-helper">
-              Weighted readiness is derived from connected capability families, then penalized when critical blockers remain weak. The score is intended to be interpretable, not flattering.
+              Weighted readiness is derived from explicit capability criteria and family dependencies. Separate hard-gate logic prevents the page from confusing broad architectural progress with trustworthy battlefield readiness.
             </p>
           </article>
           <article class="inspection-score-card">
             <p class="inspection-card-label">What To Look For</p>
             <ul class="inspection-list">
               <li>Which scientific-core capabilities still block answer trustworthiness?</li>
-              <li>Which layers are structurally present but still weak?</li>
+              <li>Which hard readiness gates are still unsatisfied?</li>
               <li>Which next move would create the most downstream readiness lift?</li>
             </ul>
           </article>
@@ -101,6 +101,12 @@
           <div class="inspection-score-bar"><div id="inspectability-fill" class="inspection-score-fill"></div></div>
           <p id="inspectability-summary" class="inspection-helper"></p>
         </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Hard-Gate Satisfaction</p>
+          <p id="gate-score" class="inspection-metric-value">0</p>
+          <div class="inspection-score-bar"><div id="gate-fill" class="inspection-score-fill"></div></div>
+          <p id="gate-summary" class="inspection-helper"></p>
+        </article>
       </section>
 
       <section class="inspection-filter-bar">
@@ -108,15 +114,6 @@
           <span>Family</span>
           <select id="family-filter">
             <option value="all">All families</option>
-            <option value="goal-understanding">Goal Understanding</option>
-            <option value="requirement-structuring">Requirement Structuring</option>
-            <option value="clarification">Clarification</option>
-            <option value="evidence-retrieval">Evidence Retrieval</option>
-            <option value="traceability">Coverage and Traceability</option>
-            <option value="contradiction-unknowns">Contradictions and Unknowns</option>
-            <option value="answer-decision">Answer Decision</option>
-            <option value="continuity-inspection">Continuity and UI Legibility</option>
-            <option value="epistemic-conservatism">Epistemic Conservatism</option>
           </select>
         </label>
         <label class="inspection-toolbar">
@@ -162,7 +159,7 @@
                 <p class="eyebrow">View A</p>
                 <h3 class="inspection-section-title">Capability Dependency Graph</h3>
               </div>
-              <p class="inspection-helper">Select a node to synchronize every other view. Drag to pan. Use zoom to inspect dependency chains.</p>
+              <p class="inspection-helper">Families, capabilities, and dependency chains are all connected. Select a node to synchronize every other view. Drag to pan and use zoom for dense upstream/downstream inspection.</p>
             </div>
             <div class="inspection-graph-shell">
               <div class="inspection-graph-controls">
@@ -180,7 +177,7 @@
                 <p class="eyebrow">View B</p>
                 <h3 class="inspection-section-title">Family Readiness Matrix</h3>
               </div>
-              <p class="inspection-helper">Click any family/maturity intersection to pivot the graph and detail views.</p>
+              <p class="inspection-helper">Each cell shows how many sub-capabilities currently land in that maturity band. Click a cell to pivot every linked view.</p>
             </div>
             <div id="inspection-heatmap" class="inspection-heatmap"></div>
           </section>
@@ -191,7 +188,7 @@
                 <p class="eyebrow">View C</p>
                 <h3 class="inspection-section-title">Weighted Readiness by Family</h3>
               </div>
-              <p class="inspection-helper">This view separates “many pieces exist” from “critical families are actually ready.”</p>
+              <p class="inspection-helper">This view shows family-level weighted readiness, critical gate pressure, and why some families still cap battlefield progress.</p>
             </div>
             <div id="inspection-readiness-bars" class="inspection-bar-stack"></div>
           </section>
@@ -212,6 +209,17 @@
           <section class="inspection-panel">
             <div class="inspection-section-head">
               <div>
+                <p class="eyebrow">Critical Gate</p>
+                <h3 class="inspection-section-title">Cannot Be Battlefield-Ready Until</h3>
+              </div>
+              <p class="inspection-helper">These are hard scientific gates, not cosmetic polish items.</p>
+            </div>
+            <ul id="battlefield-gates-list" class="inspection-list"></ul>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
                 <p class="eyebrow">View E</p>
                 <h3 class="inspection-section-title">Highest-Leverage Next Moves</h3>
               </div>
@@ -226,7 +234,7 @@
                 <p class="eyebrow">Inspector</p>
                 <h3 class="inspection-section-title">Capability Detail</h3>
               </div>
-              <p class="inspection-helper">Selection-driven deep inspection.</p>
+              <p class="inspection-helper">Selection-driven inspection showing current versus target state, score rationale, criteria, blockers, and dependencies.</p>
             </div>
             <div id="inspection-detail-panel"></div>
           </section>

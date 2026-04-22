@@ -1,7 +1,6 @@
-import { CAPABILITY_FAMILIES, MATURITY_META, MATURITY_ORDER } from "./first-battlefield-inspection-data.js";
+import { BATTLEFIELD_MODEL, MATURITY_META, MATURITY_ORDER } from "./first-battlefield-inspection-data.js";
 
 const state = {
-  families: CAPABILITY_FAMILIES,
   familyFilter: "all",
   maturityFilter: "all",
   scopeFilter: "all",
@@ -13,6 +12,7 @@ const state = {
   dragging: false,
   dragStartX: 0,
   dragStartY: 0,
+  model: null,
 };
 
 const elements = {
@@ -20,14 +20,17 @@ const elements = {
   criticalScore: document.getElementById("critical-score"),
   coreScore: document.getElementById("core-score"),
   inspectabilityScore: document.getElementById("inspectability-score"),
+  gateScore: document.getElementById("gate-score"),
   overallFill: document.getElementById("overall-fill"),
   criticalFill: document.getElementById("critical-fill"),
   coreFill: document.getElementById("core-fill"),
   inspectabilityFill: document.getElementById("inspectability-fill"),
+  gateFill: document.getElementById("gate-fill"),
   overallSummary: document.getElementById("overall-summary"),
   criticalSummary: document.getElementById("critical-summary"),
   coreSummary: document.getElementById("core-summary"),
   inspectabilitySummary: document.getElementById("inspectability-summary"),
+  gateSummary: document.getElementById("gate-summary"),
   criticalBlockerCount: document.getElementById("critical-blocker-count"),
   filteredCount: document.getElementById("filtered-capability-count"),
   familyFilter: document.getElementById("family-filter"),
@@ -36,12 +39,12 @@ const elements = {
   searchInput: document.getElementById("inspection-search"),
   resetButton: document.getElementById("reset-filters"),
   graphSvg: document.getElementById("inspection-graph"),
-  graphViewport: document.getElementById("graph-viewport"),
   graphReset: document.getElementById("graph-reset"),
   graphZoomIn: document.getElementById("graph-zoom-in"),
   graphZoomOut: document.getElementById("graph-zoom-out"),
   heatmap: document.getElementById("inspection-heatmap"),
   blockerList: document.getElementById("inspection-blocker-list"),
+  gateList: document.getElementById("battlefield-gates-list"),
   readinessBars: document.getElementById("inspection-readiness-bars"),
   detailPanel: document.getElementById("inspection-detail-panel"),
   dependencyChain: document.getElementById("inspection-dependency-chain"),
@@ -49,396 +52,8 @@ const elements = {
   highestLeverage: document.getElementById("highest-leverage-list"),
 };
 
-function flattenCapabilities() {
-  return state.families.flatMap((family) => {
-    const familyNode = {
-      ...family,
-      type: "family",
-      maturity: family.current_status,
-      parent: "",
-    };
-    const children = (family.children || []).map((child) => ({
-      ...child,
-      type: "capability",
-      parent: family.id,
-      category: family.category,
-      familyLabel: family.label,
-      familyId: family.id,
-      why_it_matters: family.why_it_matters,
-    }));
-    return [familyNode, ...children];
-  });
-}
-
-function getCapabilityById(id) {
-  return flattenCapabilities().find((item) => item.id === id) || null;
-}
-
 function maturityValue(status) {
   return MATURITY_META[status]?.value ?? 0;
-}
-
-function capabilityMatchesFilters(item) {
-  const haystack = [
-    item.label,
-    item.description,
-    item.implementation_basis,
-    item.blocker,
-    item.recommended_next_step,
-  ]
-    .join(" ")
-    .toLowerCase();
-  const searchMatch = !state.search || haystack.includes(state.search);
-  const familyMatch =
-    state.familyFilter === "all" ||
-    item.id === state.familyFilter ||
-    item.familyId === state.familyFilter;
-  const maturityMatch = state.maturityFilter === "all" || item.maturity === state.maturityFilter;
-  const scopeMatch =
-    state.scopeFilter === "all" ||
-    (state.scopeFilter === "critical" && item.criticality === "critical") ||
-    (state.scopeFilter === "scientific_core" && item.category === "scientific_core") ||
-    (state.scopeFilter === "surface_and_governance" && item.category === "surface_and_governance") ||
-    (state.scopeFilter === "blockers" && maturityValue(item.maturity) <= 0.4);
-  return searchMatch && familyMatch && maturityMatch && scopeMatch;
-}
-
-function filteredCapabilities() {
-  return flattenCapabilities().filter((item) => item.type === "capability" && capabilityMatchesFilters(item));
-}
-
-function scoreFamilies() {
-  return state.families.map((family) => {
-    const children = family.children || [];
-    const totalWeight = children.reduce((sum, item) => sum + (item.weight || 1), 0) || 1;
-    const readiness =
-      children.reduce((sum, item) => sum + maturityValue(item.maturity) * (item.weight || 1), 0) / totalWeight;
-    const blockerPenalty = children.some((item) => item.criticality === "critical" && maturityValue(item.maturity) < 0.62) ? 0.12 : 0;
-    return {
-      id: family.id,
-      label: family.label,
-      category: family.category,
-      readiness,
-      effectiveReadiness: Math.max(0, readiness - blockerPenalty),
-      weight: family.weight || 1,
-      criticality: family.criticality,
-      blockerPenalty,
-      blockers: children.filter((item) => maturityValue(item.maturity) <= 0.4),
-    };
-  });
-}
-
-function computeReadinessSummary() {
-  const familyScores = scoreFamilies();
-  const totalWeight = familyScores.reduce((sum, item) => sum + item.weight, 0) || 1;
-  const overall =
-    familyScores.reduce((sum, item) => sum + item.effectiveReadiness * item.weight, 0) / totalWeight;
-  const criticalFamilies = familyScores.filter((item) => item.criticality === "critical");
-  const criticalWeight = criticalFamilies.reduce((sum, item) => sum + item.weight, 0) || 1;
-  const critical =
-    criticalFamilies.reduce((sum, item) => sum + item.effectiveReadiness * item.weight, 0) / criticalWeight;
-  const scientificFamilies = familyScores.filter((item) => item.category === "scientific_core");
-  const scientificWeight = scientificFamilies.reduce((sum, item) => sum + item.weight, 0) || 1;
-  const scientific =
-    scientificFamilies.reduce((sum, item) => sum + item.effectiveReadiness * item.weight, 0) / scientificWeight;
-  const inspectabilityFamilies = familyScores.filter((item) =>
-    ["continuity-inspection", "traceability", "epistemic-conservatism"].includes(item.id)
-  );
-  const inspectabilityWeight = inspectabilityFamilies.reduce((sum, item) => sum + item.weight, 0) || 1;
-  const inspectability =
-    inspectabilityFamilies.reduce((sum, item) => sum + item.effectiveReadiness * item.weight, 0) / inspectabilityWeight;
-  const criticalBlockers = flattenCapabilities().filter(
-    (item) => item.type === "capability" && item.criticality === "critical" && maturityValue(item.maturity) <= 0.4
-  );
-  return {
-    familyScores,
-    overall,
-    critical,
-    scientific,
-    inspectability,
-    criticalBlockers,
-  };
-}
-
-function setMetric(node, fillNode, value, summaryNode, summary) {
-  const score = Math.round(value * 100);
-  if (node) node.textContent = `${score}`;
-  if (fillNode) fillNode.style.width = `${score}%`;
-  if (summaryNode) summaryNode.textContent = summary;
-}
-
-function overviewSummary(summary) {
-  if (summary.overall < 0.35) {
-    return "The system has meaningful battlefield-shaped layers, but the critical scientific path is still far from ready.";
-  }
-  if (summary.overall < 0.6) {
-    return "The architecture is structurally moving toward the first battlefield, but core readiness is still bottlenecked by evidence depth and contradiction handling.";
-  }
-  return "The system is approaching a coherent first-battlefield shape, but still depends on resolving key scientific blockers before it can honestly claim readiness.";
-}
-
-function renderScorecards() {
-  const summary = computeReadinessSummary();
-  setMetric(elements.overallScore, elements.overallFill, summary.overall, elements.overallSummary, overviewSummary(summary));
-  setMetric(
-    elements.criticalScore,
-    elements.criticalFill,
-    summary.critical,
-    elements.criticalSummary,
-    "Critical-path readiness punishes weak core dependencies that still block battlefield readiness."
-  );
-  setMetric(
-    elements.coreScore,
-    elements.coreFill,
-    summary.scientific,
-    elements.coreSummary,
-    "Scientific-core readiness measures the actual discovery engine, not the broader product shell."
-  );
-  setMetric(
-    elements.inspectabilityScore,
-    elements.inspectabilityFill,
-    summary.inspectability,
-    elements.inspectabilitySummary,
-    "Inspectability readiness measures whether the system can explain what it supports, what it does not, and why."
-  );
-  if (elements.criticalBlockerCount) {
-    elements.criticalBlockerCount.textContent = `${summary.criticalBlockers.length}`;
-  }
-  if (elements.filteredCount) {
-    elements.filteredCount.textContent = `${filteredCapabilities().length}`;
-  }
-}
-
-function colorForMaturity(status) {
-  return MATURITY_META[status]?.color || "#475569";
-}
-
-function graphLayout() {
-  const families = state.families;
-  const familySpacingY = 150;
-  const childSpacingX = 280;
-  const baseX = 150;
-  const childX = 480;
-  const positions = new Map();
-  families.forEach((family, familyIndex) => {
-    const familyY = 110 + familyIndex * familySpacingY;
-    positions.set(family.id, { x: baseX, y: familyY });
-    (family.children || []).forEach((child, childIndex) => {
-      positions.set(child.id, {
-        x: childX + childIndex * childSpacingX,
-        y: familyY + (childIndex % 2 === 0 ? -36 : 36),
-      });
-    });
-  });
-  return positions;
-}
-
-function visibleIds() {
-  const ids = new Set(filteredCapabilities().map((item) => item.id));
-  filteredCapabilities().forEach((item) => ids.add(item.familyId));
-  return ids;
-}
-
-function selectedCapability() {
-  return getCapabilityById(state.selectedId) || filteredCapabilities()[0] || flattenCapabilities().find((item) => item.type === "capability") || null;
-}
-
-function linkedIdsForSelection(selected) {
-  if (!selected) return new Set();
-  const ids = new Set([selected.id]);
-  (selected.dependencies || []).forEach((item) => ids.add(item));
-  flattenCapabilities().forEach((item) => {
-    if ((item.dependencies || []).includes(selected.id) || item.parent === selected.id) {
-      ids.add(item.id);
-    }
-    if (item.id === selected.parent) {
-      ids.add(item.id);
-    }
-  });
-  return ids;
-}
-
-function renderGraph() {
-  const svg = elements.graphSvg;
-  if (!svg) return;
-  const positions = graphLayout();
-  const visible = visibleIds();
-  const selected = selectedCapability();
-  const linked = linkedIdsForSelection(selected);
-  const nodes = flattenCapabilities().filter((item) => visible.has(item.id));
-  const links = [];
-
-  state.families.forEach((family) => {
-    (family.children || []).forEach((child) => {
-      if (visible.has(family.id) && visible.has(child.id)) {
-        links.push({ source: family.id, target: child.id, kind: "family" });
-      }
-      (child.dependencies || []).forEach((dependency) => {
-        if (visible.has(child.id) && visible.has(dependency)) {
-          links.push({ source: dependency, target: child.id, kind: "dependency" });
-        }
-      });
-    });
-  });
-
-  svg.innerHTML = "";
-  svg.setAttribute("viewBox", `0 0 1800 1500`);
-  const root = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  root.setAttribute("transform", `translate(${state.graphOffsetX} ${state.graphOffsetY}) scale(${state.graphScale})`);
-  root.setAttribute("id", "graph-root");
-
-  links.forEach((link) => {
-    const source = positions.get(link.source);
-    const target = positions.get(link.target);
-    if (!source || !target) return;
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    const curve = `M ${source.x + 90} ${source.y} C ${source.x + 180} ${source.y}, ${target.x - 160} ${target.y}, ${target.x - 70} ${target.y}`;
-    path.setAttribute("d", curve);
-    path.setAttribute("class", `inspection-link${selected && linked.has(link.source) && linked.has(link.target) ? " is-highlighted" : ""}${selected && !(linked.has(link.source) && linked.has(link.target)) ? " is-muted" : ""}`);
-    root.appendChild(path);
-  });
-
-  nodes.forEach((node) => {
-    const position = positions.get(node.id);
-    if (!position) return;
-    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    const isFamily = node.type === "family";
-    group.setAttribute("transform", `translate(${position.x} ${position.y})`);
-    group.setAttribute(
-      "class",
-      `inspection-node ${isFamily ? "is-family" : "is-capability"}${selected?.id === node.id ? " is-selected" : ""}${
-        selected && !linked.has(node.id) ? " is-muted" : ""
-      }`
-    );
-    group.addEventListener("click", () => {
-      state.selectedId = node.id;
-      renderAll();
-    });
-
-    const shape = document.createElementNS("http://www.w3.org/2000/svg", isFamily ? "rect" : "rect");
-    shape.setAttribute("x", isFamily ? "-95" : "-78");
-    shape.setAttribute("y", isFamily ? "-38" : "-30");
-    shape.setAttribute("width", isFamily ? "190" : "156");
-    shape.setAttribute("height", isFamily ? "76" : "60");
-    shape.setAttribute("fill", colorForMaturity(node.maturity));
-    shape.setAttribute("fill-opacity", isFamily ? "0.24" : "0.16");
-    shape.setAttribute("stroke", colorForMaturity(node.maturity));
-    shape.setAttribute("stroke-width", "1.5");
-    group.appendChild(shape);
-
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    title.setAttribute("text-anchor", "middle");
-    title.setAttribute("y", isFamily ? "-4" : "-2");
-    title.setAttribute("class", "inspection-node-label");
-    title.textContent = truncate(node.label, isFamily ? 24 : 18);
-    group.appendChild(title);
-
-    const meta = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    meta.setAttribute("text-anchor", "middle");
-    meta.setAttribute("y", isFamily ? "18" : "16");
-    meta.setAttribute("class", "inspection-node-meta");
-    meta.textContent = isFamily ? MATURITY_META[node.maturity].label : `${node.familyLabel} / ${MATURITY_META[node.maturity].label}`;
-    group.appendChild(meta);
-
-    root.appendChild(group);
-  });
-
-  svg.appendChild(root);
-  svg.classList.toggle("is-dragging", state.dragging);
-}
-
-function truncate(value, length) {
-  return value.length > length ? `${value.slice(0, length - 1)}…` : value;
-}
-
-function renderHeatmap() {
-  if (!elements.heatmap) return;
-  const summary = computeReadinessSummary();
-  elements.heatmap.innerHTML = "";
-  const header = document.createElement("div");
-  header.className = "inspection-heatmap-header";
-  header.innerHTML = `<span>Family</span>${MATURITY_ORDER.map((item) => `<span>${MATURITY_META[item].label}</span>`).join("")}`;
-  elements.heatmap.appendChild(header);
-
-  summary.familyScores.forEach((familyScore) => {
-    const family = state.families.find((item) => item.id === familyScore.id);
-    if (!family) return;
-    const row = document.createElement("div");
-    row.className = "inspection-heatmap-row";
-    const familyCell = document.createElement("button");
-    familyCell.className = "inspection-family-name inspection-matrix-cell";
-    familyCell.textContent = family.label;
-    familyCell.addEventListener("click", () => {
-      state.selectedId = family.children?.[0]?.id || family.id;
-      renderAll();
-    });
-    row.appendChild(familyCell);
-    MATURITY_ORDER.forEach((status) => {
-      const cell = document.createElement("button");
-      const dominant = family.current_status === status;
-      cell.className = `inspection-matrix-cell${dominant ? " is-dominant" : ""}`;
-      cell.style.background = dominant ? colorForMaturity(status) : "rgba(148, 163, 184, 0.05)";
-      cell.style.opacity = dominant ? "0.9" : "0.42";
-      cell.textContent = dominant ? family.children.length.toString() : "";
-      cell.addEventListener("click", () => {
-        state.familyFilter = family.id;
-        state.maturityFilter = status;
-        renderAll();
-      });
-      row.appendChild(cell);
-    });
-    elements.heatmap.appendChild(row);
-  });
-}
-
-function rankedBlockers() {
-  return flattenCapabilities()
-    .filter((item) => item.type === "capability")
-    .sort((left, right) => {
-      const leftScore = (left.criticality === "critical" ? 2 : 1) * (1 - maturityValue(left.maturity)) * (left.weight || 1);
-      const rightScore = (right.criticality === "critical" ? 2 : 1) * (1 - maturityValue(right.maturity)) * (right.weight || 1);
-      return rightScore - leftScore;
-    })
-    .slice(0, 8);
-}
-
-function renderBlockers() {
-  if (!elements.blockerList) return;
-  elements.blockerList.innerHTML = "";
-  rankedBlockers().forEach((item) => {
-    const li = document.createElement("li");
-    const button = document.createElement("button");
-    button.className = item.id === state.selectedId ? "is-selected" : "";
-    button.innerHTML = `
-      <strong>${item.label}</strong>
-      <div class="inspection-helper">${item.familyLabel}</div>
-      <div class="inspection-helper">${MATURITY_META[item.maturity].label} · ${item.blocker || item.limitation}</div>
-    `;
-    button.addEventListener("click", () => {
-      state.selectedId = item.id;
-      renderAll();
-    });
-    li.appendChild(button);
-    elements.blockerList.appendChild(li);
-  });
-}
-
-function renderReadinessBars() {
-  if (!elements.readinessBars) return;
-  const summary = computeReadinessSummary();
-  elements.readinessBars.innerHTML = "";
-  summary.familyScores.forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "inspection-bar-row";
-    row.innerHTML = `
-      <span>${item.label}</span>
-      <div class="inspection-bar-rail"><div class="inspection-bar-fill" style="width:${Math.round(
-        item.effectiveReadiness * 100
-      )}%; background:${colorForMaturity(scoreToNearestMaturity(item.effectiveReadiness))};"></div></div>
-      <strong>${Math.round(item.effectiveReadiness * 100)}</strong>
-    `;
-    elements.readinessBars.appendChild(row);
-  });
 }
 
 function scoreToNearestMaturity(value) {
@@ -449,107 +64,1208 @@ function scoreToNearestMaturity(value) {
   }, "missing");
 }
 
-function renderHighestLeverage() {
-  if (!elements.highestLeverage) return;
-  elements.highestLeverage.innerHTML = "";
-  rankedBlockers().slice(0, 5).forEach((item) => {
-    const li = document.createElement("li");
-    const button = document.createElement("button");
-    button.innerHTML = `
-      <strong>${item.label}</strong>
-      <div class="inspection-helper">${item.recommended_next_step}</div>
-    `;
-    button.addEventListener("click", () => {
-      state.selectedId = item.id;
+function scorePercent(value) {
+  return Math.round((value || 0) * 100);
+}
+
+function criticalityFactor(value) {
+  return value === "critical" ? 1.35 : 1;
+}
+
+function confidenceRank(value) {
+  if (value === "high") return 3;
+  if (value === "medium") return 2;
+  return 1;
+}
+
+function formatStatusLabel(status) {
+  return MATURITY_META[status]?.label ?? status;
+}
+
+function colorForMaturity(status) {
+  return MATURITY_META[status]?.color ?? "#475569";
+}
+
+function createStatusBadge(status) {
+  return `<span class="inspection-status-badge" style="background:${colorForMaturity(status)}22; color:${colorForMaturity(
+    status
+  )}; border:1px solid ${colorForMaturity(status)}55;">${formatStatusLabel(status)}</span>`;
+}
+
+function buildInspectionModel() {
+  const capabilities = [];
+  const capabilityMap = new Map();
+
+  const families = BATTLEFIELD_MODEL.families.map((family) => {
+    const children = family.children.map((capability) => {
+      const criteria = capability.criteria.map((criterion) => ({
+        ...criterion,
+        score: maturityValue(criterion.status),
+      }));
+      const totalWeight = criteria.reduce((sum, criterion) => sum + (criterion.weight || 1), 0) || 1;
+      const score =
+        criteria.reduce((sum, criterion) => sum + criterion.score * (criterion.weight || 1), 0) / totalWeight;
+      const maturity = scoreToNearestMaturity(score);
+      const criticalWeakCriteria = criteria.filter(
+        (criterion) => criterion.critical && criterion.score < maturityValue("substantial")
+      );
+      const weakCriteria = criteria.filter((criterion) => criterion.score < maturityValue("substantial"));
+      const battlefieldGate = capability.battlefield_gate
+        ? {
+            ...capability.battlefield_gate,
+            requiredValue: maturityValue(capability.battlefield_gate.required_status),
+          }
+        : null;
+      const gateSatisfied = !battlefieldGate || score >= battlefieldGate.requiredValue;
+      const derivedCapability = {
+        ...capability,
+        type: "capability",
+        familyId: family.id,
+        familyLabel: family.label,
+        category: family.category,
+        score,
+        maturity,
+        criteria,
+        totalCriterionWeight: totalWeight,
+        criticalWeakCriteriaCount: criticalWeakCriteria.length,
+        weakCriteriaCount: weakCriteria.length,
+        battlefieldGate,
+        gateSatisfied,
+      };
+      capabilities.push(derivedCapability);
+      capabilityMap.set(derivedCapability.id, derivedCapability);
+      return derivedCapability;
+    });
+
+    const totalWeight = children.reduce((sum, child) => sum + (child.weight || 1), 0) || 1;
+    const baseScore = children.reduce((sum, child) => sum + child.score * (child.weight || 1), 0) / totalWeight;
+    const unmetGateCount = children.filter((child) => child.battlefieldGate && !child.gateSatisfied).length;
+    const criticalWeakChildren = children.filter(
+      (child) => child.criticality === "critical" && child.score < maturityValue("substantial")
+    ).length;
+    const effectiveScore = Math.max(
+      0,
+      baseScore - Math.min(0.18, unmetGateCount * 0.05 + criticalWeakChildren * 0.03)
+    );
+    return {
+      ...family,
+      type: "family",
+      score: effectiveScore,
+      baseScore,
+      maturity: scoreToNearestMaturity(effectiveScore),
+      children,
+      unmetGateCount,
+      criticalWeakChildren,
+      familyId: family.id,
+    };
+  });
+
+  const familyMap = new Map(families.map((family) => [family.id, family]));
+  const capabilityDependentsMap = new Map(capabilities.map((capability) => [capability.id, []]));
+  const familyDependentsMap = new Map(families.map((family) => [family.id, []]));
+
+  capabilities.forEach((capability) => {
+    (capability.dependencies || []).forEach((dependencyId) => {
+      const dependents = capabilityDependentsMap.get(dependencyId) || [];
+      dependents.push(capability.id);
+      capabilityDependentsMap.set(dependencyId, dependents);
+    });
+  });
+
+  families.forEach((family) => {
+    (family.dependencies || []).forEach((dependencyId) => {
+      const dependents = familyDependentsMap.get(dependencyId) || [];
+      dependents.push(family.id);
+      familyDependentsMap.set(dependencyId, dependents);
+    });
+  });
+
+  return {
+    raw: BATTLEFIELD_MODEL,
+    families,
+    familyMap,
+    capabilities,
+    capabilityMap,
+    capabilityDependentsMap,
+    familyDependentsMap,
+  };
+}
+
+function getNodeById(id) {
+  if (!state.model) return null;
+  return state.model.capabilityMap.get(id) || state.model.familyMap.get(id) || null;
+}
+
+function capabilityHaystack(capability) {
+  const criteriaText = (capability.criteria || [])
+    .flatMap((criterion) => [criterion.label, criterion.measurement_basis, criterion.current_evidence, criterion.gap])
+    .join(" ");
+  return [
+    capability.label,
+    capability.familyLabel,
+    capability.description,
+    capability.target_state,
+    capability.implementation_basis,
+    capability.current_evidence,
+    capability.limitation,
+    capability.blocker,
+    capability.recommended_next_step,
+    capability.why_it_matters,
+    criteriaText,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function capabilityMatchesFilters(capability, { ignoreMaturity = false } = {}) {
+  const searchMatch = !state.search || capabilityHaystack(capability).includes(state.search);
+  const familyMatch = state.familyFilter === "all" || capability.familyId === state.familyFilter;
+  const maturityMatch = ignoreMaturity || state.maturityFilter === "all" || capability.maturity === state.maturityFilter;
+  const scopeMatch =
+    state.scopeFilter === "all" ||
+    (state.scopeFilter === "critical" && capability.criticality === "critical") ||
+    (state.scopeFilter === "scientific_core" && capability.category === "scientific_core") ||
+    (state.scopeFilter === "surface_and_governance" && capability.category === "surface_and_governance") ||
+    (state.scopeFilter === "blockers" &&
+      (capability.score < maturityValue("substantial") || (capability.battlefieldGate && !capability.gateSatisfied)));
+  return searchMatch && familyMatch && maturityMatch && scopeMatch;
+}
+
+function getFilteredCapabilities({ ignoreMaturity = false } = {}) {
+  if (!state.model) return [];
+  return state.model.capabilities.filter((capability) =>
+    capabilityMatchesFilters(capability, {
+      ignoreMaturity,
+    })
+  );
+}
+
+function familyHasVisibleCapability(familyId, { ignoreMaturity = false } = {}) {
+  return getFilteredCapabilities({ ignoreMaturity }).some((capability) => capability.familyId === familyId);
+}
+
+function countClosure(startIds, nextIds) {
+  const visited = new Set();
+  const stack = [...startIds];
+  while (stack.length) {
+    const next = stack.pop();
+    if (!next || visited.has(next)) continue;
+    visited.add(next);
+    nextIds(next).forEach((id) => {
+      if (!visited.has(id)) stack.push(id);
+    });
+  }
+  return visited;
+}
+
+function capabilityUpstreamClosure(id) {
+  return countClosure([id], (current) => getNodeById(current)?.dependencies || []);
+}
+
+function capabilityDownstreamClosure(id) {
+  return countClosure([id], (current) => state.model?.capabilityDependentsMap.get(current) || []);
+}
+
+function familyUpstreamClosure(id) {
+  return countClosure([id], (current) => state.model?.familyMap.get(current)?.dependencies || []);
+}
+
+function familyDownstreamClosure(id) {
+  return countClosure([id], (current) => state.model?.familyDependentsMap.get(current) || []);
+}
+
+function capabilityDependencyDepth(id, memo = new Map(), visiting = new Set()) {
+  if (memo.has(id)) return memo.get(id);
+  if (visiting.has(id)) return 0;
+  visiting.add(id);
+  const capability = state.model.capabilityMap.get(id);
+  const dependencies = capability?.dependencies || [];
+  const depth = dependencies.length
+    ? Math.max(...dependencies.map((dependencyId) => capabilityDependencyDepth(dependencyId, memo, visiting) + 1))
+    : 0;
+  visiting.delete(id);
+  memo.set(id, depth);
+  return depth;
+}
+
+function getSummary() {
+  if (!state.model) return null;
+  const families = state.model.families;
+  const totalWeight = families.reduce((sum, family) => sum + (family.weight || 1), 0) || 1;
+  const overall = families.reduce((sum, family) => sum + family.score * (family.weight || 1), 0) / totalWeight;
+
+  const criticalFamilies = families.filter((family) => family.criticality === "critical");
+  const criticalWeight = criticalFamilies.reduce((sum, family) => sum + (family.weight || 1), 0) || 1;
+  const critical =
+    criticalFamilies.reduce((sum, family) => sum + family.score * (family.weight || 1), 0) / criticalWeight;
+
+  const scientificFamilies = families.filter((family) => family.category === "scientific_core");
+  const scientificWeight = scientificFamilies.reduce((sum, family) => sum + (family.weight || 1), 0) || 1;
+  const scientific =
+    scientificFamilies.reduce((sum, family) => sum + family.score * (family.weight || 1), 0) / scientificWeight;
+
+  const inspectabilityFamilies = families.filter((family) =>
+    ["traceability", "continuity-inspection", "epistemic-conservatism"].includes(family.id)
+  );
+  const inspectabilityWeight = inspectabilityFamilies.reduce((sum, family) => sum + (family.weight || 1), 0) || 1;
+  const inspectability =
+    inspectabilityFamilies.reduce((sum, family) => sum + family.score * (family.weight || 1), 0) / inspectabilityWeight;
+
+  const gateCapabilities = state.model.capabilities.filter((capability) => capability.battlefieldGate);
+  const unmetGates = gateCapabilities
+    .filter((capability) => !capability.gateSatisfied)
+    .sort((left, right) => {
+      const leftRatio = left.score / left.battlefieldGate.requiredValue;
+      const rightRatio = right.score / right.battlefieldGate.requiredValue;
+      return leftRatio - rightRatio;
+    });
+  const gateSatisfaction =
+    gateCapabilities.reduce((sum, capability) => {
+      if (!capability.battlefieldGate) return sum;
+      return sum + Math.min(1, capability.score / capability.battlefieldGate.requiredValue);
+    }, 0) / (gateCapabilities.length || 1);
+
+  return {
+    overall,
+    critical,
+    scientific,
+    inspectability,
+    gateSatisfaction,
+    unmetGates,
+    gateCapabilities,
+  };
+}
+
+function setMetric(node, fillNode, value, summaryNode, summary) {
+  const score = scorePercent(value);
+  if (node) node.textContent = `${score}`;
+  if (fillNode) fillNode.style.width = `${score}%`;
+  if (summaryNode) summaryNode.textContent = summary;
+}
+
+function overviewSummary(summary) {
+  if (summary.overall < 0.38) {
+    return "The system has real first-battlefield architecture, but the scientific core is still far from trustworthy answer readiness.";
+  }
+  if (summary.overall < 0.62) {
+    return "The system is structurally moving toward the first battlefield, but major evidence and contradiction gates still limit honest readiness claims.";
+  }
+  return "The architecture is materially closer to the first battlefield, but hard scientific gates still separate current progress from trustworthy battlefield readiness.";
+}
+
+function gateSummary(summary) {
+  if (!summary.gateCapabilities.length) {
+    return "No hard battlefield gates are currently configured in the inspection model.";
+  }
+  if (!summary.unmetGates.length) {
+    return "All configured hard gates are currently satisfied by the seeded inspection model.";
+  }
+  return `${summary.unmetGates.length} hard gate${summary.unmetGates.length === 1 ? "" : "s"} still block battlefield readiness.`;
+}
+
+function renderScorecards() {
+  const summary = getSummary();
+  if (!summary) return;
+
+  setMetric(elements.overallScore, elements.overallFill, summary.overall, elements.overallSummary, overviewSummary(summary));
+  setMetric(
+    elements.criticalScore,
+    elements.criticalFill,
+    summary.critical,
+    elements.criticalSummary,
+    "Critical-path readiness weights the families that most directly determine whether the system can answer honestly."
+  );
+  setMetric(
+    elements.coreScore,
+    elements.coreFill,
+    summary.scientific,
+    elements.coreSummary,
+    "Scientific-core readiness measures the discovery engine rather than the broader product shell."
+  );
+  setMetric(
+    elements.inspectabilityScore,
+    elements.inspectabilityFill,
+    summary.inspectability,
+    elements.inspectabilitySummary,
+    "Inspectability readiness measures whether the current answer boundary can be audited, reopened, and explained."
+  );
+  setMetric(
+    elements.gateScore,
+    elements.gateFill,
+    summary.gateSatisfaction,
+    elements.gateSummary,
+    gateSummary(summary)
+  );
+
+  const criticalBlockers = state.model.capabilities.filter(
+    (capability) =>
+      capability.criticality === "critical" &&
+      (capability.score < maturityValue("substantial") || (capability.battlefieldGate && !capability.gateSatisfied))
+  );
+  if (elements.criticalBlockerCount) {
+    elements.criticalBlockerCount.textContent = `${criticalBlockers.length}`;
+  }
+  if (elements.filteredCount) {
+    elements.filteredCount.textContent = `${getFilteredCapabilities().length}`;
+  }
+}
+
+function graphLayout(graphCapabilityIds) {
+  const familySpacingY = 185;
+  const familyX = 180;
+  const capabilityBaseX = 620;
+  const depthSpacingX = 320;
+  const baseY = 135;
+  const positions = new Map();
+  const depthMemo = new Map();
+  const visibleChildrenByFamily = new Map();
+
+  graphCapabilityIds.forEach((id) => {
+    const capability = state.model.capabilityMap.get(id);
+    if (!capability) return;
+    const list = visibleChildrenByFamily.get(capability.familyId) || [];
+    list.push(capability);
+    visibleChildrenByFamily.set(capability.familyId, list);
+  });
+
+  state.model.families.forEach((family, familyIndex) => {
+    const familyY = baseY + familyIndex * familySpacingY;
+    positions.set(family.id, { x: familyX, y: familyY });
+    const children = (visibleChildrenByFamily.get(family.id) || []).sort((left, right) => {
+      const leftDepth = capabilityDependencyDepth(left.id, depthMemo);
+      const rightDepth = capabilityDependencyDepth(right.id, depthMemo);
+      if (leftDepth !== rightDepth) return leftDepth - rightDepth;
+      return left.label.localeCompare(right.label);
+    });
+    const offsets = children.map((_, index) => (index - (children.length - 1) / 2) * 88);
+    children.forEach((capability, index) => {
+      const depth = capabilityDependencyDepth(capability.id, depthMemo);
+      positions.set(capability.id, {
+        x: capabilityBaseX + depth * depthSpacingX,
+        y: familyY + offsets[index],
+      });
+    });
+  });
+
+  const maxDepth = Math.max(
+    1,
+    ...Array.from(graphCapabilityIds).map((id) => capabilityDependencyDepth(id, depthMemo))
+  );
+
+  return {
+    positions,
+    width: capabilityBaseX + maxDepth * depthSpacingX + 420,
+    height: baseY + state.model.families.length * familySpacingY + 80,
+  };
+}
+
+function selectedNode() {
+  return getNodeById(state.selectedId);
+}
+
+function directNeighborIds(selected) {
+  if (!selected) return new Set();
+  const ids = new Set();
+  if (selected.type === "capability") {
+    ids.add(selected.familyId);
+    (selected.dependencies || []).forEach((id) => ids.add(id));
+    (state.model.capabilityDependentsMap.get(selected.id) || []).forEach((id) => ids.add(id));
+  } else {
+    (selected.dependencies || []).forEach((id) => ids.add(id));
+    (state.model.familyDependentsMap.get(selected.id) || []).forEach((id) => ids.add(id));
+    selected.children.forEach((child) => ids.add(child.id));
+  }
+  return ids;
+}
+
+function selectionRelations(selected) {
+  if (!selected) {
+    return {
+      upstream: new Set(),
+      downstream: new Set(),
+      neighbors: new Set(),
+    };
+  }
+  const upstream =
+    selected.type === "capability" ? capabilityUpstreamClosure(selected.id) : familyUpstreamClosure(selected.id);
+  const downstream =
+    selected.type === "capability" ? capabilityDownstreamClosure(selected.id) : familyDownstreamClosure(selected.id);
+  upstream.delete(selected.id);
+  downstream.delete(selected.id);
+  return {
+    upstream,
+    downstream,
+    neighbors: directNeighborIds(selected),
+  };
+}
+
+function graphCapabilityIds(selected) {
+  const filtered = getFilteredCapabilities();
+  const ids = new Set(filtered.map((capability) => capability.id));
+
+  filtered.forEach((capability) => {
+    (capability.dependencies || []).forEach((dependencyId) => ids.add(dependencyId));
+    (state.model.capabilityDependentsMap.get(capability.id) || []).forEach((dependentId) => ids.add(dependentId));
+  });
+
+  if (selected?.type === "capability") {
+    capabilityUpstreamClosure(selected.id).forEach((id) => ids.add(id));
+    capabilityDownstreamClosure(selected.id).forEach((id) => ids.add(id));
+  }
+
+  if (selected?.type === "family") {
+    selected.children.forEach((child) => ids.add(child.id));
+    familyUpstreamClosure(selected.id).forEach((familyId) => {
+      state.model.familyMap.get(familyId)?.children.forEach((child) => ids.add(child.id));
+    });
+    familyDownstreamClosure(selected.id).forEach((familyId) => {
+      state.model.familyMap.get(familyId)?.children.forEach((child) => ids.add(child.id));
+    });
+  }
+
+  return ids;
+}
+
+function graphFamilyIds(graphCapabilitySet, selected) {
+  const ids = new Set(state.model.families.map((family) => family.id));
+  graphCapabilitySet.forEach((capabilityId) => {
+    const capability = state.model.capabilityMap.get(capabilityId);
+    if (capability) ids.add(capability.familyId);
+  });
+  if (selected?.type === "capability") {
+    ids.add(selected.familyId);
+  }
+  if (selected?.type === "family") {
+    familyUpstreamClosure(selected.id).forEach((id) => ids.add(id));
+    familyDownstreamClosure(selected.id).forEach((id) => ids.add(id));
+  }
+  return ids;
+}
+
+function renderGraph() {
+  const svg = elements.graphSvg;
+  if (!svg || !state.model) return;
+
+  const selected = selectedNode();
+  const capabilityIds = graphCapabilityIds(selected);
+  const familyIds = graphFamilyIds(capabilityIds, selected);
+  const { positions, width, height } = graphLayout(capabilityIds);
+  const relations = selectionRelations(selected);
+
+  const familyEdges = [];
+  const membershipEdges = [];
+  const dependencyEdges = [];
+
+  state.model.families.forEach((family) => {
+    (family.dependencies || []).forEach((dependencyId) => {
+      if (familyIds.has(family.id) && familyIds.has(dependencyId)) {
+        familyEdges.push({ source: dependencyId, target: family.id, kind: "family-dependency" });
+      }
+    });
+    family.children.forEach((child) => {
+      if (capabilityIds.has(child.id)) {
+        membershipEdges.push({ source: family.id, target: child.id, kind: "membership" });
+      }
+    });
+  });
+
+  state.model.capabilities.forEach((capability) => {
+    if (!capabilityIds.has(capability.id)) return;
+    (capability.dependencies || []).forEach((dependencyId) => {
+      if (capabilityIds.has(dependencyId)) {
+        dependencyEdges.push({ source: dependencyId, target: capability.id, kind: "dependency" });
+      }
+    });
+  });
+
+  svg.innerHTML = "";
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  const root = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  root.setAttribute("transform", `translate(${state.graphOffsetX} ${state.graphOffsetY}) scale(${state.graphScale})`);
+
+  const renderEdge = (edge) => {
+    const source = positions.get(edge.source);
+    const target = positions.get(edge.target);
+    if (!source || !target) return;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const sourceOffset = edge.kind === "family-dependency" ? 120 : edge.kind === "membership" ? 100 : 88;
+    const targetOffset = edge.kind === "family-dependency" ? 120 : 86;
+    const controlOffset = edge.kind === "family-dependency" ? 200 : 160;
+    const curve = `M ${source.x + sourceOffset} ${source.y} C ${source.x + controlOffset} ${source.y}, ${target.x - controlOffset} ${target.y}, ${target.x - targetOffset} ${target.y}`;
+    path.setAttribute("d", curve);
+    const classes = ["inspection-link"];
+    if (edge.kind === "membership") classes.push("is-membership");
+    if (edge.kind === "family-dependency") classes.push("is-family-dependency");
+
+    if (selected) {
+      const sourceInUpstream = relations.upstream.has(edge.source);
+      const targetInUpstream = relations.upstream.has(edge.target);
+      const sourceInDownstream = relations.downstream.has(edge.source);
+      const targetInDownstream = relations.downstream.has(edge.target);
+      const isNeighbor = edge.source === selected.id || edge.target === selected.id;
+
+      const isUpstreamChain = sourceInUpstream && (targetInUpstream || edge.target === selected.id);
+      const isDownstreamChain =
+        (edge.source === selected.id && targetInDownstream) || (sourceInDownstream && targetInDownstream);
+
+      if (isNeighbor) {
+        classes.push("is-neighbor");
+      } else if (isUpstreamChain) {
+        classes.push("is-upstream");
+      } else if (isDownstreamChain) {
+        classes.push("is-downstream");
+      } else if (
+        selected.type === "family" &&
+        edge.kind === "membership" &&
+        (edge.source === selected.id || relations.neighbors.has(edge.target))
+      ) {
+        classes.push("is-neighbor");
+      } else {
+        classes.push("is-muted");
+      }
+    }
+
+    path.setAttribute("class", classes.join(" "));
+    root.appendChild(path);
+  };
+
+  [...familyEdges, ...membershipEdges, ...dependencyEdges].forEach(renderEdge);
+
+  const renderNode = (node) => {
+    const position = positions.get(node.id);
+    if (!position) return;
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const classes = ["inspection-node", node.type === "family" ? "is-family" : "is-capability"];
+    if (selected?.id === node.id) {
+      classes.push("is-selected");
+    } else if (selected) {
+      if (relations.upstream.has(node.id)) classes.push("is-upstream");
+      else if (relations.downstream.has(node.id)) classes.push("is-downstream");
+      else if (relations.neighbors.has(node.id)) classes.push("is-neighbor");
+      else classes.push("is-muted");
+    }
+
+    group.setAttribute("transform", `translate(${position.x} ${position.y})`);
+    group.setAttribute("class", classes.join(" "));
+    group.addEventListener("click", () => {
+      state.selectedId = node.id;
       renderAll();
     });
-    li.appendChild(button);
-    elements.highestLeverage.appendChild(li);
+
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", node.type === "family" ? "-118" : "-94");
+    rect.setAttribute("y", node.type === "family" ? "-40" : "-34");
+    rect.setAttribute("width", node.type === "family" ? "236" : "188");
+    rect.setAttribute("height", node.type === "family" ? "80" : "68");
+    rect.setAttribute("fill", colorForMaturity(node.maturity));
+    rect.setAttribute("fill-opacity", node.type === "family" ? "0.22" : "0.15");
+    rect.setAttribute("stroke", colorForMaturity(node.maturity));
+    rect.setAttribute("stroke-width", "1.6");
+    group.appendChild(rect);
+
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    title.setAttribute("text-anchor", "middle");
+    title.setAttribute("y", "-6");
+    title.setAttribute("class", "inspection-node-label");
+    title.textContent = truncate(node.label, node.type === "family" ? 28 : 22);
+    group.appendChild(title);
+
+    const meta = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    meta.setAttribute("text-anchor", "middle");
+    meta.setAttribute("y", "18");
+    meta.setAttribute("class", "inspection-node-meta");
+    meta.textContent =
+      node.type === "family"
+        ? `${formatStatusLabel(node.maturity)} · ${scorePercent(node.score)}`
+        : `${node.familyLabel} · ${formatStatusLabel(node.maturity)} · ${scorePercent(node.score)}`;
+    group.appendChild(meta);
+
+    root.appendChild(group);
+  };
+
+  state.model.families.filter((family) => familyIds.has(family.id)).forEach(renderNode);
+  state.model.capabilities.filter((capability) => capabilityIds.has(capability.id)).forEach(renderNode);
+
+  svg.appendChild(root);
+  svg.classList.toggle("is-dragging", state.dragging);
+}
+
+function truncate(value, length) {
+  return value.length > length ? `${value.slice(0, length - 1)}…` : value;
+}
+
+function renderHeatmap() {
+  if (!elements.heatmap || !state.model) return;
+  elements.heatmap.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "inspection-heatmap-header";
+  header.innerHTML = `<span>Family</span>${MATURITY_ORDER.map((status) => `<span>${MATURITY_META[status].label}</span>`).join("")}`;
+  elements.heatmap.appendChild(header);
+
+  state.model.families.forEach((family) => {
+    const capabilities = state.model.capabilities.filter(
+      (capability) =>
+        capability.familyId === family.id &&
+        capabilityMatchesFilters(capability, {
+          ignoreMaturity: true,
+        })
+    );
+
+    const row = document.createElement("div");
+    row.className = "inspection-heatmap-row";
+
+    const familyButton = document.createElement("button");
+    familyButton.className = "inspection-family-name inspection-matrix-cell";
+    familyButton.innerHTML = `<strong>${family.label}</strong><small>${scorePercent(family.score)} readiness</small>`;
+    familyButton.addEventListener("click", () => {
+      state.selectedId = family.id;
+      state.familyFilter = family.id;
+      renderAll();
+    });
+    row.appendChild(familyButton);
+
+    MATURITY_ORDER.forEach((status) => {
+      const count = capabilities.filter((capability) => capability.maturity === status).length;
+      const weightShare =
+        capabilities.reduce((sum, capability) => {
+          if (capability.maturity !== status) return sum;
+          return sum + (capability.weight || 1);
+        }, 0) / (capabilities.reduce((sum, capability) => sum + (capability.weight || 1), 0) || 1);
+      const cell = document.createElement("button");
+      const classes = ["inspection-matrix-cell"];
+      if (count > 0) classes.push("has-data");
+      if (state.familyFilter === family.id && state.maturityFilter === status) classes.push("is-active");
+      cell.className = classes.join(" ");
+      cell.style.background = count
+        ? `linear-gradient(180deg, ${colorForMaturity(status)}${count > 1 ? "66" : "3d"}, rgba(9,18,27,0.92))`
+        : "rgba(148, 163, 184, 0.04)";
+      cell.innerHTML = count
+        ? `<div><strong>${count}</strong><small>${Math.round(weightShare * 100)}% weight</small></div>`
+        : "";
+      cell.addEventListener("click", () => {
+        state.familyFilter = family.id;
+        state.maturityFilter = status;
+        state.selectedId = family.children[0]?.id || family.id;
+        renderAll();
+      });
+      row.appendChild(cell);
+    });
+
+    elements.heatmap.appendChild(row);
   });
 }
 
-function downstreamDependents(id) {
-  return flattenCapabilities().filter((item) => (item.dependencies || []).includes(id));
+function blockerScore(capability) {
+  const downstreamCount = capabilityDownstreamClosure(capability.id).size - 1;
+  const upstreamCount = capabilityUpstreamClosure(capability.id).size - 1;
+  const gatePenalty = capability.battlefieldGate && !capability.gateSatisfied ? 0.32 : 0;
+  const confidencePenalty = (4 - confidenceRank(capability.confidence)) * 0.03;
+  return (
+    (1 - capability.score) * criticalityFactor(capability.criticality) * (capability.weight || 1) +
+    gatePenalty +
+    downstreamCount * 0.04 +
+    upstreamCount * 0.02 +
+    confidencePenalty
+  );
 }
 
-function renderDetailPanel() {
-  const selected = selectedCapability();
-  if (!elements.detailPanel || !selected) return;
+function leverageScore(capability) {
+  const downstreamCount = capabilityDownstreamClosure(capability.id).size - 1;
+  const gateLift = capability.battlefieldGate && !capability.gateSatisfied ? 0.35 : 0;
+  return blockerScore(capability) + downstreamCount * 0.08 + gateLift;
+}
+
+function rankedBlockers() {
+  return getFilteredCapabilities()
+    .filter(
+      (capability) =>
+        capability.score < maturityValue("strong") || (capability.battlefieldGate && !capability.gateSatisfied)
+    )
+    .sort((left, right) => blockerScore(right) - blockerScore(left))
+    .slice(0, 8);
+}
+
+function rankedLeverage() {
+  return getFilteredCapabilities()
+    .filter(
+      (capability) =>
+        capability.score < maturityValue("strong") || (capability.battlefieldGate && !capability.gateSatisfied)
+    )
+    .sort((left, right) => leverageScore(right) - leverageScore(left))
+    .slice(0, 5);
+}
+
+function renderList(container, items, renderItem) {
+  if (!container) return;
+  container.innerHTML = "";
+  if (!items.length) {
+    container.innerHTML = '<li><div class="inspection-empty-state">No items match the current inspection filters.</div></li>';
+    return;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.appendChild(renderItem(item));
+    container.appendChild(li);
+  });
+}
+
+function renderBlockers() {
+  renderList(elements.blockerList, rankedBlockers(), (capability) => {
+    const button = document.createElement("button");
+    if (state.selectedId === capability.id) button.classList.add("is-selected");
+    button.innerHTML = `
+      <strong>${capability.label}</strong>
+      <div class="inspection-helper">${capability.familyLabel} · ${formatStatusLabel(capability.maturity)} · ${scorePercent(
+      capability.score
+    )}</div>
+      <div class="inspection-helper">${capability.blocker || capability.limitation}</div>
+    `;
+    button.addEventListener("click", () => {
+      state.selectedId = capability.id;
+      renderAll();
+    });
+    return button;
+  });
+}
+
+function renderGates() {
+  if (!elements.gateList || !state.model) return;
+  const relevantCapabilities = getFilteredCapabilities({ ignoreMaturity: true });
+  const gates = relevantCapabilities
+    .filter((capability) => capability.battlefieldGate && !capability.gateSatisfied)
+    .sort((left, right) => {
+      const leftRatio = left.score / left.battlefieldGate.requiredValue;
+      const rightRatio = right.score / right.battlefieldGate.requiredValue;
+      return leftRatio - rightRatio;
+    })
+    .slice(0, 6);
+
+  renderList(elements.gateList, gates, (capability) => {
+    const button = document.createElement("button");
+    if (state.selectedId === capability.id) button.classList.add("is-selected");
+    button.innerHTML = `
+      <strong>${capability.label}</strong>
+      <div class="inspection-helper">${capability.familyLabel} · current ${formatStatusLabel(
+      capability.maturity
+    )} · needs ${formatStatusLabel(capability.battlefieldGate.required_status)}</div>
+      <div class="inspection-helper">${capability.battlefieldGate.rationale}</div>
+    `;
+    button.addEventListener("click", () => {
+      state.selectedId = capability.id;
+      renderAll();
+    });
+    return button;
+  });
+}
+
+function renderReadinessBars() {
+  if (!elements.readinessBars || !state.model) return;
+  elements.readinessBars.innerHTML = "";
+
+  const families = state.model.families.filter(
+    (family) => state.familyFilter === "all" || family.id === state.familyFilter || familyHasVisibleCapability(family.id, { ignoreMaturity: true })
+  );
+
+  families.forEach((family) => {
+    const row = document.createElement("div");
+    row.className = "inspection-detail-section";
+    row.addEventListener("click", () => {
+      state.selectedId = family.id;
+      renderAll();
+    });
+
+    const gateCount = family.children.filter((child) => child.battlefieldGate && !child.gateSatisfied).length;
+    row.innerHTML = `
+      <div class="inspection-bar-row">
+        <span class="inspection-bar-label">${family.label}</span>
+        <div>
+          <div class="inspection-bar-rail">
+            <div class="inspection-bar-fill" style="width:${scorePercent(family.score)}%; background:${colorForMaturity(
+      family.maturity
+    )};"></div>
+          </div>
+          <div class="inspection-bar-annotation">${formatStatusLabel(family.maturity)} · ${
+      gateCount ? `${gateCount} hard gate ${gateCount === 1 ? "issue" : "issues"}` : "no unresolved hard gates"
+    }</div>
+        </div>
+        <strong>${scorePercent(family.score)}</strong>
+      </div>
+    `;
+    elements.readinessBars.appendChild(row);
+  });
+}
+
+function renderHighestLeverage() {
+  renderList(elements.highestLeverage, rankedLeverage(), (capability) => {
+    const button = document.createElement("button");
+    if (state.selectedId === capability.id) button.classList.add("is-selected");
+    button.innerHTML = `
+      <strong>${capability.label}</strong>
+      <div class="inspection-helper">${capability.familyLabel}</div>
+      <div class="inspection-helper">${capability.recommended_next_step}</div>
+    `;
+    button.addEventListener("click", () => {
+      state.selectedId = capability.id;
+      renderAll();
+    });
+    return button;
+  });
+}
+
+function capabilityScoreSummary(capability) {
+  if (capability.battlefieldGate && !capability.gateSatisfied) {
+    return `This capability is below its hard battlefield gate because critical criteria remain under-supported relative to the required ${formatStatusLabel(
+      capability.battlefieldGate.required_status
+    )} level.`;
+  }
+  if (capability.score < maturityValue("substantial")) {
+    return "This capability is structurally present but still too weak to support a trustworthy first-battlefield claim.";
+  }
+  if (capability.score < maturityValue("strong")) {
+    return "This capability is materially implemented, but key criteria still remain only partial or bridge-state.";
+  }
+  return "This is one of the stronger current capabilities, though its strength still depends on weaker upstream layers.";
+}
+
+function familyScoreSummary(family) {
+  if (family.unmetGateCount) {
+    return `${family.unmetGateCount} child capability hard gate${family.unmetGateCount === 1 ? "" : "s"} still limit this family's honest readiness claim.`;
+  }
+  if (family.criticalWeakChildren) {
+    return "This family is structurally present, but one or more critical child capabilities remain below substantial maturity.";
+  }
+  return "This family currently has no unresolved hard gate, but it still inherits broader scientific-core limits from the rest of the system.";
+}
+
+function renderCapabilityDetail(capability) {
+  const directDependents = (state.model.capabilityDependentsMap.get(capability.id) || [])
+    .map((id) => state.model.capabilityMap.get(id))
+    .filter(Boolean);
+  const directDependencies = (capability.dependencies || [])
+    .map((id) => state.model.capabilityMap.get(id))
+    .filter(Boolean);
+  const gateHtml =
+    capability.battlefieldGate && !capability.gateSatisfied
+      ? `<div class="inspection-detail-section"><h4>Hard Battlefield Gate</h4><p class="inspection-detail-copy">${capability.battlefieldGate.rationale}</p><p class="inspection-gate-note">Current ${formatStatusLabel(
+          capability.maturity
+        )} (${scorePercent(capability.score)}), required ${formatStatusLabel(
+          capability.battlefieldGate.required_status
+        )}.</p></div>`
+      : capability.battlefieldGate
+      ? `<div class="inspection-detail-section"><h4>Hard Battlefield Gate</h4><p class="inspection-detail-copy">This capability currently satisfies its hard battlefield gate at ${formatStatusLabel(
+          capability.battlefieldGate.required_status
+        )} or better.</p></div>`
+      : "";
+
   elements.detailPanel.innerHTML = `
     <div class="inspection-detail-grid">
       <div>
-        <p class="eyebrow">${selected.type === "family" ? "Capability Family" : selected.familyLabel || "Capability"}</p>
-        <h3 class="inspection-detail-title">${selected.label}</h3>
-        <p class="inspection-detail-copy">${selected.description || selected.evidence_summary || ""}</p>
+        <p class="eyebrow">${capability.familyLabel}</p>
+        <h3 class="inspection-detail-title">${capability.label}</h3>
+        <p class="inspection-detail-copy">${capability.description}</p>
       </div>
       <div class="inspection-detail-pills">
-        <span class="inspection-chip">Maturity ${MATURITY_META[selected.maturity].label}</span>
-        <span class="inspection-chip">Criticality ${selected.criticality || "important"}</span>
-        <span class="inspection-chip">Confidence ${selected.confidence || "medium"}</span>
-        <span class="inspection-chip">Weight ${(selected.weight || 1).toFixed(1)}</span>
+        ${createStatusBadge(capability.maturity)}
+        <span class="inspection-chip ${capability.criticality === "critical" ? "is-critical" : ""}">Criticality ${capability.criticality}</span>
+        <span class="inspection-chip">Confidence ${capability.confidence}</span>
+        <span class="inspection-chip">Readiness ${scorePercent(capability.score)}</span>
+        ${
+          capability.battlefieldGate
+            ? `<span class="inspection-chip is-gate">Gate ${formatStatusLabel(capability.battlefieldGate.required_status)}</span>`
+            : ""
+        }
+      </div>
+      <div class="inspection-stat-grid">
+        <article class="inspection-stat-card">
+          <strong>Current State</strong>
+          <div class="inspection-helper">${capability.current_evidence}</div>
+        </article>
+        <article class="inspection-stat-card">
+          <strong>Target State</strong>
+          <div class="inspection-helper">${capability.target_state}</div>
+        </article>
+        <article class="inspection-stat-card">
+          <strong>Score Rationale</strong>
+          <div class="inspection-helper">${capabilityScoreSummary(capability)}</div>
+        </article>
+        <article class="inspection-stat-card">
+          <strong>Dependency Pressure</strong>
+          <div class="inspection-helper">${directDependencies.length} direct prerequisite${
+    directDependencies.length === 1 ? "" : "s"
+  } and ${directDependents.length} direct downstream dependent${directDependents.length === 1 ? "" : "s"}.</div>
+        </article>
       </div>
       <div class="inspection-definition-grid">
         <article class="inspection-definition-card">
           <strong>Why It Matters</strong>
-          <div class="inspection-helper">${selected.why_it_matters || "This capability is part of the battlefield path and affects downstream readiness."}</div>
+          <div class="inspection-helper">${capability.why_it_matters}</div>
         </article>
         <article class="inspection-definition-card">
           <strong>Current Implementation Basis</strong>
-          <div class="inspection-helper">${selected.implementation_basis || "Not yet described."}</div>
+          <div class="inspection-helper">${capability.implementation_basis}</div>
         </article>
         <article class="inspection-definition-card">
           <strong>Current Limitation / Blocker</strong>
-          <div class="inspection-helper">${selected.blocker || selected.limitation || "No blocker recorded."}</div>
+          <div class="inspection-helper">${capability.blocker || capability.limitation}</div>
         </article>
         <article class="inspection-definition-card">
           <strong>Recommended Next Move</strong>
-          <div class="inspection-helper">${selected.recommended_next_step || "No next move recorded."}</div>
+          <div class="inspection-helper">${capability.recommended_next_step}</div>
         </article>
+      </div>
+      ${gateHtml}
+      <div class="inspection-detail-section">
+        <h4>Measured Criteria</h4>
+        <div class="inspection-criteria-grid">
+          ${capability.criteria
+            .map(
+              (criterion) => `
+            <article class="inspection-criteria-card">
+              <div class="inspection-criteria-meta">
+                ${createStatusBadge(criterion.status)}
+                ${criterion.critical ? '<span class="inspection-chip is-critical">Critical criterion</span>' : ""}
+                <span class="inspection-chip">Weight ${Number(criterion.weight || 1).toFixed(1)}</span>
+              </div>
+              <strong>${criterion.label}</strong>
+              <p class="inspection-criteria-copy">${criterion.measurement_basis}</p>
+              <div class="inspection-helper"><strong>Current evidence:</strong> ${criterion.current_evidence}</div>
+              <div class="inspection-helper"><strong>Current gap:</strong> ${criterion.gap || "No explicit gap recorded."}</div>
+            </article>`
+            )
+            .join("")}
+        </div>
       </div>
     </div>
   `;
+}
+
+function renderFamilyDetail(family) {
+  const weakestChildren = [...family.children].sort((left, right) => left.score - right.score);
+  elements.detailPanel.innerHTML = `
+    <div class="inspection-detail-grid">
+      <div>
+        <p class="eyebrow">${family.category === "scientific_core" ? "Scientific-Core Family" : "Surface / Governance Family"}</p>
+        <h3 class="inspection-detail-title">${family.label}</h3>
+        <p class="inspection-detail-copy">${family.description}</p>
+      </div>
+      <div class="inspection-detail-pills">
+        ${createStatusBadge(family.maturity)}
+        <span class="inspection-chip ${family.criticality === "critical" ? "is-critical" : ""}">Criticality ${family.criticality}</span>
+        <span class="inspection-chip">Confidence ${family.confidence}</span>
+        <span class="inspection-chip">Readiness ${scorePercent(family.score)}</span>
+      </div>
+      <div class="inspection-stat-grid">
+        <article class="inspection-stat-card">
+          <strong>Target State</strong>
+          <div class="inspection-helper">${family.target_state}</div>
+        </article>
+        <article class="inspection-stat-card">
+          <strong>Family Score Rationale</strong>
+          <div class="inspection-helper">${familyScoreSummary(family)}</div>
+        </article>
+        <article class="inspection-stat-card">
+          <strong>Critical Weak Children</strong>
+          <div class="inspection-helper">${family.criticalWeakChildren} critical child capability${
+    family.criticalWeakChildren === 1 ? "" : "s"
+  } currently fall below substantial readiness.</div>
+        </article>
+        <article class="inspection-stat-card">
+          <strong>Unmet Hard Gates</strong>
+          <div class="inspection-helper">${family.unmetGateCount} child gate${
+    family.unmetGateCount === 1 ? "" : "s"
+  } are still unsatisfied inside this family.</div>
+        </article>
+      </div>
+      <div class="inspection-definition-grid">
+        <article class="inspection-definition-card">
+          <strong>Why It Matters</strong>
+          <div class="inspection-helper">${family.why_it_matters}</div>
+        </article>
+        <article class="inspection-definition-card">
+          <strong>Family Dependencies</strong>
+          <div class="inspection-helper">${
+            family.dependencies.length
+              ? family.dependencies
+                  .map((dependencyId) => state.model.familyMap.get(dependencyId)?.label || dependencyId)
+                  .join(", ")
+              : "No recorded upstream family dependency."
+          }</div>
+        </article>
+        <article class="inspection-definition-card">
+          <strong>Most Constraining Child</strong>
+          <div class="inspection-helper">${
+            weakestChildren[0]
+              ? `${weakestChildren[0].label}: ${weakestChildren[0].blocker || weakestChildren[0].limitation}`
+              : "No child capability recorded."
+          }</div>
+        </article>
+        <article class="inspection-definition-card">
+          <strong>Recommended Next Move</strong>
+          <div class="inspection-helper">${
+            weakestChildren[0]?.recommended_next_step || "No next move recorded."
+          }</div>
+        </article>
+      </div>
+      <div class="inspection-detail-section">
+        <h4>Capability Breakdown</h4>
+        <div class="inspection-capability-breakdown">
+          ${family.children
+            .map(
+              (child) => `
+            <article class="inspection-capability-card">
+              <div class="inspection-criteria-meta">
+                ${createStatusBadge(child.maturity)}
+                ${child.battlefieldGate ? '<span class="inspection-chip is-gate">Hard gate</span>' : ""}
+              </div>
+              <h5>${child.label}</h5>
+              <div class="inspection-helper">${child.current_evidence}</div>
+              <div class="inspection-helper"><strong>Blocker:</strong> ${child.blocker || child.limitation}</div>
+            </article>`
+            )
+            .join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDetailPanel() {
+  const selected = selectedNode();
+  if (!elements.detailPanel || !selected) return;
+  if (selected.type === "family") {
+    renderFamilyDetail(selected);
+  } else {
+    renderCapabilityDetail(selected);
+  }
   renderDependencyChain(selected);
   renderDownstreamImpact(selected);
 }
 
 function renderDependencyChain(selected) {
-  if (!elements.dependencyChain) return;
+  if (!elements.dependencyChain || !selected) return;
   elements.dependencyChain.innerHTML = "";
-  const deps = (selected.dependencies || []).map((id) => getCapabilityById(id)).filter(Boolean);
-  if (!deps.length) {
-    elements.dependencyChain.innerHTML = '<div class="inspection-empty-state">No direct dependency chain is recorded for the selected capability.</div>';
+
+  const direct =
+    selected.type === "capability"
+      ? (selected.dependencies || []).map((id) => state.model.capabilityMap.get(id)).filter(Boolean)
+      : (selected.dependencies || []).map((id) => state.model.familyMap.get(id)).filter(Boolean);
+  const closure =
+    selected.type === "capability"
+      ? Array.from(capabilityUpstreamClosure(selected.id))
+      : Array.from(familyUpstreamClosure(selected.id));
+  const extended = closure.filter((id) => id !== selected.id && !direct.some((item) => item.id === id));
+  const extendedNodes = extended.map((id) => getNodeById(id)).filter(Boolean);
+
+  if (!direct.length && !extendedNodes.length) {
+    elements.dependencyChain.innerHTML =
+      '<div class="inspection-empty-state">No upstream dependency chain is recorded for the current selection.</div>';
     return;
   }
-  const wrap = document.createElement("div");
-  wrap.className = "inspection-dependency-map";
-  deps.forEach((item) => {
-    const button = document.createElement("button");
-    button.textContent = item.label;
-    button.addEventListener("click", () => {
-      state.selectedId = item.id;
-      renderAll();
+
+  const fragment = document.createDocumentFragment();
+  if (direct.length) {
+    const directWrap = document.createElement("div");
+    directWrap.className = "inspection-detail-section";
+    directWrap.innerHTML = "<h4>Direct prerequisites</h4>";
+    const chips = document.createElement("div");
+    chips.className = "inspection-dependency-map";
+    direct.forEach((item) => {
+      const button = document.createElement("button");
+      button.textContent = item.label;
+      button.addEventListener("click", () => {
+        state.selectedId = item.id;
+        renderAll();
+      });
+      chips.appendChild(button);
     });
-    wrap.appendChild(button);
-  });
-  elements.dependencyChain.appendChild(wrap);
+    directWrap.appendChild(chips);
+    fragment.appendChild(directWrap);
+  }
+
+  if (extendedNodes.length) {
+    const extendedWrap = document.createElement("div");
+    extendedWrap.className = "inspection-detail-section";
+    extendedWrap.innerHTML = "<h4>Extended upstream chain</h4>";
+    const chips = document.createElement("div");
+    chips.className = "inspection-dependency-map is-vertical";
+    extendedNodes.forEach((item) => {
+      const button = document.createElement("button");
+      button.textContent = item.label;
+      button.addEventListener("click", () => {
+        state.selectedId = item.id;
+        renderAll();
+      });
+      chips.appendChild(button);
+    });
+    extendedWrap.appendChild(chips);
+    fragment.appendChild(extendedWrap);
+  }
+
+  elements.dependencyChain.appendChild(fragment);
 }
 
 function renderDownstreamImpact(selected) {
-  if (!elements.downstreamImpact) return;
+  if (!elements.downstreamImpact || !selected) return;
   elements.downstreamImpact.innerHTML = "";
-  const dependents = downstreamDependents(selected.id);
-  if (!dependents.length) {
-    elements.downstreamImpact.innerHTML = '<div class="inspection-empty-state">No immediate downstream impacts are recorded for the selected capability.</div>';
+
+  const direct =
+    selected.type === "capability"
+      ? (state.model.capabilityDependentsMap.get(selected.id) || [])
+          .map((id) => state.model.capabilityMap.get(id))
+          .filter(Boolean)
+      : (state.model.familyDependentsMap.get(selected.id) || [])
+          .map((id) => state.model.familyMap.get(id))
+          .filter(Boolean);
+  const closure =
+    selected.type === "capability"
+      ? Array.from(capabilityDownstreamClosure(selected.id))
+      : Array.from(familyDownstreamClosure(selected.id));
+  const extended = closure.filter((id) => id !== selected.id && !direct.some((item) => item.id === id));
+  const extendedNodes = extended.map((id) => getNodeById(id)).filter(Boolean);
+
+  if (!direct.length && !extendedNodes.length) {
+    elements.downstreamImpact.innerHTML =
+      '<div class="inspection-empty-state">No downstream impact chain is recorded for the current selection.</div>';
     return;
   }
-  const list = document.createElement("ul");
-  list.className = "inspection-impact-list";
-  dependents.forEach((item) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${item.recommended_next_step || item.blocker || item.limitation}</div>`;
-    list.appendChild(li);
-  });
-  elements.downstreamImpact.appendChild(list);
+
+  const fragment = document.createDocumentFragment();
+  if (direct.length) {
+    const directList = document.createElement("ul");
+    directList.className = "inspection-impact-list";
+    direct.forEach((item) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${
+        item.recommended_next_step || item.blocker || item.description
+      }</div>`;
+      directList.appendChild(li);
+    });
+    const section = document.createElement("div");
+    section.className = "inspection-detail-section";
+    section.innerHTML = "<h4>Immediate downstream pressure</h4>";
+    section.appendChild(directList);
+    fragment.appendChild(section);
+  }
+
+  if (extendedNodes.length) {
+    const extendedList = document.createElement("ul");
+    extendedList.className = "inspection-impact-list";
+    extendedNodes.forEach((item) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${
+        item.type === "family" ? item.description : item.recommended_next_step || item.blocker || item.description
+      }</div>`;
+      extendedList.appendChild(li);
+    });
+    const section = document.createElement("div");
+    section.className = "inspection-detail-section";
+    section.innerHTML = "<h4>Extended downstream chain</h4>";
+    section.appendChild(extendedList);
+    fragment.appendChild(section);
+  }
+
+  elements.downstreamImpact.appendChild(fragment);
 }
 
 function syncFilters() {
@@ -559,12 +1275,42 @@ function syncFilters() {
   if (elements.searchInput) elements.searchInput.value = state.search;
 }
 
+function populateFamilyOptions() {
+  if (!elements.familyFilter) return;
+  const previous = elements.familyFilter.value;
+  elements.familyFilter.innerHTML = '<option value="all">All families</option>';
+  BATTLEFIELD_MODEL.families.forEach((family) => {
+    const option = document.createElement("option");
+    option.value = family.id;
+    option.textContent = family.label;
+    elements.familyFilter.appendChild(option);
+  });
+  if (previous) {
+    elements.familyFilter.value = previous;
+  }
+}
+
+function ensureValidSelection() {
+  const selected = selectedNode();
+  if (selected) return;
+  const next =
+    rankedBlockers()[0] ||
+    rankedLeverage()[0] ||
+    getFilteredCapabilities()[0] ||
+    state.model.capabilities[0] ||
+    state.model.families[0];
+  state.selectedId = next?.id || "";
+}
+
 function renderAll() {
+  state.model = buildInspectionModel();
+  ensureValidSelection();
   syncFilters();
   renderScorecards();
   renderGraph();
   renderHeatmap();
   renderBlockers();
+  renderGates();
   renderReadinessBars();
   renderHighestLeverage();
   renderDetailPanel();
@@ -581,24 +1327,28 @@ function resetFilters() {
 function bindGraphInteractions() {
   const svg = elements.graphSvg;
   if (!svg) return;
+
   svg.addEventListener("wheel", (event) => {
     event.preventDefault();
     const delta = event.deltaY > 0 ? -0.1 : 0.1;
-    state.graphScale = Math.max(0.65, Math.min(1.9, Number((state.graphScale + delta).toFixed(2))));
+    state.graphScale = Math.max(0.62, Math.min(2.1, Number((state.graphScale + delta).toFixed(2))));
     renderGraph();
   });
+
   svg.addEventListener("pointerdown", (event) => {
     state.dragging = true;
     state.dragStartX = event.clientX - state.graphOffsetX;
     state.dragStartY = event.clientY - state.graphOffsetY;
     renderGraph();
   });
+
   window.addEventListener("pointermove", (event) => {
     if (!state.dragging) return;
     state.graphOffsetX = event.clientX - state.dragStartX;
     state.graphOffsetY = event.clientY - state.dragStartY;
     renderGraph();
   });
+
   window.addEventListener("pointerup", () => {
     if (!state.dragging) return;
     state.dragging = false;
@@ -608,15 +1358,15 @@ function bindGraphInteractions() {
 
 function bindControls() {
   elements.familyFilter?.addEventListener("change", (event) => {
-    state.familyFilter = event.target.value;
+    state.familyFilter = String(event.target.value || "all");
     renderAll();
   });
   elements.maturityFilter?.addEventListener("change", (event) => {
-    state.maturityFilter = event.target.value;
+    state.maturityFilter = String(event.target.value || "all");
     renderAll();
   });
   elements.scopeFilter?.addEventListener("change", (event) => {
-    state.scopeFilter = event.target.value;
+    state.scopeFilter = String(event.target.value || "all");
     renderAll();
   });
   elements.searchInput?.addEventListener("input", (event) => {
@@ -631,20 +1381,21 @@ function bindControls() {
     renderGraph();
   });
   elements.graphZoomIn?.addEventListener("click", () => {
-    state.graphScale = Math.min(1.9, Number((state.graphScale + 0.1).toFixed(2)));
+    state.graphScale = Math.min(2.1, Number((state.graphScale + 0.1).toFixed(2)));
     renderGraph();
   });
   elements.graphZoomOut?.addEventListener("click", () => {
-    state.graphScale = Math.max(0.65, Number((state.graphScale - 0.1).toFixed(2)));
+    state.graphScale = Math.max(0.62, Number((state.graphScale - 0.1).toFixed(2)));
     renderGraph();
   });
 }
 
 function init() {
-  const firstCapability = flattenCapabilities().find((item) => item.type === "capability");
-  state.selectedId = firstCapability?.id || "";
+  populateFamilyOptions();
   bindControls();
   bindGraphInteractions();
+  state.model = buildInspectionModel();
+  state.selectedId = rankedBlockers()[0]?.id || state.model.capabilities[0]?.id || "";
   renderAll();
 }
 

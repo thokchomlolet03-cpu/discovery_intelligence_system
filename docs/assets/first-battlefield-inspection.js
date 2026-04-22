@@ -42,6 +42,7 @@ const elements = {
   trackedPathsLabel: document.getElementById("inspection-tracked-paths"),
   criticalBlockerCount: document.getElementById("critical-blocker-count"),
   filteredCount: document.getElementById("filtered-capability-count"),
+  activeFilters: document.getElementById("inspection-active-filters"),
   familyFilter: document.getElementById("family-filter"),
   maturityFilter: document.getElementById("maturity-filter"),
   scopeFilter: document.getElementById("scope-filter"),
@@ -516,9 +517,16 @@ function renderRecentChanges() {
   const changes = selected?.recent_changes?.length ? selected.recent_changes : snapshotMeta().recent_changes || [];
 
   renderList(elements.recentChanges, changes, (change) => {
-    const button = document.createElement("button");
     const commitLink = repoCommitUrl(change.commit_sha);
-    button.innerHTML = `
+    const item = document.createElement(commitLink ? "a" : "button");
+    if (commitLink) {
+      item.href = commitLink;
+      item.target = "_blank";
+      item.rel = "noopener noreferrer";
+    } else {
+      item.type = "button";
+    }
+    item.innerHTML = `
       <strong>${change.subject || "Repository change"}</strong>
       <div class="inspection-helper">${change.commit_short || ""} · ${change.committed_on || ""} · ${
       change.author || ""
@@ -526,13 +534,50 @@ function renderRecentChanges() {
       <div class="inspection-helper">${selected?.recent_changes?.length ? "Selection-linked source change" : "Tracked first-battlefield source change"}</div>
       ${commitLink ? `<div class="inspection-helper">${commitLink}</div>` : ""}
     `;
-    if (commitLink) {
-      button.addEventListener("click", () => {
-        window.open(commitLink, "_blank", "noopener,noreferrer");
-      });
-    }
-    return button;
+    return item;
   });
+}
+
+function activeFilterChips() {
+  const chips = [];
+  if (state.familyFilter !== "all") {
+    const family = state.model?.familyMap.get(state.familyFilter);
+    chips.push(`Family: ${family?.label || state.familyFilter}`);
+  }
+  if (state.maturityFilter !== "all") {
+    chips.push(`Maturity: ${formatStatusLabel(state.maturityFilter)}`);
+  }
+  if (state.scopeFilter !== "all") {
+    const scopeLabels = {
+      critical: "Critical path",
+      scientific_core: "Scientific core",
+      surface_and_governance: "UI / inspectability",
+      blockers: "Missing or weak",
+    };
+    chips.push(`Scope: ${scopeLabels[state.scopeFilter] || state.scopeFilter}`);
+  }
+  if (state.search) {
+    chips.push(`Search: ${state.search}`);
+  }
+  return chips;
+}
+
+function renderActiveFilters() {
+  if (!elements.activeFilters) return;
+  const chips = activeFilterChips();
+  if (!chips.length) {
+    elements.activeFilters.innerHTML =
+      '<span class="inspection-chip">Showing the full first-battlefield inspection map.</span>';
+    return;
+  }
+
+  elements.activeFilters.innerHTML = [
+    ...chips.map((chip) => `<span class="inspection-chip">${chip}</span>`),
+    '<button class="inspection-chip inspection-chip-button" type="button" data-reset-filters="true">Clear filters</button>',
+  ].join("");
+
+  const resetChip = elements.activeFilters.querySelector("[data-reset-filters='true']");
+  resetChip?.addEventListener("click", resetFilters);
 }
 
 function graphLayout(graphCapabilityIds) {
@@ -1525,6 +1570,7 @@ function renderAll() {
   syncFilters();
   renderProvenance();
   renderScorecards();
+  renderActiveFilters();
   renderGraph();
   renderHeatmap();
   renderBlockers();

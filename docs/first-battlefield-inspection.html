@@ -157,6 +157,10 @@
         </article>
       </section>
 
+      <section class="inspection-active-filter-row">
+        <div id="inspection-active-filters" class="inspection-detail-pills" aria-live="polite"></div>
+      </section>
+
       <section class="inspection-main-grid">
         <div class="inspection-stack">
           <section class="inspection-panel">
@@ -166,6 +170,13 @@
                 <h3 class="inspection-section-title">Capability Dependency Graph</h3>
               </div>
               <p class="inspection-helper">Families, capabilities, and dependency chains are all connected. Select a node to synchronize every other view. Drag to pan and use zoom for dense upstream/downstream inspection.</p>
+            </div>
+            <div class="inspection-graph-legend" aria-label="Graph legend">
+              <span class="inspection-chip"><span class="inspection-legend-dot is-family"></span> Family node</span>
+              <span class="inspection-chip"><span class="inspection-legend-dot is-capability"></span> Capability node</span>
+              <span class="inspection-chip"><span class="inspection-legend-line is-upstream"></span> Upstream chain</span>
+              <span class="inspection-chip"><span class="inspection-legend-line is-downstream"></span> Downstream chain</span>
+              <span class="inspection-chip"><span class="inspection-legend-line is-membership"></span> Family membership</span>
             </div>
             <div class="inspection-graph-shell">
               <div class="inspection-graph-controls">
@@ -245,7 +256,7 @@
             <ul id="inspection-recent-changes" class="inspection-list"></ul>
           </section>
 
-          <section class="inspection-panel">
+          <section class="inspection-panel is-sticky">
             <div class="inspection-section-head">
               <div>
                 <p class="eyebrow">Inspector</p>

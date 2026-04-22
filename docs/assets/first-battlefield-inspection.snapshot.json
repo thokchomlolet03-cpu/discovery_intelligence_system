@@ -1,0 +1,2939 @@
+{
+  "version": 2,
+  "generated_at": "2026-04-22T06:08:53.501Z",
+  "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
+  "commit_short": "0c17ac8",
+  "branch": "main",
+  "repo_url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system",
+  "tracked_paths": [
+    "docs/first-battlefield-inspection.html",
+    "docs/assets/first-battlefield-inspection.js",
+    "docs/assets/first-battlefield-inspection.css",
+    "docs/assets/first-battlefield-inspection-data.js",
+    "system/services/material_goal_service.py",
+    "system/scientific_state/contracts.py",
+    "system/services/scientific_session_projection_service.py",
+    "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+    "system/services/material_goal_retrieval_service.py",
+    "tests/test_scientific_session_projection.py",
+    "system/discovery_workbench.py",
+    "system/services/material_goal_support_trace_service.py",
+    "templates/discovery.html",
+    "system/services/material_goal_coverage_service.py",
+    "system/services/material_goal_answer_service.py"
+  ],
+  "tracked_paths_count": 15,
+  "repo_inspected_criteria_count": 25,
+  "seeded_criteria_count": 29,
+  "provenance_note": "Generated from the first-battlefield inspection manifest plus repo-inspection rules and git metadata so the portal can expose source references, recent implementation changes, and a bounded set of repo-derived criterion states.",
+  "page_source_refs": [
+    {
+      "path": "docs/first-battlefield-inspection.html",
+      "label": "Inspection page shell",
+      "exists": true,
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/first-battlefield-inspection.html"
+    },
+    {
+      "path": "docs/assets/first-battlefield-inspection.js",
+      "label": "Inspection interaction logic",
+      "exists": true,
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection.js"
+    },
+    {
+      "path": "docs/assets/first-battlefield-inspection.css",
+      "label": "Inspection page styling",
+      "exists": true,
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection.css"
+    },
+    {
+      "path": "docs/assets/first-battlefield-inspection-data.js",
+      "label": "Inspection capability manifest",
+      "exists": true,
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection-data.js"
+    }
+  ],
+  "recent_changes": [
+    {
+      "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
+      "commit_short": "0c17ac8",
+      "committed_on": "2026-04-22",
+      "author": "lolet0815",
+      "subject": "Add repo-inspected battlefield snapshot pipeline"
+    },
+    {
+      "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
+      "commit_short": "120dedb",
+      "committed_on": "2026-04-22",
+      "author": "lolet0815",
+      "subject": "Strengthen battlefield inspection instrument"
+    },
+    {
+      "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+      "commit_short": "ae3adb9",
+      "committed_on": "2026-04-22",
+      "author": "lolet0815",
+      "subject": "Add battlefield inspection portal and support traces"
+    },
+    {
+      "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+      "commit_short": "9d80665",
+      "committed_on": "2026-04-21",
+      "author": "lolet0815",
+      "subject": "Add material goal specifications and discovery updates"
+    },
+    {
+      "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+      "commit_short": "dd1cfc2",
+      "committed_on": "2026-04-21",
+      "author": "lolet0815",
+      "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+    },
+    {
+      "commit_sha": "d9b0ed0362a35dff8a767b90cd06e01da45cd8be",
+      "commit_short": "d9b0ed0",
+      "committed_on": "2026-04-19",
+      "author": "lolet0815",
+      "subject": "Publish epistemic focus updates and truth paper"
+    },
+    {
+      "commit_sha": "882c32a27a2dad9e455fac313ea65d5a750b6d58",
+      "commit_short": "882c32a",
+      "committed_on": "2026-04-18",
+      "author": "lolet0815",
+      "subject": "Add canonical epistemic surfaces and docs state page"
+    },
+    {
+      "commit_sha": "b481812ba3a4a569fa944c739eb2895a377a8f2b",
+      "commit_short": "b481812",
+      "committed_on": "2026-04-01",
+      "author": "lolet0815",
+      "subject": "Ship phased discovery truth updates"
+    }
+  ],
+  "maturity_order": [
+    "missing",
+    "minimal",
+    "partial",
+    "substantial",
+    "strong",
+    "battlefield_ready"
+  ],
+  "maturity_meta": {
+    "missing": {
+      "value": 0,
+      "label": "Missing",
+      "short": "M",
+      "color": "#7f1d1d"
+    },
+    "minimal": {
+      "value": 0.18,
+      "label": "Minimal",
+      "short": "Mi",
+      "color": "#9a3412"
+    },
+    "partial": {
+      "value": 0.4,
+      "label": "Partial",
+      "short": "P",
+      "color": "#a16207"
+    },
+    "substantial": {
+      "value": 0.63,
+      "label": "Substantial",
+      "short": "S",
+      "color": "#0f766e"
+    },
+    "strong": {
+      "value": 0.82,
+      "label": "Strong",
+      "short": "St",
+      "color": "#2563eb"
+    },
+    "battlefield_ready": {
+      "value": 1,
+      "label": "Battlefield Ready",
+      "short": "BR",
+      "color": "#7c3aed"
+    }
+  },
+  "model": {
+    "id": "first-battlefield",
+    "label": "First Battlefield Readiness",
+    "goal_statement": "Build a goal-directed polymer/material discovery system that interprets user-specified material requirements, asks clarifying questions when critical scientific constraints are missing, searches and organizes evidence, returns the best-supported material answer when current evidence is sufficient, and only requests additional data or experiments when the evidence is insufficient.",
+    "scoring_note": "Readiness is computed from weighted criteria inside each capability. Hard battlefield gates prevent the page from confusing broad architectural progress with trustworthy first-battlefield readiness.",
+    "families": [
+      {
+        "id": "goal-understanding",
+        "label": "Goal Understanding",
+        "description": "Interpret the incoming request as a bounded polymer/material discovery objective instead of a generic prompt or upload summary.",
+        "target_state": "The system consistently treats the user request as a first-battlefield material goal with stable target semantics and session continuity.",
+        "why_it_matters": "If the goal is not interpreted as a bounded discovery objective, every downstream scientific judgment becomes unstable.",
+        "category": "scientific_core",
+        "weight": 1.15,
+        "confidence": "high",
+        "criticality": "critical",
+        "dependencies": [],
+        "children": [
+          {
+            "id": "goal-understanding.goal-intake-persistence",
+            "label": "Goal intake and persistence",
+            "description": "Capture the raw goal, structure it, and keep it available across session/workspace continuity.",
+            "target_state": "Every first-battlefield goal is persisted as a first-class record with enough provenance to drive later scientific steps.",
+            "implementation_basis": "MaterialGoalSpecification is persisted per session/workspace and fed into later projection and workbench shaping.",
+            "current_evidence": "Goal specifications, requirement sufficiency state, and clarification questions already survive session reopen.",
+            "limitation": "Revision-to-revision goal provenance is still lighter than the rest of the scientific-state model.",
+            "blocker": "The system still lacks a richer audit trail for how a goal evolves after multiple clarifications.",
+            "recommended_next_step": "Add stronger goal-revision framing so later answer decisions can compare current intent versus earlier intent.",
+            "why_it_matters": "This is the anchor for every later coverage, retrieval, and answer decision step.",
+            "weight": 1.05,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "persist-structured-goal",
+                "label": "Structured goal record exists",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the system persists a first-class material goal record rather than only raw text.",
+                "current_evidence": "Repo inspection found a first-class MaterialGoalSpecification contract plus goal-intake shaping that writes requirement status into the structured goal.",
+                "gap": "Historical goal revision lineage is still not first-class.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "MaterialGoalSpecification contract exists (system/scientific_state/contracts.py)",
+                  "Goal service writes requirement sufficiency into the structured record (system/services/material_goal_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "session-continuity-goal",
+                "label": "Goal survives session reopen",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether reopening a session restores the structured goal context.",
+                "current_evidence": "Repo inspection found material-goal projection shaping plus a session-reopen test covering the first-battlefield projection path.",
+                "gap": "Continuity is still recomputed rather than historically versioned.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Projection service still builds a material-goal summary (system/services/scientific_session_projection_service.py)",
+                  "Projection continuity test covers session reopen (tests/test_scientific_session_projection.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "goal-provenance-depth",
+                "label": "Goal provenance depth",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system preserves a rich explanation of goal revision history.",
+                "current_evidence": "Current continuity preserves the active structured goal but not yet a deeper revision graph.",
+                "gap": "Goal revision lineage is still shallow.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_service.py",
+                "label": "Material goal intake service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+              },
+              {
+                "path": "system/scientific_state/contracts.py",
+                "label": "Scientific-state goal contracts",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+              },
+              {
+                "path": "system/services/scientific_session_projection_service.py",
+                "label": "Session projection recomputation",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/scientific_session_projection_service.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "goal-understanding.domain-bounding",
+            "label": "Polymer/material domain bounding",
+            "description": "Bound the first battlefield to polymer/material discovery and avoid fake target-agnostic behavior.",
+            "target_state": "The system reliably keeps the goal inside the fixed polymer/material battlefield while honestly surfacing bridge-state limits.",
+            "implementation_basis": "The intake path is explicitly scoped to polymer_material and the broader doctrine is now visible in the workbench and docs.",
+            "current_evidence": "The battlefield-specific goal path is now explicitly named and carried through the current system surfaces.",
+            "limitation": "Domain semantics are still bridge-state and do not yet express richer chemistry/material ontologies.",
+            "blocker": "Complex material intents can still be flattened into broad requirement phrases.",
+            "recommended_next_step": "Strengthen first-battlefield material semantics without claiming unsupported target-agnostic reach.",
+            "why_it_matters": "Truthful domain bounding protects the scientific core from unsupported generalization.",
+            "weight": 0.95,
+            "confidence": "medium",
+            "criticality": "important",
+            "dependencies": [
+              "goal-understanding.goal-intake-persistence"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "explicit-battlefield-scope",
+                "label": "Explicit battlefield scope is enforced",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the path explicitly constrains itself to the first battlefield.",
+                "current_evidence": "Repo inspection found explicit polymer_material scope in both the goal service and the persisted contract shape.",
+                "gap": "Subdomain semantics are still bounded and bridge-state.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Goal service fixes the domain scope to polymer_material (system/services/material_goal_service.py)",
+                  "Material-goal contract defaults to polymer_material (system/scientific_state/contracts.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "target-function-normalization",
+                "label": "Target function normalization",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the goal is converted into a bounded target material function rather than left as free text.",
+                "current_evidence": "Target material function is represented in the current structured goal shape.",
+                "gap": "Normalization still depends on a bounded semantic vocabulary.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "bridge-state-honesty",
+                "label": "Bridge-state honesty is surfaced",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the surface is explicit about what remains bridge-state or legacy-constrained.",
+                "current_evidence": "The current doctrine and inspection framing openly describe bridge-state limitations.",
+                "gap": "This is still curated doctrine rather than auto-derived runtime annotation.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_service.py",
+                "label": "Battlefield goal intake path",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+              },
+              {
+                "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+                "label": "First-battlefield doctrine",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_service.py",
+            "label": "Material goal intake service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+          },
+          {
+            "path": "system/scientific_state/contracts.py",
+            "label": "Scientific-state goal contracts",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+          },
+          {
+            "path": "system/services/scientific_session_projection_service.py",
+            "label": "Session projection recomputation",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/scientific_session_projection_service.py"
+          },
+          {
+            "path": "system/services/material_goal_service.py",
+            "label": "Battlefield goal intake path",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+          },
+          {
+            "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+            "label": "First-battlefield doctrine",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "d9b0ed0362a35dff8a767b90cd06e01da45cd8be",
+            "commit_short": "d9b0ed0",
+            "committed_on": "2026-04-19",
+            "author": "lolet0815",
+            "subject": "Publish epistemic focus updates and truth paper"
+          }
+        ]
+      },
+      {
+        "id": "requirement-structuring",
+        "label": "Requirement Structuring",
+        "description": "Turn the raw material goal into explicit scientific requirement dimensions that later evidence can be tested against.",
+        "target_state": "The system can represent the user’s material requirements as explicit, inspectable, and sufficiently complete decision dimensions.",
+        "why_it_matters": "Without structured requirements, evidence matching and answer sufficiency judgment are not scientifically grounded.",
+        "category": "scientific_core",
+        "weight": 1.22,
+        "confidence": "high",
+        "criticality": "critical",
+        "dependencies": [
+          "goal-understanding"
+        ],
+        "children": [
+          {
+            "id": "requirement-structuring.structured-dimensions",
+            "label": "Structured requirement dimensions",
+            "description": "Extract target properties, environment, lifecycle, trigger, safety, and function dimensions into a structured goal shape.",
+            "target_state": "Every goal exposes the first-battlefield requirement dimensions in a stable structure that can be covered or left unknown.",
+            "implementation_basis": "MaterialGoalSpecification already carries named requirement groups for properties, environment, lifecycle, triggers, safety, and target function.",
+            "current_evidence": "These dimensions are already threaded into retrieval, support trace, coverage, and answer decision logic.",
+            "limitation": "Dimension semantics are still template-bounded rather than a richer material ontology.",
+            "blocker": "Synonym handling and deeper requirement semantics remain limited.",
+            "recommended_next_step": "Strengthen dimension normalization so coverage can rely less on direct term overlap.",
+            "why_it_matters": "Coverage and support tracing need explicit requirement slots rather than a free-form request blob.",
+            "weight": 1.05,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "goal-understanding.domain-bounding"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "dimension-presence",
+                "label": "Major requirement dimensions are present",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the goal model exposes the major first-battlefield dimensions.",
+                "current_evidence": "Repo inspection found explicit first-battlefield requirement dimensions in the support-trace layer.",
+                "gap": "Richer second-order material semantics are still not present.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Support trace config includes desired properties (system/services/material_goal_support_trace_service.py)",
+                  "Support trace config includes operating environment (system/services/material_goal_support_trace_service.py)",
+                  "Support trace config includes lifecycle (system/services/material_goal_support_trace_service.py)",
+                  "Support trace config includes target material function (system/services/material_goal_support_trace_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "dimension-propagation",
+                "label": "Dimensions propagate into downstream services",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the structured dimensions are actually consumed downstream.",
+                "current_evidence": "Repo inspection found the dimension structure propagating through retrieval, support trace, coverage, and answer decision layers.",
+                "gap": "Propagation still depends on bridge-state matching semantics rather than a richer ontology.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Retrieval consumes structured goal dimensions (system/services/material_goal_retrieval_service.py)",
+                  "Support trace iterates the dimension set (system/services/material_goal_support_trace_service.py)",
+                  "Coverage is built from the support trace (system/services/material_goal_coverage_service.py)",
+                  "Answer service consumes coverage output (system/services/material_goal_answer_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "semantic-richness",
+                "label": "Dimension semantics are richer than keywords",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether dimensions capture deeper semantics beyond templated phrases.",
+                "current_evidence": "The structure exists, but interpretation is still conservative and bounded.",
+                "gap": "Richer material semantics and uncertainty representation are still missing.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/scientific_state/contracts.py",
+                "label": "Structured material-goal contracts",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+              },
+              {
+                "path": "system/services/material_goal_service.py",
+                "label": "Goal structuring service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+              },
+              {
+                "path": "system/services/material_goal_retrieval_service.py",
+                "label": "Structured retrieval input shaping",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_retrieval_service.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "requirement-structuring.critical-completeness",
+            "label": "Critical requirement completeness",
+            "description": "Judge whether the current goal is sufficiently specified to proceed toward retrieval and answer logic.",
+            "target_state": "The system reliably distinguishes between sufficiently specified and scientifically incomplete goals before answer work begins.",
+            "implementation_basis": "Requirement sufficiency is already computed during intake and blocks later progression when critical constraints are absent.",
+            "current_evidence": "The system now refuses to proceed to answer logic when the goal remains insufficiently specified.",
+            "limitation": "Criticality logic is still bridge-state and can miss nuanced insufficiencies.",
+            "blocker": "The system still lacks richer prioritization of which missing requirement most distorts the answer boundary.",
+            "recommended_next_step": "Expand criticality rules using the same disciplined first-battlefield requirement structure.",
+            "why_it_matters": "Answer sufficiency is meaningless if the goal itself is not sufficiently specified.",
+            "weight": 1.1,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "requirement-structuring.structured-dimensions"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "sufficiency-status",
+                "label": "Sufficiency status is explicit",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the goal path explicitly records requirement sufficiency status.",
+                "current_evidence": "Repo inspection found explicit requirement sufficiency computation and storage in the material-goal path.",
+                "gap": "Finer-grained insufficiency semantics remain limited.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Goal service computes sufficiency status explicitly (system/services/material_goal_service.py)",
+                  "Contract stores requirement status explicitly (system/scientific_state/contracts.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "critical-gaps-block-flow",
+                "label": "Critical gaps block downstream flow",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether insufficient goals are prevented from being treated as answer-ready.",
+                "current_evidence": "Repo inspection found both source logic and tests confirming that insufficient goals do not flow into answer promotion.",
+                "gap": "Blocking logic is still bounded to current first-battlefield semantics.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Test covers retrieval blocking on insufficient goals (tests/test_scientific_session_projection.py)",
+                  "Answer service requires sufficiently specified goals (system/services/material_goal_answer_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "impact-aware-prioritization",
+                "label": "Missing constraints are prioritized by answer impact",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system ranks missing requirements by how much they affect answer trustworthiness.",
+                "current_evidence": "Clarifications are targeted, but their ranking is still relatively static.",
+                "gap": "No stronger answer-impact ranking yet.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_service.py",
+                "label": "Requirement sufficiency logic",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+              },
+              {
+                "path": "tests/test_scientific_session_projection.py",
+                "label": "Projection continuity tests",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/scientific_state/contracts.py",
+            "label": "Structured material-goal contracts",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+          },
+          {
+            "path": "system/services/material_goal_service.py",
+            "label": "Goal structuring service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+          },
+          {
+            "path": "system/services/material_goal_retrieval_service.py",
+            "label": "Structured retrieval input shaping",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_retrieval_service.py"
+          },
+          {
+            "path": "system/services/material_goal_service.py",
+            "label": "Requirement sufficiency logic",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+          },
+          {
+            "path": "tests/test_scientific_session_projection.py",
+            "label": "Projection continuity tests",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "d9b0ed0362a35dff8a767b90cd06e01da45cd8be",
+            "commit_short": "d9b0ed0",
+            "committed_on": "2026-04-19",
+            "author": "lolet0815",
+            "subject": "Publish epistemic focus updates and truth paper"
+          }
+        ]
+      },
+      {
+        "id": "clarification",
+        "label": "Clarification / Missing Constraint Detection",
+        "description": "Ask for missing scientific constraints when the goal is incomplete, rather than pretending an answer is already possible.",
+        "target_state": "The system asks bounded, decision-relevant clarification questions exactly where missing requirements still block scientific trustworthiness.",
+        "why_it_matters": "The first battlefield requires the system to ask clarifying questions only when critical scientific constraints are missing.",
+        "category": "scientific_core",
+        "weight": 1.08,
+        "confidence": "high",
+        "criticality": "critical",
+        "dependencies": [
+          "requirement-structuring"
+        ],
+        "children": [
+          {
+            "id": "clarification.missing-constraint-detection",
+            "label": "Missing constraint detection",
+            "description": "Detect missing environment, lifecycle, trigger, and safety constraints that materially affect answerability.",
+            "target_state": "The system recognizes the major first-battlefield missing-constraint patterns and exposes them before retrieval or answer promotion.",
+            "implementation_basis": "The intake layer already generates clarification questions when environment, lifecycle, trigger, or safety constraints are missing.",
+            "current_evidence": "Current goal intake explicitly detects missing environment and other key requirement families.",
+            "limitation": "Detection is still rule-driven and can miss more subtle ambiguity patterns.",
+            "blocker": "Nuanced ambiguity is still flattened into broad missing-constraint categories.",
+            "recommended_next_step": "Expand bounded ambiguity detection while preserving conservative behavior.",
+            "why_it_matters": "This keeps the system from mistaking underspecified intent for answerable intent.",
+            "weight": 1,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "requirement-structuring.critical-completeness"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "environment-gap-detection",
+                "label": "Environment gaps are detected",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether environment omissions trigger a clarification path.",
+                "current_evidence": "Repo inspection found environment-sensitive missing-constraint and clarification logic in the goal service.",
+                "gap": "Environment semantics remain bounded and phrase-driven.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Goal service contains environment-sensitive missing-constraint logic (system/services/material_goal_service.py)",
+                  "Goal service builds clarification questions from missing constraints (system/services/material_goal_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "lifecycle-trigger-safety-gaps",
+                "label": "Lifecycle, trigger, and safety gaps are detected",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether other critical scientific constraints are explicitly detected when absent.",
+                "current_evidence": "Repo inspection found explicit lifecycle, trigger, and safety gap categories in the first-battlefield support-trace path.",
+                "gap": "Detection remains bounded and still depends on current dimension semantics.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Lifecycle gap code exists (system/services/material_goal_support_trace_service.py)",
+                  "Trigger gap code exists (system/services/material_goal_support_trace_service.py)",
+                  "Safety/regulatory gap code exists (system/services/material_goal_support_trace_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "subtle-ambiguity-detection",
+                "label": "Subtle ambiguity detection",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system catches nuanced incompleteness beyond obvious missing fields.",
+                "current_evidence": "The current path goes beyond one missing field, but it is still bounded.",
+                "gap": "More subtle scientific ambiguity remains only partly handled.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_service.py",
+                "label": "Clarification generation logic",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+              },
+              {
+                "path": "tests/test_scientific_session_projection.py",
+                "label": "Goal clarification coverage tests",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "clarification.prioritized-clarification",
+            "label": "Prioritized clarification generation",
+            "description": "Generate the next most useful clarification question instead of dumping broad forms of generic caution.",
+            "target_state": "Clarification requests are ranked by how much they reduce first-battlefield answer uncertainty.",
+            "implementation_basis": "The current goal layer already generates targeted clarification prompts when critical constraints are missing.",
+            "current_evidence": "Clarification output is bounded and domain-shaped instead of generic.",
+            "limitation": "Questions are still relatively template-driven rather than ranked by downstream leverage.",
+            "blocker": "The system cannot yet compare which clarification would most increase answer readiness.",
+            "recommended_next_step": "Add answer-impact ranking so clarification output becomes more strategically ordered.",
+            "why_it_matters": "Good clarification is part of discovery steering, not just form completion.",
+            "weight": 0.95,
+            "confidence": "medium",
+            "criticality": "important",
+            "dependencies": [
+              "clarification.missing-constraint-detection"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "bounded-question-generation",
+                "label": "Clarification questions are bounded and domain-specific",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether clarification output stays within the first battlefield rather than generic assistant behavior.",
+                "current_evidence": "The current prompts are targeted to material-goal requirement gaps.",
+                "gap": "Prompt ranking remains limited.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "answer-impact-ranking",
+                "label": "Clarifications are ranked by answer impact",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system knows which missing constraint matters most to the answer boundary.",
+                "current_evidence": "Current questions are targeted but not deeply ranked by readiness leverage.",
+                "gap": "No stronger answer-impact model yet.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "minimal-over-asking",
+                "label": "The system avoids unnecessary clarification",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system asks only the missing questions that materially matter.",
+                "current_evidence": "The current path is bounded, but its selectivity is still heuristic.",
+                "gap": "Clarification precision is still evolving.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_service.py",
+                "label": "Clarification question shaping",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+              },
+              {
+                "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+                "label": "Clarification doctrine",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_service.py",
+            "label": "Clarification generation logic",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+          },
+          {
+            "path": "tests/test_scientific_session_projection.py",
+            "label": "Goal clarification coverage tests",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+          },
+          {
+            "path": "system/services/material_goal_service.py",
+            "label": "Clarification question shaping",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_service.py"
+          },
+          {
+            "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+            "label": "Clarification doctrine",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "d9b0ed0362a35dff8a767b90cd06e01da45cd8be",
+            "commit_short": "d9b0ed0",
+            "committed_on": "2026-04-19",
+            "author": "lolet0815",
+            "subject": "Publish epistemic focus updates and truth paper"
+          }
+        ]
+      },
+      {
+        "id": "evidence-retrieval",
+        "label": "Evidence Retrieval and Organization",
+        "description": "Search and organize grounded support for candidate material directions without fabricating evidence depth that does not exist.",
+        "target_state": "The system can retrieve, organize, and bound real evidence against the structured material goal, with enough depth to support later answer decisions.",
+        "why_it_matters": "This is the main bridge-state bottleneck between a capable product workbench and a real discovery engine.",
+        "category": "scientific_core",
+        "weight": 1.32,
+        "confidence": "medium",
+        "criticality": "critical",
+        "dependencies": [
+          "requirement-structuring",
+          "clarification"
+        ],
+        "children": [
+          {
+            "id": "evidence-retrieval.grounded-evidence-matching",
+            "label": "Grounded evidence matching",
+            "description": "Map the structured goal onto grounded evidence already available in the current scientific/session context.",
+            "target_state": "The system can retrieve evidence with enough grounding depth to support or refute requirement dimensions, not just match terms.",
+            "implementation_basis": "Retrieval now maps structured goal requirements onto existing session evidence, model outputs, and recommendation records.",
+            "current_evidence": "The system already distinguishes no_grounded_evidence, weak_partial_evidence, and candidate_directions_available.",
+            "limitation": "Retrieval is still session-local and relatively term-and-summary driven.",
+            "blocker": "Thin evidence retrieval remains the biggest barrier to a trustworthy first-battlefield answer.",
+            "recommended_next_step": "Increase grounding depth and richer evidence matching before widening any answer claims.",
+            "why_it_matters": "Answer sufficiency cannot become strong while evidence retrieval remains thin and shallow.",
+            "weight": 1.15,
+            "confidence": "medium",
+            "criticality": "critical",
+            "dependencies": [
+              "requirement-structuring.structured-dimensions"
+            ],
+            "battlefield_gate": {
+              "required_status": "strong",
+              "rationale": "The system cannot honestly claim first-battlefield readiness until retrieval grounding is stronger than session-local term matching."
+            },
+            "criteria": [
+              {
+                "id": "explicit-retrieval-sufficiency",
+                "label": "Retrieval sufficiency states are explicit",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether retrieval distinguishes no evidence, weak evidence, and candidate directions.",
+                "current_evidence": "Repo inspection found explicit retrieval sufficiency states in the retrieval service.",
+                "gap": "These states still summarize a relatively thin evidence basis.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Retrieval emits no_grounded_evidence (system/services/material_goal_retrieval_service.py)",
+                  "Retrieval emits weak_partial_evidence (system/services/material_goal_retrieval_service.py)",
+                  "Retrieval emits candidate_directions_available (system/services/material_goal_retrieval_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "evidence-grounding-depth",
+                "label": "Grounding depth goes beyond thin summary matching",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether retrieved evidence is rich enough to support dimension-level scientific judgments.",
+                "current_evidence": "Grounding is real, but still bounded to current session traces and support summaries.",
+                "gap": "No deeper evidence corpus or richer evidence linking yet.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "honest-thin-retrieval-surfacing",
+                "label": "Thin retrieval is surfaced honestly",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether weak retrieval is exposed as weak rather than promoted.",
+                "current_evidence": "Repo inspection found tests explicitly covering weak-partial retrieval surfacing and answer withholding.",
+                "gap": "This honesty still depends on the upstream retrieval layer staying disciplined.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Tests cover weak_partial_evidence surfacing (tests/test_scientific_session_projection.py)",
+                  "Tests cover no fabricated answer from weak partial evidence (tests/test_scientific_session_projection.py)"
+                ],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_retrieval_service.py",
+                "label": "Grounded retrieval service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_retrieval_service.py"
+              },
+              {
+                "path": "system/services/scientific_session_projection_service.py",
+                "label": "Retrieval projection exposure",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/scientific_session_projection_service.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "evidence-retrieval.candidate-direction-organization",
+            "label": "Candidate material direction organization",
+            "description": "Organize retrieved support into conservative candidate material directions with visible support boundaries.",
+            "target_state": "Candidate directions are stable, inspectable, and sufficiently differentiated to support later coverage and answer work.",
+            "implementation_basis": "Retrieval already groups matched support into conservative candidate directions with support strength and limitation lines.",
+            "current_evidence": "The workbench now shows candidate material directions rather than pretending to output a final answer directly.",
+            "limitation": "Direction identity and aggregation are still bridge-state and can remain coarse.",
+            "blocker": "Material direction identity is still not rich enough to fully support high-trust selection among close candidates.",
+            "recommended_next_step": "Improve direction identity and support aggregation without sliding into fabricated precision.",
+            "why_it_matters": "Coverage and answer decision need a coherent leading direction before they can judge sufficiency.",
+            "weight": 1,
+            "confidence": "medium",
+            "criticality": "critical",
+            "dependencies": [
+              "evidence-retrieval.grounded-evidence-matching"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "direction-assembly",
+                "label": "Candidate directions are assembled explicitly",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the system groups evidence into candidate material directions.",
+                "current_evidence": "Retrieval now returns organized candidate directions instead of only isolated evidence snippets.",
+                "gap": "Direction identity is still relatively coarse.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "support-boundary-visible",
+                "label": "Direction support boundaries remain visible",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether direction-level limitations and support strength remain inspectable.",
+                "current_evidence": "Support strength and limitation lines already accompany the candidate directions.",
+                "gap": "Support provenance is still summary-shaped.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "comparative-direction-strength",
+                "label": "Candidate directions are comparatively differentiable",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the current evidence basis supports a strong comparison between directions.",
+                "current_evidence": "Direction organization exists, but it remains thin where retrieval is thin.",
+                "gap": "Comparative differentiation is still weak when evidence density is low.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_retrieval_service.py",
+                "label": "Candidate direction organization",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_retrieval_service.py"
+              },
+              {
+                "path": "system/discovery_workbench.py",
+                "label": "Discovery workbench shaping",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/discovery_workbench.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_retrieval_service.py",
+            "label": "Grounded retrieval service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_retrieval_service.py"
+          },
+          {
+            "path": "system/services/scientific_session_projection_service.py",
+            "label": "Retrieval projection exposure",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/scientific_session_projection_service.py"
+          },
+          {
+            "path": "system/services/material_goal_retrieval_service.py",
+            "label": "Candidate direction organization",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_retrieval_service.py"
+          },
+          {
+            "path": "system/discovery_workbench.py",
+            "label": "Discovery workbench shaping",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/discovery_workbench.py"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "d9b0ed0362a35dff8a767b90cd06e01da45cd8be",
+            "commit_short": "d9b0ed0",
+            "committed_on": "2026-04-19",
+            "author": "lolet0815",
+            "subject": "Publish epistemic focus updates and truth paper"
+          }
+        ]
+      },
+      {
+        "id": "traceability",
+        "label": "Requirement Coverage and Support Traceability",
+        "description": "Trace each requirement dimension to explicit support basis, contradiction basis, and missing-evidence basis so answer decisions become inspectable.",
+        "target_state": "Every critical requirement dimension can be traced to what supports it, what contradicts it, and what remains missing.",
+        "why_it_matters": "This is the core shift from retrieval summaries toward a more legible scientific decision substrate.",
+        "category": "scientific_core",
+        "weight": 1.35,
+        "confidence": "medium",
+        "criticality": "critical",
+        "dependencies": [
+          "evidence-retrieval"
+        ],
+        "children": [
+          {
+            "id": "traceability.requirement-support-trace",
+            "label": "Per-dimension support trace",
+            "description": "Attach exact matched support lines, observed versus indirect support, contradiction indicators, uncovered terms, and gap codes to each requirement dimension.",
+            "target_state": "Each requirement dimension exposes a compact but explicit support trace that can be audited by the user and reused by later logic.",
+            "implementation_basis": "MaterialGoalSupportTrace now derives explicit per-dimension support records for the leading direction.",
+            "current_evidence": "Support traces now show matched lines, observed lines, indirect lines, contradiction indicators, uncovered terms, and gap codes.",
+            "limitation": "Support traces are still constrained by the quality of current retrieval support lines.",
+            "blocker": "Traceability cannot become stronger than the evidentiary richness of the retrieval layer beneath it.",
+            "recommended_next_step": "Increase direct evidence provenance and dimension-level grounding beneath the trace layer.",
+            "why_it_matters": "This is the mechanism that lets the system answer: what supports this requirement, what contradicts it, and what is still missing?",
+            "weight": 1.12,
+            "confidence": "medium",
+            "criticality": "critical",
+            "dependencies": [
+              "evidence-retrieval.candidate-direction-organization"
+            ],
+            "battlefield_gate": {
+              "required_status": "strong",
+              "rationale": "The system cannot be battlefield-ready while critical requirement support still depends on shallow, weakly attributable traces."
+            },
+            "criteria": [
+              {
+                "id": "trace-basis-explicit",
+                "label": "Support basis is explicit per dimension",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the trace explicitly lists matched support and uncovered terms per requirement dimension.",
+                "current_evidence": "Repo inspection found explicit support, uncovered-term, and contradiction fields inside the support-trace service output.",
+                "gap": "Trace provenance is still limited by the richness of the underlying evidence lines.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Support trace records matched support lines (system/services/material_goal_support_trace_service.py)",
+                  "Support trace records uncovered terms (system/services/material_goal_support_trace_service.py)",
+                  "Support trace records contradiction indicators (system/services/material_goal_support_trace_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "observed-vs-indirect-distinction",
+                "label": "Observed versus indirect support is distinguished",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the system separates stronger observed support from indirect support.",
+                "current_evidence": "Repo inspection found explicit observed-versus-indirect separation in the support-trace service.",
+                "gap": "The distinction is explicit, but the evidence basis itself remains bridge-state.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Support trace separates observed evidence lines (system/services/material_goal_support_trace_service.py)",
+                  "Support trace preserves indirect support lines (system/services/material_goal_support_trace_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "direct-provenance-depth",
+                "label": "Trace provenance is rich enough for stronger audit",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the trace can show deeper evidence provenance beyond support-line summaries.",
+                "current_evidence": "Traceability has become explicit, but its provenance remains bounded.",
+                "gap": "A richer evidence-to-requirement link model is still missing.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_support_trace_service.py",
+                "label": "Support trace service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_support_trace_service.py"
+              },
+              {
+                "path": "system/scientific_state/contracts.py",
+                "label": "Support trace contracts",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+              },
+              {
+                "path": "templates/discovery.html",
+                "label": "Discovery support trace panel",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "traceability.requirement-coverage-judgment",
+            "label": "Requirement coverage judgment",
+            "description": "Convert support traces into explicit per-dimension coverage judgments such as supported, partially supported, unknown, or contradicted.",
+            "target_state": "Coverage expresses whether each requirement dimension is truly supported enough to participate in answer promotion.",
+            "implementation_basis": "MaterialGoalCoverage now depends on support traces rather than direct coarse term checks.",
+            "current_evidence": "Discovery surfaces now expose requirement dimensions, status per dimension, rationale, and gaps.",
+            "limitation": "Coverage status still inherits retrieval and contradiction coarseness where the underlying evidence is weak.",
+            "blocker": "Coverage is more inspectable now, but still not backed by a deeper evidence graph.",
+            "recommended_next_step": "Strengthen dimension semantics and contradiction attribution while keeping coverage conservative.",
+            "why_it_matters": "Answer promotion now depends on coverage, so this layer must stay explicit and disciplined.",
+            "weight": 1.08,
+            "confidence": "medium",
+            "criticality": "critical",
+            "dependencies": [
+              "traceability.requirement-support-trace"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "coverage-derived-from-trace",
+                "label": "Coverage is derived from the support trace",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether coverage status now depends on explicit trace structure rather than a shallow summary.",
+                "current_evidence": "Repo inspection found coverage explicitly consuming the support trace as its primary substrate.",
+                "gap": "Coverage still inherits bridge-state limits from the trace beneath it.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Coverage provenance records the support trace as its substrate (system/services/material_goal_coverage_service.py)",
+                  "Coverage derives status from trace items (system/services/material_goal_coverage_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "critical-dimension-gating",
+                "label": "Critical dimensions can block answer promotion",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether uncovered or contradicted critical dimensions are visible and decision-relevant.",
+                "current_evidence": "Critical requirement dimensions now drive answer withholding when under-supported.",
+                "gap": "Dimension criticality is still partly encoded by current field structure.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "dimension-semantic-depth",
+                "label": "Coverage captures deeper requirement semantics",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether coverage can express nuanced dimension semantics beyond term coverage.",
+                "current_evidence": "Coverage has moved beyond raw term checks, but the semantic depth is still bounded.",
+                "gap": "Richer requirement semantics remain to be built.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_coverage_service.py",
+                "label": "Requirement coverage service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+              },
+              {
+                "path": "system/services/material_goal_support_trace_service.py",
+                "label": "Support trace substrate",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_support_trace_service.py"
+              },
+              {
+                "path": "templates/discovery.html",
+                "label": "Coverage surface rendering",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_support_trace_service.py",
+            "label": "Support trace service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_support_trace_service.py"
+          },
+          {
+            "path": "system/scientific_state/contracts.py",
+            "label": "Support trace contracts",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+          },
+          {
+            "path": "templates/discovery.html",
+            "label": "Discovery support trace panel",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+          },
+          {
+            "path": "system/services/material_goal_coverage_service.py",
+            "label": "Requirement coverage service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+          },
+          {
+            "path": "system/services/material_goal_support_trace_service.py",
+            "label": "Support trace substrate",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_support_trace_service.py"
+          },
+          {
+            "path": "templates/discovery.html",
+            "label": "Coverage surface rendering",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "882c32a27a2dad9e455fac313ea65d5a750b6d58",
+            "commit_short": "882c32a",
+            "committed_on": "2026-04-18",
+            "author": "lolet0815",
+            "subject": "Add canonical epistemic surfaces and docs state page"
+          }
+        ]
+      },
+      {
+        "id": "contradiction-unknowns",
+        "label": "Contradiction Handling and Unknown Detection",
+        "description": "Treat contradiction pressure and explicit unknowns as first-class reasons not to return an answer prematurely.",
+        "target_state": "The system can say not just that a dimension is weak, but whether it is unsupported, indirectly supported, contradicted, or still missing decisive evidence.",
+        "why_it_matters": "A truth-seeking discovery system must know why not to trust apparent support.",
+        "category": "scientific_core",
+        "weight": 1.24,
+        "confidence": "medium",
+        "criticality": "critical",
+        "dependencies": [
+          "traceability"
+        ],
+        "children": [
+          {
+            "id": "contradiction-unknowns.dimension-contradiction-attribution",
+            "label": "Dimension-aware contradiction attribution",
+            "description": "Map contradiction indicators to the requirement dimensions they pressure, while honestly marking when the attribution is still coarse.",
+            "target_state": "Contradictions can be linked to specific requirement dimensions whenever the current scientific state genuinely supports that precision.",
+            "implementation_basis": "Support traces now attempt dimension-aware contradiction attribution and surface when attribution is still coarse.",
+            "current_evidence": "The current system now exposes when contradiction pressure is dimension-specific versus direction-level.",
+            "limitation": "Contradiction objects are still not inherently dimension-tagged, so attribution remains partly coarse.",
+            "blocker": "Without stronger dimension tagging, contradiction handling still caps answer trustworthiness.",
+            "recommended_next_step": "Carry stronger provenance and dimension tags into contradiction records and support traces.",
+            "why_it_matters": "Contradiction handling is one of the main barriers between plausible support and trustworthy support.",
+            "weight": 1.12,
+            "confidence": "medium",
+            "criticality": "critical",
+            "dependencies": [
+              "traceability.requirement-support-trace"
+            ],
+            "battlefield_gate": {
+              "required_status": "strong",
+              "rationale": "The system cannot honestly claim battlefield readiness while contradiction pressure remains only partly attributable to the dimensions it may invalidate."
+            },
+            "criteria": [
+              {
+                "id": "trace-linked-contradictions",
+                "label": "Contradictions can be linked into support traces",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether contradiction indicators can be surfaced inside the per-dimension trace layer.",
+                "current_evidence": "Repo inspection found explicit dimension contradiction attribution logic plus provenance about whether attribution is dimension-specific or coarse.",
+                "gap": "Contradiction objects are still not richly dimension-tagged.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "partial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Support trace contains dimension contradiction attribution logic (system/services/material_goal_support_trace_service.py)",
+                  "Support trace provenance distinguishes contradiction attribution mode (system/services/material_goal_support_trace_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "dimension-specific-attribution",
+                "label": "Dimension-specific attribution is available when justified",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system can attach contradiction pressure to the correct requirement dimension.",
+                "current_evidence": "Some dimension-aware mapping is now present, but it is still cautious and limited.",
+                "gap": "Dimension tags are not yet first-class in contradiction records.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "contradiction-provenance-depth",
+                "label": "Contradiction provenance is rich enough for strong blocking",
+                "status": "minimal",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether contradiction evidence is deep enough to support stronger dimension-level blocking logic.",
+                "current_evidence": "Current contradiction provenance remains coarser than the new support trace model.",
+                "gap": "Evidence-level contradiction attribution remains largely unbuilt.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "minimal",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_support_trace_service.py",
+                "label": "Dimension-level contradiction mapping",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_support_trace_service.py"
+              },
+              {
+                "path": "system/scientific_state/contracts.py",
+                "label": "Trace and contradiction contracts",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "contradiction-unknowns.requirement-linked-unknowns",
+            "label": "Requirement-linked explicit unknowns",
+            "description": "Derive explicit unknowns from uncovered dimensions, indirect-only support, sparse evidence, and unresolved contradiction pressure.",
+            "target_state": "Every insufficient case exposes the concrete requirement-linked unknowns that still prevent a trustworthy answer.",
+            "implementation_basis": "Unknowns now derive from support-trace and coverage gaps rather than vague caution language.",
+            "current_evidence": "Insufficient cases now surface codes like sparse_evidence_basis, weak_environmental_match, and unresolved_contradiction_pressure.",
+            "limitation": "The unknown ontology is still first-version and intentionally bounded.",
+            "blocker": "Unknowns are now explicit, but they are not yet deeply typed or prioritized by experimental value.",
+            "recommended_next_step": "Expand the unknown ontology and tie it more directly to experiment-closing value.",
+            "why_it_matters": "Unknowns are the bridge between honest withholding and useful next-step guidance.",
+            "weight": 1,
+            "confidence": "medium",
+            "criticality": "critical",
+            "dependencies": [
+              "traceability.requirement-coverage-judgment"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "unknowns-derived-from-coverage",
+                "label": "Unknowns are derived from uncovered critical dimensions",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the unknowns correspond to real gaps in the current requirement coverage.",
+                "current_evidence": "Repo inspection found explicit derivation of unknowns from coverage and support-trace structure.",
+                "gap": "Unknown typing and prioritization are still first-version.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Answer service derives unknowns from trace/coverage structure (system/services/material_goal_answer_service.py)",
+                  "Answer service starts unknowns from coverage critical unknowns (system/services/material_goal_answer_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "unknown-codes-are-machine-readable",
+                "label": "Unknowns remain machine-readable and inspectable",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the system exposes explicit unknown categories rather than only prose summaries.",
+                "current_evidence": "Repo inspection found machine-readable gap codes and structured answer-gap request payloads in the current source.",
+                "gap": "The ontology remains intentionally bounded.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Support trace emits machine-readable gap codes (system/services/material_goal_support_trace_service.py)",
+                  "Answer request payload keeps structured provenance (system/services/material_goal_answer_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "unknown-prioritization",
+                "label": "Unknowns are prioritized by closure value",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system knows which unknown is most important to close first.",
+                "current_evidence": "The system now narrows the unknown list, but prioritization is still coarse.",
+                "gap": "No stronger value-of-information logic yet.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_answer_service.py",
+                "label": "Unknown derivation and insufficiency logic",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+              },
+              {
+                "path": "system/services/material_goal_coverage_service.py",
+                "label": "Coverage-linked gap shaping",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_support_trace_service.py",
+            "label": "Dimension-level contradiction mapping",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_support_trace_service.py"
+          },
+          {
+            "path": "system/scientific_state/contracts.py",
+            "label": "Trace and contradiction contracts",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/scientific_state/contracts.py"
+          },
+          {
+            "path": "system/services/material_goal_answer_service.py",
+            "label": "Unknown derivation and insufficiency logic",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+          },
+          {
+            "path": "system/services/material_goal_coverage_service.py",
+            "label": "Coverage-linked gap shaping",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "882c32a27a2dad9e455fac313ea65d5a750b6d58",
+            "commit_short": "882c32a",
+            "committed_on": "2026-04-18",
+            "author": "lolet0815",
+            "subject": "Add canonical epistemic surfaces and docs state page"
+          }
+        ]
+      },
+      {
+        "id": "answer-decision",
+        "label": "Answer Sufficiency Judgment and Follow-up Actioning",
+        "description": "Make the central battlefield decision: answer now when support is sufficient, or withhold and ask only for the data that would close the insufficiency.",
+        "target_state": "The system returns a best-supported material answer only when coverage, support trace, contradiction handling, and evidence grounding justify it.",
+        "why_it_matters": "This is the fixed first-battlefield decision boundary around which the current architecture is being rebuilt.",
+        "category": "scientific_core",
+        "weight": 1.38,
+        "confidence": "high",
+        "criticality": "critical",
+        "dependencies": [
+          "traceability",
+          "contradiction-unknowns"
+        ],
+        "children": [
+          {
+            "id": "answer-decision.bounded-answer-promotion",
+            "label": "Bounded answer promotion",
+            "description": "Promote a best-supported answer only when critical requirement dimensions are actually covered and contradiction pressure is not blocking.",
+            "target_state": "Answer promotion depends on explicit coverage and support sufficiency, not shallow retrieval optimism.",
+            "implementation_basis": "MaterialGoalAnswerDecision now uses coverage as its primary gate and still retains conservative secondary guards.",
+            "current_evidence": "Answer promotion now requires supported critical dimensions and blocks weak/partial retrieval from masquerading as a supported answer.",
+            "limitation": "The logic is stronger than before, but upstream evidence depth still caps how often a trustworthy answer can be returned.",
+            "blocker": "The answer boundary is now meaningful, but the evidence basis beneath it is still not battlefield-strong.",
+            "recommended_next_step": "Keep the answer policy conservative while deepening the support basis beneath it.",
+            "why_it_matters": "This is where the system stops being a recommendation shell and starts acting like a disciplined discovery engine.",
+            "weight": 1.12,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "traceability.requirement-coverage-judgment",
+              "contradiction-unknowns.dimension-contradiction-attribution"
+            ],
+            "battlefield_gate": {
+              "required_status": "strong",
+              "rationale": "Battlefield readiness requires a real, reliable answer boundary; this capability must stay strong and remain grounded in explicit support."
+            },
+            "criteria": [
+              {
+                "id": "coverage-primary-gate",
+                "label": "Coverage is the primary answer gate",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the answer decision primarily relies on structured coverage rather than raw retrieval heuristics.",
+                "current_evidence": "Repo inspection found answer logic explicitly gating on critical coverage outcomes.",
+                "gap": "The gate is meaningful now, but upstream evidence depth still limits answerability.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Answer service accepts explicit coverage input (system/services/material_goal_answer_service.py)",
+                  "Answer service gates on critical coverage status (system/services/material_goal_answer_service.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "unsupported-answers-withheld",
+                "label": "Weak or partial support does not become a supported answer",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether weak retrieval or partial critical coverage is explicitly withheld.",
+                "current_evidence": "Repo inspection found tests explicitly covering answer withholding for weak evidence and uncovered critical dimensions.",
+                "gap": "Withholding is only as strong as the upstream traces that feed it.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Tests cover no fabricated answer from weak partial evidence (tests/test_scientific_session_projection.py)",
+                  "Tests cover critical-dimension blocking (tests/test_scientific_session_projection.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "critical-dimension-justification",
+                "label": "Answer promotion is justified dimension by dimension",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system can explain why each critical dimension passed the gate.",
+                "current_evidence": "Coverage and support trace give a more legible basis now, but not yet a deeper evidence graph.",
+                "gap": "Justification is explicit but still bridge-state.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_answer_service.py",
+                "label": "Answer decision service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+              },
+              {
+                "path": "system/services/material_goal_coverage_service.py",
+                "label": "Coverage-based answer gating",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+              },
+              {
+                "path": "tests/test_scientific_session_projection.py",
+                "label": "Answer projection tests",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "answer-decision.insufficiency-follow-up-actioning",
+            "label": "Insufficiency follow-up actioning",
+            "description": "When the answer is insufficient, request only the next data or experiment steps that directly close the explicit insufficiency.",
+            "target_state": "The system requests bounded additional data or experiments only because the current evidence basis is insufficient, not because generic caution language exists.",
+            "implementation_basis": "Insufficient cases already emit bounded additional-data and experiment requests linked to trace and coverage gaps.",
+            "current_evidence": "The current answer layer now requests more only in insufficient cases and ties follow-up to explicit insufficiency reasons.",
+            "limitation": "Follow-up specificity is still first-version and constrained by the current unknown ontology.",
+            "blocker": "Experiment request quality is still limited by the granularity of the unknown model.",
+            "recommended_next_step": "Improve follow-up prioritization and experimental specificity from the explicit unknown structure.",
+            "why_it_matters": "The first battlefield requires not just withholding, but disciplined next-step steering when current evidence is insufficient.",
+            "weight": 1,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "contradiction-unknowns.requirement-linked-unknowns",
+              "answer-decision.bounded-answer-promotion"
+            ],
+            "battlefield_gate": {
+              "required_status": "strong",
+              "rationale": "Battlefield readiness requires the system to ask for more only when the evidence basis is insufficient and to do so in a requirement-linked way."
+            },
+            "criteria": [
+              {
+                "id": "follow-up-only-when-insufficient",
+                "label": "Additional requests appear only when the answer is insufficient",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether additional data or experiments are requested only in insufficient cases.",
+                "current_evidence": "Repo inspection found tests covering the boundary between no requests in supported cases and requests in insufficient cases.",
+                "gap": "Request specificity and prioritization remain first-version.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Tests assert no extra data requests when an answer is supportable (tests/test_scientific_session_projection.py)",
+                  "Tests assert no experiment requests when an answer is supportable (tests/test_scientific_session_projection.py)",
+                  "Tests assert requests appear in insufficient cases (tests/test_scientific_session_projection.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "follow-up-linked-to-gap",
+                "label": "Requests are linked to explicit insufficiency gaps",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether each request can be traced back to a support, coverage, or contradiction gap.",
+                "current_evidence": "Repo inspection could not confirm linked-unknown request shaping in the current answer service source.",
+                "gap": "Follow-up requests may no longer be tightly coupled to the triggering insufficiency.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection could not confirm the full expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Answer service emits contradiction-linked experiment requests (system/services/material_goal_answer_service.py)"
+                ],
+                "repo_inspection_missing": [
+                  "Answer requests preserve linked unknowns (system/services/material_goal_answer_service.py)"
+                ]
+              },
+              {
+                "id": "request-prioritization-quality",
+                "label": "Requests are prioritized by closure value",
+                "status": "partial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system knows which follow-up request gives the highest leverage toward answer sufficiency.",
+                "current_evidence": "Current requests are bounded, but prioritization quality is still early-stage.",
+                "gap": "No stronger closure-value model yet.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_answer_service.py",
+                "label": "Bounded additional-data and experiment requests",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+              },
+              {
+                "path": "tests/test_scientific_session_projection.py",
+                "label": "Insufficiency follow-up tests",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_answer_service.py",
+            "label": "Answer decision service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+          },
+          {
+            "path": "system/services/material_goal_coverage_service.py",
+            "label": "Coverage-based answer gating",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+          },
+          {
+            "path": "tests/test_scientific_session_projection.py",
+            "label": "Answer projection tests",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+          },
+          {
+            "path": "system/services/material_goal_answer_service.py",
+            "label": "Bounded additional-data and experiment requests",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+          },
+          {
+            "path": "tests/test_scientific_session_projection.py",
+            "label": "Insufficiency follow-up tests",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          },
+          {
+            "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+            "commit_short": "dd1cfc2",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+          },
+          {
+            "commit_sha": "d9b0ed0362a35dff8a767b90cd06e01da45cd8be",
+            "commit_short": "d9b0ed0",
+            "committed_on": "2026-04-19",
+            "author": "lolet0815",
+            "subject": "Publish epistemic focus updates and truth paper"
+          }
+        ]
+      },
+      {
+        "id": "continuity-inspection",
+        "label": "Session Continuity and Inspection Surfaces",
+        "description": "Keep the scientific state legible across session reopen, Discovery workbench surfaces, and the portal-facing inspection layer.",
+        "target_state": "The system can reopen, project, and inspect first-battlefield state without losing the scientific basis of its current answer boundary.",
+        "why_it_matters": "A discovery system is only operationally useful if its reasoning survives reopen and remains inspectable.",
+        "category": "surface_and_governance",
+        "weight": 1,
+        "confidence": "high",
+        "criticality": "important",
+        "dependencies": [
+          "answer-decision"
+        ],
+        "children": [
+          {
+            "id": "continuity-inspection.session-reopen-continuity",
+            "label": "Session reopen continuity",
+            "description": "Recompute and project first-battlefield state on session reopen without adding unstable persistence pressure.",
+            "target_state": "Goal specification, retrieval, support trace, coverage, and answer decision all survive reopen via truthful recomputation.",
+            "implementation_basis": "Projection/workbench continuity already recomputes the first-battlefield layers on reopen.",
+            "current_evidence": "Support trace, coverage, and answer decision are all exposed again when a session is reopened.",
+            "limitation": "This continuity is recomputed rather than historically versioned.",
+            "blocker": "The system cannot yet compare how a prior answer boundary differed from the current one after policy changes.",
+            "recommended_next_step": "Add historical comparison framing once the read-model policy is stable enough to justify it.",
+            "why_it_matters": "The instrument must show the real current scientific state, not a detached page-specific interpretation.",
+            "weight": 1,
+            "confidence": "high",
+            "criticality": "important",
+            "dependencies": [
+              "answer-decision.bounded-answer-promotion"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "projection-includes-first-battlefield-state",
+                "label": "Projection includes the first-battlefield layers",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether reopen projection includes the current first-battlefield state stack.",
+                "current_evidence": "Repo inspection found the projected first-battlefield state stack in source and in projection tests.",
+                "gap": "Historical diffing across policy revisions is still limited.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Projection includes support trace (system/services/scientific_session_projection_service.py)",
+                  "Projection includes coverage (system/services/scientific_session_projection_service.py)",
+                  "Projection includes answer decision (system/services/scientific_session_projection_service.py)",
+                  "Tests assert answer decision is projected (tests/test_scientific_session_projection.py)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "recomputed-read-model-continuity",
+                "label": "Recomputed read models stay continuity-safe",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether recomputed read models preserve reopen continuity without new persistence.",
+                "current_evidence": "The new first-battlefield layers are intentionally recomputed and survive reopen.",
+                "gap": "Version-to-version comparison remains limited.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "strong",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "historical-diff-legibility",
+                "label": "Historical diffs across policy evolution remain legible",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the system can explain how the current read-model differs from earlier policy versions.",
+                "current_evidence": "Current projection continuity is strong, but historical comparison remains only partly present.",
+                "gap": "No dedicated historical readiness diff yet.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/scientific_session_projection_service.py",
+                "label": "Session projection service",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/scientific_session_projection_service.py"
+              },
+              {
+                "path": "system/discovery_workbench.py",
+                "label": "Workbench continuity shaping",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/discovery_workbench.py"
+              },
+              {
+                "path": "tests/test_scientific_session_projection.py",
+                "label": "Session reopen continuity tests",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              },
+              {
+                "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+                "commit_short": "9d80665",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add material goal specifications and discovery updates"
+              },
+              {
+                "commit_sha": "dd1cfc2d93cc78d46691fdfa38a64a540fc8bd67",
+                "commit_short": "dd1cfc2",
+                "committed_on": "2026-04-21",
+                "author": "lolet0815",
+                "subject": "Add contradiction-aware scientific state loop and battlefield docs"
+              }
+            ]
+          },
+          {
+            "id": "continuity-inspection.multi-level-inspection-surface",
+            "label": "Multi-level inspection surface",
+            "description": "Expose the scientific state in layered inspection surfaces so users can move from overview to evidence-linked detail.",
+            "target_state": "The workbench and portal provide an inspection path from overview to capability to criterion to dependency/gap basis.",
+            "implementation_basis": "Discovery already exposes retrieval, support trace, coverage, and answer panels, and this portal page provides a readiness inspection surface.",
+            "current_evidence": "The page already offers graph, matrix, blockers, next moves, and selection-driven detail views.",
+            "limitation": "The inspection surface still depends on curated modeled state rather than auto-derived runtime instrumentation.",
+            "blocker": "Keeping increasing scientific detail readable without flattening it into decorative summaries remains an active design challenge.",
+            "recommended_next_step": "Continue deepening audit detail and keep linked interactions disciplined as the underlying scientific state grows.",
+            "why_it_matters": "A strategically useful inspection page has to reveal structure, relationships, and blockers rather than only status labels.",
+            "weight": 0.95,
+            "confidence": "medium",
+            "criticality": "important",
+            "dependencies": [
+              "continuity-inspection.session-reopen-continuity"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "overview-to-detail-navigation",
+                "label": "Overview-to-detail inspection exists",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the surface lets the user move from overall readiness to detailed capability inspection.",
+                "current_evidence": "Repo inspection found linked overview and detail surfaces in the page shell and runtime.",
+                "gap": "Audit depth is still growing, but the overview-to-detail path is explicit.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Inspection page includes the capability graph (docs/first-battlefield-inspection.html)",
+                  "Inspection page includes the detail inspector (docs/first-battlefield-inspection.html)",
+                  "Page JS renders selection-driven detail (docs/assets/first-battlefield-inspection.js)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "linked-view-coherence",
+                "label": "Views stay synchronized under selection and filtering",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether major page views remain connected and teach dependency structure.",
+                "current_evidence": "Repo inspection found the main linked views being driven from a shared render cycle in the page runtime.",
+                "gap": "This still reflects the generated inspection snapshot, not live runtime telemetry.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "partial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Page runtime re-renders the graph from shared state (docs/assets/first-battlefield-inspection.js)",
+                  "Page runtime re-renders the heatmap from shared state (docs/assets/first-battlefield-inspection.js)",
+                  "Page runtime re-renders blocker ranking from shared state (docs/assets/first-battlefield-inspection.js)",
+                  "Page runtime re-renders the detail inspector from shared state (docs/assets/first-battlefield-inspection.js)"
+                ],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "current-vs-target-legibility",
+                "label": "The page clearly shows current versus target state",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the detail inspector can explain current basis, target state, and blockers together.",
+                "current_evidence": "Repo inspection found explicit current-state, target-state, and score-rationale detail cards in the capability inspector.",
+                "gap": "Those cards still summarize a modeled inspection layer rather than live runtime metrics.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "repo_inspected",
+                "repo_inspection_summary": "Repo inspection confirmed the expected source footprint for this criterion.",
+                "repo_inspection_evidence": [
+                  "Capability detail shows current state (docs/assets/first-battlefield-inspection.js)",
+                  "Capability detail shows target state (docs/assets/first-battlefield-inspection.js)",
+                  "Capability detail shows score rationale (docs/assets/first-battlefield-inspection.js)"
+                ],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "docs/first-battlefield-inspection.html",
+                "label": "Inspection page shell",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/first-battlefield-inspection.html"
+              },
+              {
+                "path": "docs/assets/first-battlefield-inspection.js",
+                "label": "Inspection interaction logic",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection.js"
+              },
+              {
+                "path": "templates/discovery.html",
+                "label": "Workbench inspection surface",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
+                "commit_short": "0c17ac8",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add repo-inspected battlefield snapshot pipeline"
+              },
+              {
+                "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
+                "commit_short": "120dedb",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Strengthen battlefield inspection instrument"
+              },
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/scientific_session_projection_service.py",
+            "label": "Session projection service",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/scientific_session_projection_service.py"
+          },
+          {
+            "path": "system/discovery_workbench.py",
+            "label": "Workbench continuity shaping",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/discovery_workbench.py"
+          },
+          {
+            "path": "tests/test_scientific_session_projection.py",
+            "label": "Session reopen continuity tests",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/tests/test_scientific_session_projection.py"
+          },
+          {
+            "path": "docs/first-battlefield-inspection.html",
+            "label": "Inspection page shell",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/first-battlefield-inspection.html"
+          },
+          {
+            "path": "docs/assets/first-battlefield-inspection.js",
+            "label": "Inspection interaction logic",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection.js"
+          },
+          {
+            "path": "templates/discovery.html",
+            "label": "Workbench inspection surface",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
+            "commit_short": "0c17ac8",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add repo-inspected battlefield snapshot pipeline"
+          },
+          {
+            "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
+            "commit_short": "120dedb",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Strengthen battlefield inspection instrument"
+          },
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          }
+        ]
+      },
+      {
+        "id": "epistemic-conservatism",
+        "label": "Epistemic Conservatism",
+        "description": "Preserve the discipline that prevents the system from overclaiming scientific capability or answer support.",
+        "target_state": "Every visible answer, withholding decision, and readiness judgment stays bounded by what the current system can actually support.",
+        "why_it_matters": "A battlefield-ready system must be trustworthy, not just rich in surfaces or heuristics.",
+        "category": "surface_and_governance",
+        "weight": 1.12,
+        "confidence": "high",
+        "criticality": "critical",
+        "dependencies": [
+          "answer-decision",
+          "continuity-inspection"
+        ],
+        "children": [
+          {
+            "id": "epistemic-conservatism.answer-restraint",
+            "label": "Answer restraint",
+            "description": "Prevent weak, partial, or contradicted evidence from being promoted into a best-supported material answer.",
+            "target_state": "The system consistently under-answers rather than overclaiming when evidence is weak or contradictions remain unresolved.",
+            "implementation_basis": "Coverage-based gating and explicit insufficiency states now block unsupported answer promotion.",
+            "current_evidence": "Thin retrieval and partial critical coverage are now surfaced honestly rather than as optimistic answers.",
+            "limitation": "Restraint is only as strong as the fidelity of the upstream traces and contradiction handling.",
+            "blocker": "Pressure to look complete can still exceed what the evidence basis truly justifies.",
+            "recommended_next_step": "Keep every new capability anchored in explicit support before broadening any answer claims.",
+            "why_it_matters": "Restraint keeps the system scientifically credible while other layers mature.",
+            "weight": 1,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "answer-decision.bounded-answer-promotion"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "thin-retrieval-not-promoted",
+                "label": "Thin retrieval is not promoted",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the system refuses to turn weak retrieval into a supported answer.",
+                "current_evidence": "Weak/partial retrieval already blocks answer promotion.",
+                "gap": "Still depends on upstream retrieval discipline.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "critical-gaps-block-answer",
+                "label": "Critical unsupported dimensions block answers",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether critical dimensions can stop the system from returning an answer.",
+                "current_evidence": "Coverage now blocks answer promotion when critical requirement support is insufficient.",
+                "gap": "Coverage semantics are still evolving.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "pressure-against-overclaiming",
+                "label": "The page/system remains explicit about bridge-state limits",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether the surfaced narrative stays honest about current limits.",
+                "current_evidence": "The current docs, workbench, and inspection layer all speak in bounded bridge-state terms.",
+                "gap": "Some parts of the broader product shell still carry legacy framing.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_answer_service.py",
+                "label": "Conservative answer promotion logic",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+              },
+              {
+                "path": "system/services/material_goal_coverage_service.py",
+                "label": "Critical-dimension blocking",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              }
+            ]
+          },
+          {
+            "id": "epistemic-conservatism.inspectable-withholding",
+            "label": "Inspectable withholding",
+            "description": "Explain not just that the system is withholding, but exactly why it is withholding and what would close the insufficiency.",
+            "target_state": "Insufficient cases expose explicit unknowns, contradiction pressure, gap codes, and bounded next-step requests in a way users can inspect.",
+            "implementation_basis": "Support trace, coverage, and answer decision already expose explicit unknowns, insufficiency reasons, and follow-up requests.",
+            "current_evidence": "The current answer layer is much better at saying why it cannot answer yet and what is still missing.",
+            "limitation": "The insufficiency vocabulary is still evolving and not yet a deep ontology.",
+            "blocker": "Withholding is inspectable, but the precision of the explanation remains bounded by the current trace layer.",
+            "recommended_next_step": "Deepen support and contradiction provenance so inspectable withholding becomes even more specific.",
+            "why_it_matters": "This is what turns honest restraint into operationally useful scientific guidance.",
+            "weight": 1,
+            "confidence": "high",
+            "criticality": "critical",
+            "dependencies": [
+              "contradiction-unknowns.requirement-linked-unknowns",
+              "continuity-inspection.multi-level-inspection-surface"
+            ],
+            "battlefield_gate": null,
+            "criteria": [
+              {
+                "id": "unknowns-explained",
+                "label": "Unknowns are explained explicitly",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether insufficient cases expose requirement-linked unknowns rather than vague summaries.",
+                "current_evidence": "Unknowns and insufficiency reasons are already visible and machine-readable.",
+                "gap": "The ontology is still first-version.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "next-steps-explained",
+                "label": "Next-step requests are tied to gaps",
+                "status": "strong",
+                "weight": 1,
+                "confidence": "high",
+                "measurement_basis": "Check whether additional data or experiments are explicitly tied to the blocking gaps.",
+                "current_evidence": "Current follow-up requests are linked to explicit insufficiency causes.",
+                "gap": "Request specificity is still bounded.",
+                "rationale": "",
+                "critical": true,
+                "manifest_status": "strong",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              },
+              {
+                "id": "withholding-audit-depth",
+                "label": "The withholding rationale has strong audit depth",
+                "status": "substantial",
+                "weight": 1,
+                "confidence": "medium",
+                "measurement_basis": "Check whether the user can trace the withholding reason through the scientific layers.",
+                "current_evidence": "Audit depth is much stronger than before, but still limited by the current modeled traces.",
+                "gap": "Deeper runtime-derived evidence trace links remain future work.",
+                "rationale": "",
+                "critical": false,
+                "manifest_status": "substantial",
+                "status_source": "seed_manifest",
+                "repo_inspection_summary": "This criterion is currently seeded from the inspection manifest and not yet repo-inspected.",
+                "repo_inspection_evidence": [],
+                "repo_inspection_missing": []
+              }
+            ],
+            "source_refs": [
+              {
+                "path": "system/services/material_goal_answer_service.py",
+                "label": "Inspectable insufficiency output",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+              },
+              {
+                "path": "docs/assets/first-battlefield-inspection.js",
+                "label": "Inspection-layer withholding detail",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection.js"
+              },
+              {
+                "path": "templates/discovery.html",
+                "label": "Discovery withholding surface",
+                "exists": true,
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+              }
+            ],
+            "recent_changes": [
+              {
+                "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
+                "commit_short": "0c17ac8",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add repo-inspected battlefield snapshot pipeline"
+              },
+              {
+                "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
+                "commit_short": "120dedb",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Strengthen battlefield inspection instrument"
+              },
+              {
+                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+                "commit_short": "ae3adb9",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Add battlefield inspection portal and support traces"
+              }
+            ]
+          }
+        ],
+        "source_refs": [
+          {
+            "path": "system/services/material_goal_answer_service.py",
+            "label": "Conservative answer promotion logic",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+          },
+          {
+            "path": "system/services/material_goal_coverage_service.py",
+            "label": "Critical-dimension blocking",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_coverage_service.py"
+          },
+          {
+            "path": "system/services/material_goal_answer_service.py",
+            "label": "Inspectable insufficiency output",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/system/services/material_goal_answer_service.py"
+          },
+          {
+            "path": "docs/assets/first-battlefield-inspection.js",
+            "label": "Inspection-layer withholding detail",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/docs/assets/first-battlefield-inspection.js"
+          },
+          {
+            "path": "templates/discovery.html",
+            "label": "Discovery withholding surface",
+            "exists": true,
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/0c17ac8cca04aac383081409df70ce376754ff55/templates/discovery.html"
+          }
+        ],
+        "recent_changes": [
+          {
+            "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
+            "commit_short": "0c17ac8",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add repo-inspected battlefield snapshot pipeline"
+          },
+          {
+            "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
+            "commit_short": "120dedb",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Strengthen battlefield inspection instrument"
+          },
+          {
+            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
+            "commit_short": "ae3adb9",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Add battlefield inspection portal and support traces"
+          },
+          {
+            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
+            "commit_short": "9d80665",
+            "committed_on": "2026-04-21",
+            "author": "lolet0815",
+            "subject": "Add material goal specifications and discovery updates"
+          }
+        ]
+      }
+    ],
+    "source_mode": "generated_snapshot"
+  }
+}

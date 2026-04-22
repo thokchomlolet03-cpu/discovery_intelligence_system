@@ -68,6 +68,13 @@ function family(id, label, details = {}) {
   };
 }
 
+function ref(path, label = "") {
+  return {
+    path,
+    label: label || path,
+  };
+}
+
 export const BATTLEFIELD_MODEL = {
   id: "first-battlefield",
   label: "First Battlefield Readiness",
@@ -1028,5 +1035,94 @@ export const BATTLEFIELD_MODEL = {
         }),
       ],
     }),
+  ],
+};
+
+export const CAPABILITY_SOURCE_REFS = {
+  "goal-understanding.goal-intake-persistence": [
+    ref("system/services/material_goal_service.py", "Material goal intake service"),
+    ref("system/scientific_state/contracts.py", "Scientific-state goal contracts"),
+    ref("system/services/scientific_session_projection_service.py", "Session projection recomputation"),
+  ],
+  "goal-understanding.domain-bounding": [
+    ref("system/services/material_goal_service.py", "Battlefield goal intake path"),
+    ref(
+      "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+      "First-battlefield doctrine"
+    ),
+  ],
+  "requirement-structuring.structured-dimensions": [
+    ref("system/scientific_state/contracts.py", "Structured material-goal contracts"),
+    ref("system/services/material_goal_service.py", "Goal structuring service"),
+    ref("system/services/material_goal_retrieval_service.py", "Structured retrieval input shaping"),
+  ],
+  "requirement-structuring.critical-completeness": [
+    ref("system/services/material_goal_service.py", "Requirement sufficiency logic"),
+    ref("tests/test_scientific_session_projection.py", "Projection continuity tests"),
+  ],
+  "clarification.missing-constraint-detection": [
+    ref("system/services/material_goal_service.py", "Clarification generation logic"),
+    ref("tests/test_scientific_session_projection.py", "Goal clarification coverage tests"),
+  ],
+  "clarification.prioritized-clarification": [
+    ref("system/services/material_goal_service.py", "Clarification question shaping"),
+    ref(
+      "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
+      "Clarification doctrine"
+    ),
+  ],
+  "evidence-retrieval.grounded-evidence-matching": [
+    ref("system/services/material_goal_retrieval_service.py", "Grounded retrieval service"),
+    ref("system/services/scientific_session_projection_service.py", "Retrieval projection exposure"),
+  ],
+  "evidence-retrieval.candidate-direction-organization": [
+    ref("system/services/material_goal_retrieval_service.py", "Candidate direction organization"),
+    ref("system/discovery_workbench.py", "Discovery workbench shaping"),
+  ],
+  "traceability.requirement-support-trace": [
+    ref("system/services/material_goal_support_trace_service.py", "Support trace service"),
+    ref("system/scientific_state/contracts.py", "Support trace contracts"),
+    ref("templates/discovery.html", "Discovery support trace panel"),
+  ],
+  "traceability.requirement-coverage-judgment": [
+    ref("system/services/material_goal_coverage_service.py", "Requirement coverage service"),
+    ref("system/services/material_goal_support_trace_service.py", "Support trace substrate"),
+    ref("templates/discovery.html", "Coverage surface rendering"),
+  ],
+  "contradiction-unknowns.dimension-contradiction-attribution": [
+    ref("system/services/material_goal_support_trace_service.py", "Dimension-level contradiction mapping"),
+    ref("system/scientific_state/contracts.py", "Trace and contradiction contracts"),
+  ],
+  "contradiction-unknowns.requirement-linked-unknowns": [
+    ref("system/services/material_goal_answer_service.py", "Unknown derivation and insufficiency logic"),
+    ref("system/services/material_goal_coverage_service.py", "Coverage-linked gap shaping"),
+  ],
+  "answer-decision.bounded-answer-promotion": [
+    ref("system/services/material_goal_answer_service.py", "Answer decision service"),
+    ref("system/services/material_goal_coverage_service.py", "Coverage-based answer gating"),
+    ref("tests/test_scientific_session_projection.py", "Answer projection tests"),
+  ],
+  "answer-decision.insufficiency-follow-up-actioning": [
+    ref("system/services/material_goal_answer_service.py", "Bounded additional-data and experiment requests"),
+    ref("tests/test_scientific_session_projection.py", "Insufficiency follow-up tests"),
+  ],
+  "continuity-inspection.session-reopen-continuity": [
+    ref("system/services/scientific_session_projection_service.py", "Session projection service"),
+    ref("system/discovery_workbench.py", "Workbench continuity shaping"),
+    ref("tests/test_scientific_session_projection.py", "Session reopen continuity tests"),
+  ],
+  "continuity-inspection.multi-level-inspection-surface": [
+    ref("docs/first-battlefield-inspection.html", "Inspection page shell"),
+    ref("docs/assets/first-battlefield-inspection.js", "Inspection interaction logic"),
+    ref("templates/discovery.html", "Workbench inspection surface"),
+  ],
+  "epistemic-conservatism.answer-restraint": [
+    ref("system/services/material_goal_answer_service.py", "Conservative answer promotion logic"),
+    ref("system/services/material_goal_coverage_service.py", "Critical-dimension blocking"),
+  ],
+  "epistemic-conservatism.inspectable-withholding": [
+    ref("system/services/material_goal_answer_service.py", "Inspectable insufficiency output"),
+    ref("docs/assets/first-battlefield-inspection.js", "Inspection-layer withholding detail"),
+    ref("templates/discovery.html", "Discovery withholding surface"),
   ],
 };

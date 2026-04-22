@@ -569,6 +569,37 @@ body.inspection-body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.inspection-source-list {
+  display: grid;
+  gap: 10px;
+}
+
+.inspection-source-link {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--inspection-line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: rgba(9, 18, 27, 0.9);
+  color: var(--inspection-text);
+  text-decoration: none;
+}
+
+.inspection-source-link:hover {
+  border-color: rgba(93, 162, 255, 0.55);
+  background: rgba(18, 32, 46, 0.94);
+}
+
+.inspection-source-link strong {
+  color: var(--inspection-text);
+}
+
+.inspection-source-link span {
+  color: var(--inspection-muted);
+  font-size: 12px;
+  word-break: break-word;
+}
+
 .inspection-criteria-card {
   display: grid;
   gap: 10px;

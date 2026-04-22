@@ -66,6 +66,12 @@
             </p>
           </article>
           <article class="inspection-score-card">
+            <p class="inspection-card-label">Inspection Provenance</p>
+            <p id="inspection-generated-at" class="inspection-helper">Loading generated snapshot…</p>
+            <p id="inspection-commit" class="inspection-helper"></p>
+            <p id="inspection-tracked-paths" class="inspection-helper"></p>
+          </article>
+          <article class="inspection-score-card">
             <p class="inspection-card-label">What To Look For</p>
             <ul class="inspection-list">
               <li>Which scientific-core capabilities still block answer trustworthiness?</li>
@@ -226,6 +232,17 @@
               <p class="inspection-helper">These are the most strategic implementation gaps to close next.</p>
             </div>
             <ul id="highest-leverage-list" class="inspection-list"></ul>
+          </section>
+
+          <section class="inspection-panel">
+            <div class="inspection-section-head">
+              <div>
+                <p class="eyebrow">Repo Signal</p>
+                <h3 class="inspection-section-title">Recent Source Changes</h3>
+              </div>
+              <p class="inspection-helper">Latest tracked changes affecting the first-battlefield inspection footprint.</p>
+            </div>
+            <ul id="inspection-recent-changes" class="inspection-list"></ul>
           </section>
 
           <section class="inspection-panel">

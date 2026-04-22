@@ -1,4 +1,9 @@
-import { BATTLEFIELD_MODEL, MATURITY_META, MATURITY_ORDER } from "./first-battlefield-inspection-data.js";
+import {
+  BATTLEFIELD_MODEL,
+  CAPABILITY_SOURCE_REFS,
+  MATURITY_META,
+  MATURITY_ORDER,
+} from "./first-battlefield-inspection-data.js";
 
 const state = {
   familyFilter: "all",
@@ -12,6 +17,7 @@ const state = {
   dragging: false,
   dragStartX: 0,
   dragStartY: 0,
+  snapshot: null,
   model: null,
 };
 
@@ -31,6 +37,9 @@ const elements = {
   coreSummary: document.getElementById("core-summary"),
   inspectabilitySummary: document.getElementById("inspectability-summary"),
   gateSummary: document.getElementById("gate-summary"),
+  generatedAt: document.getElementById("inspection-generated-at"),
+  commitLabel: document.getElementById("inspection-commit"),
+  trackedPathsLabel: document.getElementById("inspection-tracked-paths"),
   criticalBlockerCount: document.getElementById("critical-blocker-count"),
   filteredCount: document.getElementById("filtered-capability-count"),
   familyFilter: document.getElementById("family-filter"),
@@ -50,7 +59,60 @@ const elements = {
   dependencyChain: document.getElementById("inspection-dependency-chain"),
   downstreamImpact: document.getElementById("inspection-downstream-impact"),
   highestLeverage: document.getElementById("highest-leverage-list"),
+  recentChanges: document.getElementById("inspection-recent-changes"),
 };
+
+function baseModel() {
+  return state.snapshot?.model || BATTLEFIELD_MODEL;
+}
+
+function snapshotMeta() {
+  return state.snapshot || {};
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function repoCommitUrl(commitSha) {
+  const repoUrl = snapshotMeta().repo_url || "";
+  if (!repoUrl || !commitSha) return "";
+  return `${repoUrl}/commit/${commitSha}`;
+}
+
+async function loadInspectionSnapshot() {
+  try {
+    const response = await fetch("./assets/first-battlefield-inspection.snapshot.json", {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`snapshot fetch failed: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    return {
+      generated_at: "",
+      commit_sha: "",
+      commit_short: "",
+      repo_url: "",
+      tracked_paths: [],
+      tracked_paths_count: 0,
+      provenance_note:
+        "Snapshot unavailable, so the page is using the local inspection manifest without generated repo metadata.",
+      recent_changes: [],
+      model: BATTLEFIELD_MODEL,
+    };
+  }
+}
 
 function maturityValue(status) {
   return MATURITY_META[status]?.value ?? 0;
@@ -95,8 +157,9 @@ function createStatusBadge(status) {
 function buildInspectionModel() {
   const capabilities = [];
   const capabilityMap = new Map();
+  const rootModel = baseModel();
 
-  const families = BATTLEFIELD_MODEL.families.map((family) => {
+  const families = rootModel.families.map((family) => {
     const children = family.children.map((capability) => {
       const criteria = capability.criteria.map((criterion) => ({
         ...criterion,
@@ -131,6 +194,8 @@ function buildInspectionModel() {
         weakCriteriaCount: weakCriteria.length,
         battlefieldGate,
         gateSatisfied,
+        source_refs: capability.source_refs || CAPABILITY_SOURCE_REFS[capability.id] || [],
+        recent_changes: capability.recent_changes || [],
       };
       capabilities.push(derivedCapability);
       capabilityMap.set(derivedCapability.id, derivedCapability);
@@ -157,6 +222,17 @@ function buildInspectionModel() {
       unmetGateCount,
       criticalWeakChildren,
       familyId: family.id,
+      source_refs:
+        family.source_refs ||
+        Array.from(
+          new Map(
+            children
+              .flatMap((child) => child.source_refs || [])
+              .filter((item) => item?.path)
+              .map((item) => [item.path, item])
+          ).values()
+        ),
+      recent_changes: family.recent_changes || [],
     };
   });
 
@@ -181,7 +257,7 @@ function buildInspectionModel() {
   });
 
   return {
-    raw: BATTLEFIELD_MODEL,
+    raw: rootModel,
     families,
     familyMap,
     capabilities,
@@ -200,6 +276,7 @@ function capabilityHaystack(capability) {
   const criteriaText = (capability.criteria || [])
     .flatMap((criterion) => [criterion.label, criterion.measurement_basis, criterion.current_evidence, criterion.gap])
     .join(" ");
+  const sourceText = (capability.source_refs || []).map((item) => `${item.label || ""} ${item.path || ""}`).join(" ");
   return [
     capability.label,
     capability.familyLabel,
@@ -212,6 +289,7 @@ function capabilityHaystack(capability) {
     capability.recommended_next_step,
     capability.why_it_matters,
     criteriaText,
+    sourceText,
   ]
     .join(" ")
     .toLowerCase();
@@ -408,6 +486,53 @@ function renderScorecards() {
   if (elements.filteredCount) {
     elements.filteredCount.textContent = `${getFilteredCapabilities().length}`;
   }
+}
+
+function renderProvenance() {
+  const meta = snapshotMeta();
+  if (elements.generatedAt) {
+    elements.generatedAt.textContent = meta.generated_at
+      ? `Generated ${formatDateTime(meta.generated_at)}`
+      : "Using local manifest fallback without generated snapshot metadata.";
+  }
+  if (elements.commitLabel) {
+    elements.commitLabel.textContent = meta.commit_short
+      ? `Snapshot base ${meta.commit_short}${meta.branch ? ` on ${meta.branch}` : ""}`
+      : "";
+  }
+  if (elements.trackedPathsLabel) {
+    const note = meta.provenance_note || "";
+    const tracked = meta.tracked_paths_count ? `${meta.tracked_paths_count} tracked source paths.` : "";
+    const criteria = meta.repo_inspected_criteria_count
+      ? `${meta.repo_inspected_criteria_count} repo-inspected criteria, ${meta.seeded_criteria_count || 0} still seeded.`
+      : "";
+    elements.trackedPathsLabel.textContent = [tracked, criteria, note].filter(Boolean).join(" ");
+  }
+}
+
+function renderRecentChanges() {
+  if (!elements.recentChanges) return;
+  const selected = selectedNode();
+  const changes = selected?.recent_changes?.length ? selected.recent_changes : snapshotMeta().recent_changes || [];
+
+  renderList(elements.recentChanges, changes, (change) => {
+    const button = document.createElement("button");
+    const commitLink = repoCommitUrl(change.commit_sha);
+    button.innerHTML = `
+      <strong>${change.subject || "Repository change"}</strong>
+      <div class="inspection-helper">${change.commit_short || ""} · ${change.committed_on || ""} · ${
+      change.author || ""
+    }</div>
+      <div class="inspection-helper">${selected?.recent_changes?.length ? "Selection-linked source change" : "Tracked first-battlefield source change"}</div>
+      ${commitLink ? `<div class="inspection-helper">${commitLink}</div>` : ""}
+    `;
+    if (commitLink) {
+      button.addEventListener("click", () => {
+        window.open(commitLink, "_blank", "noopener,noreferrer");
+      });
+    }
+    return button;
+  });
 }
 
 function graphLayout(graphCapabilityIds) {
@@ -938,6 +1063,92 @@ function familyScoreSummary(family) {
   return "This family currently has no unresolved hard gate, but it still inherits broader scientific-core limits from the rest of the system.";
 }
 
+function renderSourceRefsSection(sourceRefs) {
+  if (!sourceRefs?.length) {
+    return `
+      <div class="inspection-detail-section">
+        <h4>Source References</h4>
+        <div class="inspection-helper">No direct source references are recorded for this selection yet.</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="inspection-detail-section">
+      <h4>Source References</h4>
+      <div class="inspection-source-list">
+        ${sourceRefs
+          .map(
+            (ref) => ref.url
+              ? `
+          <a class="inspection-source-link" href="${ref.url}" target="_blank" rel="noopener noreferrer">
+            <strong>${ref.label || ref.path}</strong>
+            <span>${ref.path}</span>
+          </a>`
+              : `
+          <div class="inspection-source-link">
+            <strong>${ref.label || ref.path}</strong>
+            <span>${ref.path}</span>
+          </div>`
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderCriterionInspectionSection(criterion) {
+  const sourceLabel = criterion.status_source === "repo_inspected" ? "Repo inspected" : "Seeded";
+  const evidenceLines = criterion.repo_inspection_evidence || [];
+  const missingLines = criterion.repo_inspection_missing || [];
+  return `
+    <div class="inspection-helper"><strong>Assessment source:</strong> ${sourceLabel}${
+      criterion.manifest_status ? ` · manifest ${formatStatusLabel(criterion.manifest_status)}` : ""
+    }</div>
+    <div class="inspection-helper"><strong>Inspection summary:</strong> ${
+      criterion.repo_inspection_summary || "No repo inspection summary recorded."
+    }</div>
+    ${
+      evidenceLines.length
+        ? `<div class="inspection-helper"><strong>Confirmed in source:</strong> ${evidenceLines.join("; ")}</div>`
+        : ""
+    }
+    ${
+      missingLines.length
+        ? `<div class="inspection-helper"><strong>Not confirmed:</strong> ${missingLines.join("; ")}</div>`
+        : ""
+    }
+  `;
+}
+
+function renderRecentChangeSection(changes) {
+  if (!changes?.length) {
+    return `
+      <div class="inspection-detail-section">
+        <h4>Recent Change Signal</h4>
+        <div class="inspection-helper">No recent tracked changes are currently attached to this selection.</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="inspection-detail-section">
+      <h4>Recent Change Signal</h4>
+      <ul class="inspection-impact-list">
+        ${changes
+          .map(
+            (change) => `
+          <li>
+            <strong>${change.subject || "Repository change"}</strong>
+            <div class="inspection-helper">${change.commit_short || ""} · ${change.committed_on || ""} · ${
+              change.author || ""
+            }</div>
+          </li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
 function renderCapabilityDetail(capability) {
   const directDependents = (state.model.capabilityDependentsMap.get(capability.id) || [])
     .map((id) => state.model.capabilityMap.get(id))
@@ -1015,6 +1226,8 @@ function renderCapabilityDetail(capability) {
         </article>
       </div>
       ${gateHtml}
+      ${renderSourceRefsSection(capability.source_refs)}
+      ${renderRecentChangeSection(capability.recent_changes)}
       <div class="inspection-detail-section">
         <h4>Measured Criteria</h4>
         <div class="inspection-criteria-grid">
@@ -1026,11 +1239,13 @@ function renderCapabilityDetail(capability) {
                 ${createStatusBadge(criterion.status)}
                 ${criterion.critical ? '<span class="inspection-chip is-critical">Critical criterion</span>' : ""}
                 <span class="inspection-chip">Weight ${Number(criterion.weight || 1).toFixed(1)}</span>
+                <span class="inspection-chip">${criterion.status_source === "repo_inspected" ? "Repo inspected" : "Seeded"}</span>
               </div>
               <strong>${criterion.label}</strong>
               <p class="inspection-criteria-copy">${criterion.measurement_basis}</p>
               <div class="inspection-helper"><strong>Current evidence:</strong> ${criterion.current_evidence}</div>
               <div class="inspection-helper"><strong>Current gap:</strong> ${criterion.gap || "No explicit gap recorded."}</div>
+              ${renderCriterionInspectionSection(criterion)}
             </article>`
             )
             .join("")}
@@ -1126,6 +1341,8 @@ function renderFamilyDetail(family) {
             .join("")}
         </div>
       </div>
+      ${renderSourceRefsSection(family.source_refs)}
+      ${renderRecentChangeSection(family.recent_changes)}
     </div>
   `;
 }
@@ -1279,7 +1496,7 @@ function populateFamilyOptions() {
   if (!elements.familyFilter) return;
   const previous = elements.familyFilter.value;
   elements.familyFilter.innerHTML = '<option value="all">All families</option>';
-  BATTLEFIELD_MODEL.families.forEach((family) => {
+  baseModel().families.forEach((family) => {
     const option = document.createElement("option");
     option.value = family.id;
     option.textContent = family.label;
@@ -1306,6 +1523,7 @@ function renderAll() {
   state.model = buildInspectionModel();
   ensureValidSelection();
   syncFilters();
+  renderProvenance();
   renderScorecards();
   renderGraph();
   renderHeatmap();
@@ -1313,6 +1531,7 @@ function renderAll() {
   renderGates();
   renderReadinessBars();
   renderHighestLeverage();
+  renderRecentChanges();
   renderDetailPanel();
 }
 
@@ -1390,7 +1609,8 @@ function bindControls() {
   });
 }
 
-function init() {
+async function init() {
+  state.snapshot = await loadInspectionSnapshot();
   populateFamilyOptions();
   bindControls();
   bindGraphInteractions();

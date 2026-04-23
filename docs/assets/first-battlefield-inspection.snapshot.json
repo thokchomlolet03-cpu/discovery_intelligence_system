@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "generated_at": "2026-04-22T11:48:13.165Z",
-  "commit_sha": "173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e",
-  "commit_short": "173c2fb",
+  "generated_at": "2026-04-23T04:47:51.948Z",
+  "commit_sha": "e9c858cc156613084828b871672e178ac60b3298",
+  "commit_short": "e9c858c",
   "branch": "main",
   "repo_url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system",
   "tracked_paths": [
@@ -31,28 +31,42 @@
       "path": "docs/first-battlefield-inspection.html",
       "label": "Inspection page shell",
       "exists": true,
-      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/first-battlefield-inspection.html"
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/first-battlefield-inspection.html"
     },
     {
       "path": "docs/assets/first-battlefield-inspection.js",
       "label": "Inspection interaction logic",
       "exists": true,
-      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection.js"
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection.js"
     },
     {
       "path": "docs/assets/first-battlefield-inspection.css",
       "label": "Inspection page styling",
       "exists": true,
-      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection.css"
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection.css"
     },
     {
       "path": "docs/assets/first-battlefield-inspection-data.js",
       "label": "Inspection capability manifest",
       "exists": true,
-      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection-data.js"
+      "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection-data.js"
     }
   ],
   "recent_changes": [
+    {
+      "commit_sha": "e9c858cc156613084828b871672e178ac60b3298",
+      "commit_short": "e9c858c",
+      "committed_on": "2026-04-23",
+      "author": "lolet0815",
+      "subject": "Refine battlefield inspection experience"
+    },
+    {
+      "commit_sha": "02d0d196117eef6074ab1c9387421617e2b5e39a",
+      "commit_short": "02d0d19",
+      "committed_on": "2026-04-22",
+      "author": "lolet0815",
+      "subject": "Polish battlefield inspection UX"
+    },
     {
       "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
       "commit_short": "0c17ac8",
@@ -94,20 +108,6 @@
       "committed_on": "2026-04-19",
       "author": "lolet0815",
       "subject": "Publish epistemic focus updates and truth paper"
-    },
-    {
-      "commit_sha": "882c32a27a2dad9e455fac313ea65d5a750b6d58",
-      "commit_short": "882c32a",
-      "committed_on": "2026-04-18",
-      "author": "lolet0815",
-      "subject": "Add canonical epistemic surfaces and docs state page"
-    },
-    {
-      "commit_sha": "b481812ba3a4a569fa944c739eb2895a377a8f2b",
-      "commit_short": "b481812",
-      "committed_on": "2026-04-01",
-      "author": "lolet0815",
-      "subject": "Ship phased discovery truth updates"
     }
   ],
   "maturity_order": [
@@ -254,19 +254,19 @@
                 "path": "system/services/material_goal_service.py",
                 "label": "Material goal intake service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
               },
               {
                 "path": "system/scientific_state/contracts.py",
                 "label": "Scientific-state goal contracts",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
               },
               {
                 "path": "system/services/scientific_session_projection_service.py",
                 "label": "Session projection recomputation",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/scientific_session_projection_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/scientific_session_projection_service.py"
               }
             ],
             "recent_changes": [
@@ -372,13 +372,13 @@
                 "path": "system/services/material_goal_service.py",
                 "label": "Battlefield goal intake path",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
               },
               {
                 "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
                 "label": "First-battlefield doctrine",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
               }
             ],
             "recent_changes": [
@@ -404,31 +404,31 @@
             "path": "system/services/material_goal_service.py",
             "label": "Material goal intake service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
           },
           {
             "path": "system/scientific_state/contracts.py",
             "label": "Scientific-state goal contracts",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
           },
           {
             "path": "system/services/scientific_session_projection_service.py",
             "label": "Session projection recomputation",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/scientific_session_projection_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/scientific_session_projection_service.py"
           },
           {
             "path": "system/services/material_goal_service.py",
             "label": "Battlefield goal intake path",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
           },
           {
             "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
             "label": "First-battlefield doctrine",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
           }
         ],
         "recent_changes": [
@@ -562,19 +562,19 @@
                 "path": "system/scientific_state/contracts.py",
                 "label": "Structured material-goal contracts",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
               },
               {
                 "path": "system/services/material_goal_service.py",
                 "label": "Goal structuring service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
               },
               {
                 "path": "system/services/material_goal_retrieval_service.py",
                 "label": "Structured retrieval input shaping",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_retrieval_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_retrieval_service.py"
               }
             ],
             "recent_changes": [
@@ -683,13 +683,13 @@
                 "path": "system/services/material_goal_service.py",
                 "label": "Requirement sufficiency logic",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
               },
               {
                 "path": "tests/test_scientific_session_projection.py",
                 "label": "Projection continuity tests",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
               }
             ],
             "recent_changes": [
@@ -722,31 +722,31 @@
             "path": "system/scientific_state/contracts.py",
             "label": "Structured material-goal contracts",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
           },
           {
             "path": "system/services/material_goal_service.py",
             "label": "Goal structuring service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
           },
           {
             "path": "system/services/material_goal_retrieval_service.py",
             "label": "Structured retrieval input shaping",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_retrieval_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_retrieval_service.py"
           },
           {
             "path": "system/services/material_goal_service.py",
             "label": "Requirement sufficiency logic",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
           },
           {
             "path": "tests/test_scientific_session_projection.py",
             "label": "Projection continuity tests",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
           }
         ],
         "recent_changes": [
@@ -877,13 +877,13 @@
                 "path": "system/services/material_goal_service.py",
                 "label": "Clarification generation logic",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
               },
               {
                 "path": "tests/test_scientific_session_projection.py",
                 "label": "Goal clarification coverage tests",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
               }
             ],
             "recent_changes": [
@@ -986,13 +986,13 @@
                 "path": "system/services/material_goal_service.py",
                 "label": "Clarification question shaping",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
               },
               {
                 "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
                 "label": "Clarification doctrine",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
               }
             ],
             "recent_changes": [
@@ -1018,25 +1018,25 @@
             "path": "system/services/material_goal_service.py",
             "label": "Clarification generation logic",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
           },
           {
             "path": "tests/test_scientific_session_projection.py",
             "label": "Goal clarification coverage tests",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
           },
           {
             "path": "system/services/material_goal_service.py",
             "label": "Clarification question shaping",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_service.py"
           },
           {
             "path": "docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md",
             "label": "Clarification doctrine",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/01_philosophy/09_discovery_intelligence_first_battlefield_lifetime_canon.md"
           }
         ],
         "recent_changes": [
@@ -1171,13 +1171,13 @@
                 "path": "system/services/material_goal_retrieval_service.py",
                 "label": "Grounded retrieval service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_retrieval_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_retrieval_service.py"
               },
               {
                 "path": "system/services/scientific_session_projection_service.py",
                 "label": "Retrieval projection exposure",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/scientific_session_projection_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/scientific_session_projection_service.py"
               }
             ],
             "recent_changes": [
@@ -1280,13 +1280,13 @@
                 "path": "system/services/material_goal_retrieval_service.py",
                 "label": "Candidate direction organization",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_retrieval_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_retrieval_service.py"
               },
               {
                 "path": "system/discovery_workbench.py",
                 "label": "Discovery workbench shaping",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/discovery_workbench.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/discovery_workbench.py"
               }
             ],
             "recent_changes": [
@@ -1319,25 +1319,25 @@
             "path": "system/services/material_goal_retrieval_service.py",
             "label": "Grounded retrieval service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_retrieval_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_retrieval_service.py"
           },
           {
             "path": "system/services/scientific_session_projection_service.py",
             "label": "Retrieval projection exposure",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/scientific_session_projection_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/scientific_session_projection_service.py"
           },
           {
             "path": "system/services/material_goal_retrieval_service.py",
             "label": "Candidate direction organization",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_retrieval_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_retrieval_service.py"
           },
           {
             "path": "system/discovery_workbench.py",
             "label": "Discovery workbench shaping",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/discovery_workbench.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/discovery_workbench.py"
           }
         ],
         "recent_changes": [
@@ -1471,19 +1471,19 @@
                 "path": "system/services/material_goal_support_trace_service.py",
                 "label": "Support trace service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_support_trace_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_support_trace_service.py"
               },
               {
                 "path": "system/scientific_state/contracts.py",
                 "label": "Support trace contracts",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
               },
               {
                 "path": "templates/discovery.html",
                 "label": "Discovery support trace panel",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
               }
             ],
             "recent_changes": [
@@ -1589,19 +1589,19 @@
                 "path": "system/services/material_goal_coverage_service.py",
                 "label": "Requirement coverage service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
               },
               {
                 "path": "system/services/material_goal_support_trace_service.py",
                 "label": "Support trace substrate",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_support_trace_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_support_trace_service.py"
               },
               {
                 "path": "templates/discovery.html",
                 "label": "Coverage surface rendering",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
               }
             ],
             "recent_changes": [
@@ -1634,37 +1634,37 @@
             "path": "system/services/material_goal_support_trace_service.py",
             "label": "Support trace service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_support_trace_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_support_trace_service.py"
           },
           {
             "path": "system/scientific_state/contracts.py",
             "label": "Support trace contracts",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
           },
           {
             "path": "templates/discovery.html",
             "label": "Discovery support trace panel",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
           },
           {
             "path": "system/services/material_goal_coverage_service.py",
             "label": "Requirement coverage service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
           },
           {
             "path": "system/services/material_goal_support_trace_service.py",
             "label": "Support trace substrate",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_support_trace_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_support_trace_service.py"
           },
           {
             "path": "templates/discovery.html",
             "label": "Coverage surface rendering",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
           }
         ],
         "recent_changes": [
@@ -1794,13 +1794,13 @@
                 "path": "system/services/material_goal_support_trace_service.py",
                 "label": "Dimension-level contradiction mapping",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_support_trace_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_support_trace_service.py"
               },
               {
                 "path": "system/scientific_state/contracts.py",
                 "label": "Trace and contradiction contracts",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
               }
             ],
             "recent_changes": [
@@ -1909,13 +1909,13 @@
                 "path": "system/services/material_goal_answer_service.py",
                 "label": "Unknown derivation and insufficiency logic",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
               },
               {
                 "path": "system/services/material_goal_coverage_service.py",
                 "label": "Coverage-linked gap shaping",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
               }
             ],
             "recent_changes": [
@@ -1934,25 +1934,25 @@
             "path": "system/services/material_goal_support_trace_service.py",
             "label": "Dimension-level contradiction mapping",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_support_trace_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_support_trace_service.py"
           },
           {
             "path": "system/scientific_state/contracts.py",
             "label": "Trace and contradiction contracts",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/scientific_state/contracts.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/scientific_state/contracts.py"
           },
           {
             "path": "system/services/material_goal_answer_service.py",
             "label": "Unknown derivation and insufficiency logic",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
           },
           {
             "path": "system/services/material_goal_coverage_service.py",
             "label": "Coverage-linked gap shaping",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
           }
         ],
         "recent_changes": [
@@ -2087,19 +2087,19 @@
                 "path": "system/services/material_goal_answer_service.py",
                 "label": "Answer decision service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
               },
               {
                 "path": "system/services/material_goal_coverage_service.py",
                 "label": "Coverage-based answer gating",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
               },
               {
                 "path": "tests/test_scientific_session_projection.py",
                 "label": "Answer projection tests",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
               }
             ],
             "recent_changes": [
@@ -2214,13 +2214,13 @@
                 "path": "system/services/material_goal_answer_service.py",
                 "label": "Bounded additional-data and experiment requests",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
               },
               {
                 "path": "tests/test_scientific_session_projection.py",
                 "label": "Insufficiency follow-up tests",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
               }
             ],
             "recent_changes": [
@@ -2253,31 +2253,31 @@
             "path": "system/services/material_goal_answer_service.py",
             "label": "Answer decision service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
           },
           {
             "path": "system/services/material_goal_coverage_service.py",
             "label": "Coverage-based answer gating",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
           },
           {
             "path": "tests/test_scientific_session_projection.py",
             "label": "Answer projection tests",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
           },
           {
             "path": "system/services/material_goal_answer_service.py",
             "label": "Bounded additional-data and experiment requests",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
           },
           {
             "path": "tests/test_scientific_session_projection.py",
             "label": "Insufficiency follow-up tests",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
           }
         ],
         "recent_changes": [
@@ -2406,19 +2406,19 @@
                 "path": "system/services/scientific_session_projection_service.py",
                 "label": "Session projection service",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/scientific_session_projection_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/scientific_session_projection_service.py"
               },
               {
                 "path": "system/discovery_workbench.py",
                 "label": "Workbench continuity shaping",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/discovery_workbench.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/discovery_workbench.py"
               },
               {
                 "path": "tests/test_scientific_session_projection.py",
                 "label": "Session reopen continuity tests",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
               }
             ],
             "recent_changes": [
@@ -2534,42 +2534,42 @@
                 "path": "docs/first-battlefield-inspection.html",
                 "label": "Inspection page shell",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/first-battlefield-inspection.html"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/first-battlefield-inspection.html"
               },
               {
                 "path": "docs/assets/first-battlefield-inspection.js",
                 "label": "Inspection interaction logic",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection.js"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection.js"
               },
               {
                 "path": "templates/discovery.html",
                 "label": "Workbench inspection surface",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
               }
             ],
             "recent_changes": [
+              {
+                "commit_sha": "e9c858cc156613084828b871672e178ac60b3298",
+                "commit_short": "e9c858c",
+                "committed_on": "2026-04-23",
+                "author": "lolet0815",
+                "subject": "Refine battlefield inspection experience"
+              },
+              {
+                "commit_sha": "02d0d196117eef6074ab1c9387421617e2b5e39a",
+                "commit_short": "02d0d19",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Polish battlefield inspection UX"
+              },
               {
                 "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
                 "commit_short": "0c17ac8",
                 "committed_on": "2026-04-22",
                 "author": "lolet0815",
                 "subject": "Add repo-inspected battlefield snapshot pipeline"
-              },
-              {
-                "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
-                "commit_short": "120dedb",
-                "committed_on": "2026-04-22",
-                "author": "lolet0815",
-                "subject": "Strengthen battlefield inspection instrument"
-              },
-              {
-                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
-                "commit_short": "ae3adb9",
-                "committed_on": "2026-04-22",
-                "author": "lolet0815",
-                "subject": "Add battlefield inspection portal and support traces"
               }
             ]
           }
@@ -2579,40 +2579,54 @@
             "path": "system/services/scientific_session_projection_service.py",
             "label": "Session projection service",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/scientific_session_projection_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/scientific_session_projection_service.py"
           },
           {
             "path": "system/discovery_workbench.py",
             "label": "Workbench continuity shaping",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/discovery_workbench.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/discovery_workbench.py"
           },
           {
             "path": "tests/test_scientific_session_projection.py",
             "label": "Session reopen continuity tests",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/tests/test_scientific_session_projection.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/tests/test_scientific_session_projection.py"
           },
           {
             "path": "docs/first-battlefield-inspection.html",
             "label": "Inspection page shell",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/first-battlefield-inspection.html"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/first-battlefield-inspection.html"
           },
           {
             "path": "docs/assets/first-battlefield-inspection.js",
             "label": "Inspection interaction logic",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection.js"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection.js"
           },
           {
             "path": "templates/discovery.html",
             "label": "Workbench inspection surface",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
           }
         ],
         "recent_changes": [
+          {
+            "commit_sha": "e9c858cc156613084828b871672e178ac60b3298",
+            "commit_short": "e9c858c",
+            "committed_on": "2026-04-23",
+            "author": "lolet0815",
+            "subject": "Refine battlefield inspection experience"
+          },
+          {
+            "commit_sha": "02d0d196117eef6074ab1c9387421617e2b5e39a",
+            "commit_short": "02d0d19",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Polish battlefield inspection UX"
+          },
           {
             "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
             "commit_short": "0c17ac8",
@@ -2626,20 +2640,6 @@
             "committed_on": "2026-04-22",
             "author": "lolet0815",
             "subject": "Strengthen battlefield inspection instrument"
-          },
-          {
-            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
-            "commit_short": "ae3adb9",
-            "committed_on": "2026-04-22",
-            "author": "lolet0815",
-            "subject": "Add battlefield inspection portal and support traces"
-          },
-          {
-            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
-            "commit_short": "9d80665",
-            "committed_on": "2026-04-21",
-            "author": "lolet0815",
-            "subject": "Add material goal specifications and discovery updates"
           }
         ]
       },
@@ -2734,13 +2734,13 @@
                 "path": "system/services/material_goal_answer_service.py",
                 "label": "Conservative answer promotion logic",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
               },
               {
                 "path": "system/services/material_goal_coverage_service.py",
                 "label": "Critical-dimension blocking",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
               }
             ],
             "recent_changes": [
@@ -2830,42 +2830,42 @@
                 "path": "system/services/material_goal_answer_service.py",
                 "label": "Inspectable insufficiency output",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
               },
               {
                 "path": "docs/assets/first-battlefield-inspection.js",
                 "label": "Inspection-layer withholding detail",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection.js"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection.js"
               },
               {
                 "path": "templates/discovery.html",
                 "label": "Discovery withholding surface",
                 "exists": true,
-                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+                "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
               }
             ],
             "recent_changes": [
+              {
+                "commit_sha": "e9c858cc156613084828b871672e178ac60b3298",
+                "commit_short": "e9c858c",
+                "committed_on": "2026-04-23",
+                "author": "lolet0815",
+                "subject": "Refine battlefield inspection experience"
+              },
+              {
+                "commit_sha": "02d0d196117eef6074ab1c9387421617e2b5e39a",
+                "commit_short": "02d0d19",
+                "committed_on": "2026-04-22",
+                "author": "lolet0815",
+                "subject": "Polish battlefield inspection UX"
+              },
               {
                 "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
                 "commit_short": "0c17ac8",
                 "committed_on": "2026-04-22",
                 "author": "lolet0815",
                 "subject": "Add repo-inspected battlefield snapshot pipeline"
-              },
-              {
-                "commit_sha": "120dedbdcbe1fb2356464be46133e15593d4c573",
-                "commit_short": "120dedb",
-                "committed_on": "2026-04-22",
-                "author": "lolet0815",
-                "subject": "Strengthen battlefield inspection instrument"
-              },
-              {
-                "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
-                "commit_short": "ae3adb9",
-                "committed_on": "2026-04-22",
-                "author": "lolet0815",
-                "subject": "Add battlefield inspection portal and support traces"
               }
             ]
           }
@@ -2875,34 +2875,48 @@
             "path": "system/services/material_goal_answer_service.py",
             "label": "Conservative answer promotion logic",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
           },
           {
             "path": "system/services/material_goal_coverage_service.py",
             "label": "Critical-dimension blocking",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_coverage_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_coverage_service.py"
           },
           {
             "path": "system/services/material_goal_answer_service.py",
             "label": "Inspectable insufficiency output",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/system/services/material_goal_answer_service.py"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/system/services/material_goal_answer_service.py"
           },
           {
             "path": "docs/assets/first-battlefield-inspection.js",
             "label": "Inspection-layer withholding detail",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/docs/assets/first-battlefield-inspection.js"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/docs/assets/first-battlefield-inspection.js"
           },
           {
             "path": "templates/discovery.html",
             "label": "Discovery withholding surface",
             "exists": true,
-            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/173c2fb7b2d8aa65c05e3e02934e69bd78f1c71e/templates/discovery.html"
+            "url": "https://github.com/thokchomlolet03-cpu/discovery_intelligence_system/blob/e9c858cc156613084828b871672e178ac60b3298/templates/discovery.html"
           }
         ],
         "recent_changes": [
+          {
+            "commit_sha": "e9c858cc156613084828b871672e178ac60b3298",
+            "commit_short": "e9c858c",
+            "committed_on": "2026-04-23",
+            "author": "lolet0815",
+            "subject": "Refine battlefield inspection experience"
+          },
+          {
+            "commit_sha": "02d0d196117eef6074ab1c9387421617e2b5e39a",
+            "commit_short": "02d0d19",
+            "committed_on": "2026-04-22",
+            "author": "lolet0815",
+            "subject": "Polish battlefield inspection UX"
+          },
           {
             "commit_sha": "0c17ac8cca04aac383081409df70ce376754ff55",
             "commit_short": "0c17ac8",
@@ -2916,20 +2930,6 @@
             "committed_on": "2026-04-22",
             "author": "lolet0815",
             "subject": "Strengthen battlefield inspection instrument"
-          },
-          {
-            "commit_sha": "ae3adb9f20a4a0b2cc2e586bdef8cbaf3bd7be94",
-            "commit_short": "ae3adb9",
-            "committed_on": "2026-04-22",
-            "author": "lolet0815",
-            "subject": "Add battlefield inspection portal and support traces"
-          },
-          {
-            "commit_sha": "9d80665b9ab5f176c24e2c82a316358f6d7239b1",
-            "commit_short": "9d80665",
-            "committed_on": "2026-04-21",
-            "author": "lolet0815",
-            "subject": "Add material goal specifications and discovery updates"
           }
         ]
       }

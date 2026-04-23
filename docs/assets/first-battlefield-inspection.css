@@ -16,6 +16,46 @@
   --inspection-success: #0f766e;
   --inspection-warning: #a16207;
   --inspection-danger: #b91c1c;
+  --inspection-grid-line: rgba(148, 163, 184, 0.05);
+  --inspection-graph-backdrop: rgba(5, 12, 18, 0.9);
+  --inspection-surface-raised: rgba(9, 18, 27, 0.9);
+  --inspection-surface-raised-strong: rgba(9, 18, 27, 0.94);
+  --inspection-surface-soft: rgba(10, 18, 28, 0.86);
+  --inspection-surface-hover: rgba(18, 32, 46, 0.94);
+  --inspection-surface-selected: rgba(20, 36, 54, 0.94);
+  --inspection-chip-bg: rgba(148, 163, 184, 0.05);
+  --inspection-matrix-empty: rgba(148, 163, 184, 0.04);
+  --inspection-rail-bg: rgba(148, 163, 184, 0.1);
+}
+
+:root[data-theme="light"] {
+  --inspection-bg:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(14, 116, 144, 0.1), transparent 24%),
+    #eef4fa;
+  --inspection-panel: rgba(255, 255, 255, 0.86);
+  --inspection-panel-strong: rgba(255, 255, 255, 0.98);
+  --inspection-panel-soft: rgba(248, 250, 252, 0.86);
+  --inspection-line: rgba(15, 23, 42, 0.08);
+  --inspection-line-strong: rgba(15, 23, 42, 0.16);
+  --inspection-text: #0f172a;
+  --inspection-muted: #475569;
+  --inspection-accent: #2563eb;
+  --inspection-accent-soft: rgba(37, 99, 235, 0.14);
+  --inspection-shadow: 0 28px 64px rgba(15, 23, 42, 0.1);
+  --inspection-success: #0f766e;
+  --inspection-warning: #b45309;
+  --inspection-danger: #b91c1c;
+  --inspection-grid-line: rgba(148, 163, 184, 0.16);
+  --inspection-graph-backdrop: rgba(241, 245, 249, 0.98);
+  --inspection-surface-raised: rgba(248, 250, 252, 0.96);
+  --inspection-surface-raised-strong: rgba(255, 255, 255, 0.98);
+  --inspection-surface-soft: rgba(241, 245, 249, 0.92);
+  --inspection-surface-hover: rgba(235, 241, 250, 0.98);
+  --inspection-surface-selected: rgba(225, 236, 252, 0.98);
+  --inspection-chip-bg: rgba(37, 99, 235, 0.06);
+  --inspection-matrix-empty: rgba(255, 255, 255, 0.62);
+  --inspection-rail-bg: rgba(148, 163, 184, 0.18);
 }
 
 body.inspection-body {
@@ -99,6 +139,13 @@ body.inspection-body {
   margin-bottom: 18px;
 }
 
+.inspection-gap-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
 .inspection-score-card {
   padding: 16px;
 }
@@ -121,7 +168,7 @@ body.inspection-body {
   height: 10px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--inspection-rail-bg);
   margin-bottom: 8px;
 }
 
@@ -218,12 +265,13 @@ body.inspection-body {
 .inspection-graph-shell {
   position: relative;
   min-height: 720px;
+  height: clamp(720px, 82vh, 980px);
   border-radius: 18px;
   overflow: hidden;
   background:
-    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    rgba(5, 12, 18, 0.9);
+    linear-gradient(var(--inspection-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--inspection-grid-line) 1px, transparent 1px),
+    var(--inspection-graph-backdrop);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
@@ -248,15 +296,17 @@ body.inspection-body {
   height: 38px;
   border-radius: 10px;
   border: 1px solid var(--inspection-line-strong);
-  background: rgba(9, 18, 27, 0.94);
+  background: var(--inspection-surface-raised-strong);
   color: var(--inspection-text);
 }
 
 .inspection-graph-svg {
   width: 100%;
-  min-height: 720px;
+  height: 100%;
+  min-height: 0;
   display: block;
   cursor: grab;
+  touch-action: none;
 }
 
 .inspection-graph-svg.is-dragging {
@@ -352,11 +402,18 @@ body.inspection-body {
   gap: 8px;
 }
 
+.inspection-scroll-frame {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+
 .inspection-heatmap-header,
 .inspection-heatmap-row {
   display: grid;
   grid-template-columns: 210px repeat(6, minmax(0, 1fr));
   gap: 8px;
+  min-width: 940px;
 }
 
 .inspection-heatmap-header span {
@@ -371,7 +428,7 @@ body.inspection-body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  background: rgba(9, 18, 27, 0.92);
+  background: var(--inspection-surface-raised);
 }
 
 .inspection-matrix-cell {
@@ -382,7 +439,7 @@ body.inspection-body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: rgba(148, 163, 184, 0.04);
+  background: var(--inspection-matrix-empty);
   padding: 8px;
   transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
@@ -433,7 +490,7 @@ body.inspection-body {
   height: 14px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--inspection-rail-bg);
 }
 
 .inspection-bar-fill {
@@ -445,6 +502,20 @@ body.inspection-body {
   margin-top: 4px;
   font-size: 12px;
   color: var(--inspection-muted);
+}
+
+.inspection-bar-button {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.inspection-bar-button.is-selected {
+  border-color: rgba(93, 162, 255, 0.7);
+  background: var(--inspection-surface-selected);
 }
 
 .inspection-list {
@@ -460,9 +531,10 @@ body.inspection-body {
   text-align: left;
   border: 1px solid var(--inspection-line);
   border-radius: 14px;
-  background: rgba(9, 18, 27, 0.9);
+  background: var(--inspection-surface-raised);
   color: var(--inspection-text);
   padding: 12px;
+  font: inherit;
 }
 
 .inspection-list a {
@@ -471,7 +543,7 @@ body.inspection-body {
   text-align: left;
   border: 1px solid var(--inspection-line);
   border-radius: 14px;
-  background: rgba(9, 18, 27, 0.9);
+  background: var(--inspection-surface-raised);
   color: var(--inspection-text);
   padding: 12px;
   text-decoration: none;
@@ -479,7 +551,7 @@ body.inspection-body {
 
 .inspection-list button.is-selected {
   border-color: rgba(93, 162, 255, 0.7);
-  background: rgba(20, 36, 54, 0.94);
+  background: var(--inspection-surface-selected);
 }
 
 .inspection-list button strong {
@@ -500,7 +572,7 @@ body.inspection-body {
   border: 1px solid var(--inspection-line);
   border-radius: 999px;
   padding: 6px 10px;
-  background: rgba(148, 163, 184, 0.05);
+  background: var(--inspection-chip-bg);
 }
 
 .inspection-legend-dot,
@@ -586,7 +658,7 @@ body.inspection-body {
   border: 1px solid var(--inspection-line);
   border-radius: 14px;
   padding: 14px;
-  background: rgba(10, 18, 28, 0.86);
+  background: var(--inspection-surface-soft);
 }
 
 .inspection-detail-section h4 {
@@ -614,7 +686,7 @@ body.inspection-body {
   border: 1px solid var(--inspection-line);
   border-radius: 14px;
   padding: 12px;
-  background: rgba(10, 18, 28, 0.86);
+  background: var(--inspection-surface-soft);
 }
 
 .inspection-stat-card strong,
@@ -663,17 +735,20 @@ body.inspection-body {
   border: 1px solid var(--inspection-line);
   border-radius: 12px;
   padding: 11px 12px;
-  background: rgba(9, 18, 27, 0.9);
+  background: var(--inspection-surface-raised);
   color: var(--inspection-text);
   text-decoration: none;
 }
 
 .inspection-source-link:hover {
   border-color: rgba(93, 162, 255, 0.55);
-  background: rgba(18, 32, 46, 0.94);
+  background: var(--inspection-surface-hover);
 }
 
 .inspection-list button:hover,
+.inspection-list a:hover,
+.inspection-impact-button:hover,
+.inspection-bar-button:hover,
 .inspection-dependency-map button:hover,
 .inspection-graph-controls button:hover,
 .inspection-toolbar select:hover,
@@ -691,6 +766,11 @@ a:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid rgba(93, 162, 255, 0.9);
   outline-offset: 2px;
+}
+
+.inspection-node:focus-visible rect {
+  stroke: var(--inspection-accent);
+  stroke-width: 2.8;
 }
 
 .inspection-source-link strong {
@@ -725,7 +805,7 @@ a:focus-visible,
 .inspection-capability-card {
   border: 1px solid var(--inspection-line);
   border-radius: 14px;
-  background: rgba(9, 18, 27, 0.9);
+  background: var(--inspection-surface-raised);
   padding: 12px;
 }
 
@@ -747,6 +827,19 @@ a:focus-visible,
   padding-left: 10px;
 }
 
+.inspection-impact-button {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--inspection-line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--inspection-surface-raised);
+  color: var(--inspection-text);
+  cursor: pointer;
+  font: inherit;
+}
+
 .inspection-dependency-map {
   display: flex;
   flex-wrap: wrap;
@@ -757,7 +850,7 @@ a:focus-visible,
   border: 1px solid var(--inspection-line);
   border-radius: 999px;
   padding: 7px 12px;
-  background: rgba(13, 24, 35, 0.95);
+  background: var(--inspection-surface-raised-strong);
   color: var(--inspection-text);
 }
 
@@ -787,6 +880,10 @@ a:focus-visible,
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .inspection-gap-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .inspection-filter-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -797,6 +894,11 @@ a:focus-visible,
     grid-template-columns: 1fr;
   }
 
+  .inspection-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .inspection-panel.is-sticky {
     position: static;
   }
@@ -805,26 +907,40 @@ a:focus-visible,
   .inspection-graph-svg {
     min-height: 620px;
   }
+
+  .inspection-graph-shell {
+    height: clamp(620px, 74vh, 820px);
+  }
 }
 
 @media (max-width: 860px) {
   .inspection-hero,
+  .inspection-gap-grid,
   .inspection-score-grid,
   .inspection-filter-bar,
   .inspection-stat-grid,
   .inspection-definition-grid,
   .inspection-criteria-grid,
-  .inspection-capability-breakdown {
-    grid-template-columns: 1fr;
-  }
-
-  .inspection-heatmap-header,
-  .inspection-heatmap-row,
+  .inspection-capability-breakdown,
   .inspection-bar-row {
     grid-template-columns: 1fr;
   }
 
+  .inspection-graph-shell {
+    min-height: 500px;
+    height: clamp(500px, 68vh, 620px);
+  }
+
+  .inspection-heatmap-header,
+  .inspection-heatmap-row {
+    min-width: 860px;
+  }
+
+  .inspection-detail-title {
+    font-size: 26px;
+  }
+
   .inspection-family-name {
-    justify-content: center;
+    justify-content: flex-start;
   }
 }

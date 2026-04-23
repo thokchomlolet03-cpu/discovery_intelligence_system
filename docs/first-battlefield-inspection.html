@@ -33,6 +33,7 @@
       <div class="site-actions">
         <a class="ghost-button" href="./index.html">Documentation Portal</a>
         <a class="ghost-button" href="./media.html">Media</a>
+        <button id="copy-view-link" class="ghost-button" type="button">Copy View Link</button>
         <button id="reset-filters" class="ghost-button" type="button">Reset Filters</button>
         <button id="theme-toggle" class="ghost-button" type="button">Light mode</button>
       </div>
@@ -112,6 +113,29 @@
           <p id="gate-score" class="inspection-metric-value">0</p>
           <div class="inspection-score-bar"><div id="gate-fill" class="inspection-score-fill"></div></div>
           <p id="gate-summary" class="inspection-helper"></p>
+        </article>
+      </section>
+
+      <section class="inspection-gap-grid" aria-label="Distance from the intended battlefield-ready state">
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Distance To Battlefield Ready</p>
+          <p id="target-gap-score" class="inspection-metric-value">0</p>
+          <p id="target-gap-summary" class="inspection-helper"></p>
+        </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Unmet Hard Gates</p>
+          <p id="unmet-gate-count" class="inspection-metric-value">0</p>
+          <p id="unmet-gate-summary" class="inspection-helper"></p>
+        </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Repo-Inspected Criteria</p>
+          <p id="repo-inspected-count" class="inspection-metric-value">0</p>
+          <p id="repo-inspected-summary" class="inspection-helper"></p>
+        </article>
+        <article class="inspection-score-card">
+          <p class="inspection-card-label">Manifest-Seeded Criteria</p>
+          <p id="seeded-count" class="inspection-metric-value">0</p>
+          <p id="seeded-summary" class="inspection-helper"></p>
         </article>
       </section>
 
@@ -196,7 +220,9 @@
               </div>
               <p class="inspection-helper">Each cell shows how many sub-capabilities currently land in that maturity band. Click a cell to pivot every linked view.</p>
             </div>
-            <div id="inspection-heatmap" class="inspection-heatmap"></div>
+            <div class="inspection-scroll-frame">
+              <div id="inspection-heatmap" class="inspection-heatmap"></div>
+            </div>
           </section>
 
           <section class="inspection-panel">

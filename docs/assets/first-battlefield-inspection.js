@@ -19,6 +19,7 @@ const state = {
   dragStartY: 0,
   snapshot: null,
   model: null,
+  copyFeedbackTimer: 0,
 };
 
 const elements = {
@@ -37,6 +38,14 @@ const elements = {
   coreSummary: document.getElementById("core-summary"),
   inspectabilitySummary: document.getElementById("inspectability-summary"),
   gateSummary: document.getElementById("gate-summary"),
+  targetGapScore: document.getElementById("target-gap-score"),
+  targetGapSummary: document.getElementById("target-gap-summary"),
+  unmetGateCount: document.getElementById("unmet-gate-count"),
+  unmetGateSummary: document.getElementById("unmet-gate-summary"),
+  repoInspectedCount: document.getElementById("repo-inspected-count"),
+  repoInspectedSummary: document.getElementById("repo-inspected-summary"),
+  seededCount: document.getElementById("seeded-count"),
+  seededSummary: document.getElementById("seeded-summary"),
   generatedAt: document.getElementById("inspection-generated-at"),
   commitLabel: document.getElementById("inspection-commit"),
   trackedPathsLabel: document.getElementById("inspection-tracked-paths"),
@@ -48,6 +57,7 @@ const elements = {
   scopeFilter: document.getElementById("scope-filter"),
   searchInput: document.getElementById("inspection-search"),
   resetButton: document.getElementById("reset-filters"),
+  copyViewButton: document.getElementById("copy-view-link"),
   graphSvg: document.getElementById("inspection-graph"),
   graphReset: document.getElementById("graph-reset"),
   graphZoomIn: document.getElementById("graph-zoom-in"),
@@ -71,6 +81,36 @@ function snapshotMeta() {
   return state.snapshot || {};
 }
 
+function totalCriteriaCount() {
+  return (
+    state.model?.capabilities.reduce((sum, capability) => sum + (capability.criteria?.length || 0), 0) || 0
+  );
+}
+
+function repoInspectedCriteriaCount() {
+  return (
+    snapshotMeta().repo_inspected_criteria_count ||
+    state.model?.capabilities.reduce(
+      (sum, capability) =>
+        sum +
+        (capability.criteria || []).filter((criterion) => criterion.status_source === "repo_inspected").length,
+      0
+    ) ||
+    0
+  );
+}
+
+function seededCriteriaCount() {
+  return (
+    snapshotMeta().seeded_criteria_count ||
+    state.model?.capabilities.reduce(
+      (sum, capability) => sum + (capability.criteria || []).filter((criterion) => criterion.status_source !== "repo_inspected").length,
+      0
+    ) ||
+    0
+  );
+}
+
 function formatDateTime(value) {
   if (!value) return "";
   const parsed = new Date(value);
@@ -88,6 +128,81 @@ function repoCommitUrl(commitSha) {
   const repoUrl = snapshotMeta().repo_url || "";
   if (!repoUrl || !commitSha) return "";
   return `${repoUrl}/commit/${commitSha}`;
+}
+
+function sanitizedUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const searchValue = state.search.trim();
+  const selected = selectedNode();
+
+  const assign = (key, value, defaultValue = "") => {
+    if (!value || value === defaultValue) {
+      params.delete(key);
+      return;
+    }
+    params.set(key, value);
+  };
+
+  assign("family", state.familyFilter, "all");
+  assign("maturity", state.maturityFilter, "all");
+  assign("scope", state.scopeFilter, "all");
+  assign("search", searchValue);
+  assign("selected", selected?.id || "");
+  assign("scale", state.graphScale !== 1 ? String(state.graphScale) : "");
+  assign("ox", state.graphOffsetX ? String(Math.round(state.graphOffsetX)) : "");
+  assign("oy", state.graphOffsetY ? String(Math.round(state.graphOffsetY)) : "");
+  return params;
+}
+
+function persistUrlState() {
+  try {
+    const params = sanitizedUrlState();
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash || ""}`;
+    window.history.replaceState({}, "", nextUrl);
+  } catch (error) {}
+}
+
+function loadUrlState() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const family = params.get("family");
+    const maturity = params.get("maturity");
+    const scope = params.get("scope");
+    const search = params.get("search");
+    const selected = params.get("selected");
+    const scale = Number(params.get("scale"));
+    const offsetX = Number(params.get("ox"));
+    const offsetY = Number(params.get("oy"));
+
+    if (family && (family === "all" || baseModel().families.some((item) => item.id === family))) {
+      state.familyFilter = family;
+    }
+    if (maturity && (maturity === "all" || MATURITY_ORDER.includes(maturity))) {
+      state.maturityFilter = maturity;
+    }
+    if (
+      scope &&
+      ["all", "critical", "scientific_core", "surface_and_governance", "blockers"].includes(scope)
+    ) {
+      state.scopeFilter = scope;
+    }
+    if (search) {
+      state.search = search;
+    }
+    if (selected) {
+      state.selectedId = selected;
+    }
+    if (Number.isFinite(scale) && scale >= 0.62 && scale <= 2.1) {
+      state.graphScale = Number(scale.toFixed(2));
+    }
+    if (Number.isFinite(offsetX)) {
+      state.graphOffsetX = offsetX;
+    }
+    if (Number.isFinite(offsetY)) {
+      state.graphOffsetY = offsetY;
+    }
+  } catch (error) {}
 }
 
 async function loadInspectionSnapshot() {
@@ -297,7 +412,8 @@ function capabilityHaystack(capability) {
 }
 
 function capabilityMatchesFilters(capability, { ignoreMaturity = false } = {}) {
-  const searchMatch = !state.search || capabilityHaystack(capability).includes(state.search);
+  const normalizedSearch = state.search.trim().toLowerCase();
+  const searchMatch = !normalizedSearch || capabilityHaystack(capability).includes(normalizedSearch);
   const familyMatch = state.familyFilter === "all" || capability.familyId === state.familyFilter;
   const maturityMatch = ignoreMaturity || state.maturityFilter === "all" || capability.maturity === state.maturityFilter;
   const scopeMatch =
@@ -422,6 +538,11 @@ function setMetric(node, fillNode, value, summaryNode, summary) {
   if (summaryNode) summaryNode.textContent = summary;
 }
 
+function setValueMetric(node, value, summaryNode, summary) {
+  if (node) node.textContent = String(value);
+  if (summaryNode) summaryNode.textContent = summary;
+}
+
 function overviewSummary(summary) {
   if (summary.overall < 0.38) {
     return "The system has real first-battlefield architecture, but the scientific core is still far from trustworthy answer readiness.";
@@ -440,6 +561,48 @@ function gateSummary(summary) {
     return "All configured hard gates are currently satisfied by the seeded inspection model.";
   }
   return `${summary.unmetGates.length} hard gate${summary.unmetGates.length === 1 ? "" : "s"} still block battlefield readiness.`;
+}
+
+function renderGapMetrics() {
+  const summary = getSummary();
+  if (!summary) return;
+
+  const overallGap = Math.max(0, 100 - scorePercent(summary.overall));
+  const criticalGap = Math.max(0, 100 - scorePercent(summary.critical));
+  const scientificGap = Math.max(0, 100 - scorePercent(summary.scientific));
+  const repoInspected = repoInspectedCriteriaCount();
+  const seeded = seededCriteriaCount();
+  const criteriaTotal = totalCriteriaCount() || repoInspected + seeded;
+  const anchoredShare = criteriaTotal ? Math.round((repoInspected / criteriaTotal) * 100) : 0;
+
+  setValueMetric(
+    elements.targetGapScore,
+    overallGap,
+    elements.targetGapSummary,
+    `${overallGap} points remain on the overall index; the scientific core is still ${scientificGap} points short and the critical path is ${criticalGap} points short.`
+  );
+  setValueMetric(
+    elements.unmetGateCount,
+    summary.unmetGates.length,
+    elements.unmetGateSummary,
+    summary.unmetGates.length
+      ? `${summary.unmetGates.length} capabilities still fail their required maturity threshold.`
+      : "No configured hard gates are currently unsatisfied."
+  );
+  setValueMetric(
+    elements.repoInspectedCount,
+    repoInspected,
+    elements.repoInspectedSummary,
+    `${anchoredShare}% of the measured criteria are currently anchored in repo inspection rather than manifest-only seeding.`
+  );
+  setValueMetric(
+    elements.seededCount,
+    seeded,
+    elements.seededSummary,
+    seeded
+      ? `${seeded} criteria still rely on seeded manifest assessment and should be read as bridge-state, not fully verified source truth.`
+      : "No criteria currently rely on seeded manifest assessments."
+  );
 }
 
 function renderScorecards() {
@@ -532,7 +695,7 @@ function renderRecentChanges() {
       change.author || ""
     }</div>
       <div class="inspection-helper">${selected?.recent_changes?.length ? "Selection-linked source change" : "Tracked first-battlefield source change"}</div>
-      ${commitLink ? `<div class="inspection-helper">${commitLink}</div>` : ""}
+      ${commitLink ? '<div class="inspection-helper">Open commit on GitHub</div>' : ""}
     `;
     return item;
   });
@@ -578,6 +741,32 @@ function renderActiveFilters() {
 
   const resetChip = elements.activeFilters.querySelector("[data-reset-filters='true']");
   resetChip?.addEventListener("click", resetFilters);
+}
+
+function setCopyButtonLabel(label) {
+  if (!elements.copyViewButton) return;
+  elements.copyViewButton.textContent = label;
+}
+
+async function copyCurrentViewLink() {
+  try {
+    persistUrlState();
+    await navigator.clipboard.writeText(window.location.href);
+    setCopyButtonLabel("Link Copied");
+  } catch (error) {
+    const tempInput = document.createElement("input");
+    tempInput.value = window.location.href;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    tempInput.remove();
+    setCopyButtonLabel("Link Copied");
+  }
+
+  window.clearTimeout(state.copyFeedbackTimer);
+  state.copyFeedbackTimer = window.setTimeout(() => {
+    setCopyButtonLabel("Copy View Link");
+  }, 1800);
 }
 
 function graphLayout(graphCapabilityIds) {
@@ -817,7 +1006,25 @@ function renderGraph() {
 
     group.setAttribute("transform", `translate(${position.x} ${position.y})`);
     group.setAttribute("class", classes.join(" "));
+    group.setAttribute("tabindex", "0");
+    group.setAttribute("role", "button");
+    group.setAttribute(
+      "aria-label",
+      `${node.label}, ${node.type === "family" ? "family" : "capability"}, ${formatStatusLabel(node.maturity)}, readiness ${scorePercent(
+        node.score
+      )}`
+    );
+    group.setAttribute("aria-pressed", selected?.id === node.id ? "true" : "false");
+    group.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
     group.addEventListener("click", () => {
+      state.selectedId = node.id;
+      renderAll();
+    });
+    group.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
       state.selectedId = node.id;
       renderAll();
     });
@@ -1038,8 +1245,10 @@ function renderReadinessBars() {
   );
 
   families.forEach((family) => {
-    const row = document.createElement("div");
-    row.className = "inspection-detail-section";
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "inspection-detail-section inspection-bar-button";
+    if (state.selectedId === family.id) row.classList.add("is-selected");
     row.addEventListener("click", () => {
       state.selectedId = family.id;
       renderAll();
@@ -1498,9 +1707,17 @@ function renderDownstreamImpact(selected) {
     directList.className = "inspection-impact-list";
     direct.forEach((item) => {
       const li = document.createElement("li");
-      li.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "inspection-impact-button";
+      button.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${
         item.recommended_next_step || item.blocker || item.description
       }</div>`;
+      button.addEventListener("click", () => {
+        state.selectedId = item.id;
+        renderAll();
+      });
+      li.appendChild(button);
       directList.appendChild(li);
     });
     const section = document.createElement("div");
@@ -1515,9 +1732,17 @@ function renderDownstreamImpact(selected) {
     extendedList.className = "inspection-impact-list";
     extendedNodes.forEach((item) => {
       const li = document.createElement("li");
-      li.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "inspection-impact-button";
+      button.innerHTML = `<strong>${item.label}</strong><div class="inspection-helper">${
         item.type === "family" ? item.description : item.recommended_next_step || item.blocker || item.description
       }</div>`;
+      button.addEventListener("click", () => {
+        state.selectedId = item.id;
+        renderAll();
+      });
+      li.appendChild(button);
       extendedList.appendChild(li);
     });
     const section = document.createElement("div");
@@ -1568,8 +1793,10 @@ function renderAll() {
   state.model = buildInspectionModel();
   ensureValidSelection();
   syncFilters();
+  persistUrlState();
   renderProvenance();
   renderScorecards();
+  renderGapMetrics();
   renderActiveFilters();
   renderGraph();
   renderHeatmap();
@@ -1598,6 +1825,7 @@ function bindGraphInteractions() {
     const delta = event.deltaY > 0 ? -0.1 : 0.1;
     state.graphScale = Math.max(0.62, Math.min(2.1, Number((state.graphScale + delta).toFixed(2))));
     renderGraph();
+    persistUrlState();
   });
 
   svg.addEventListener("pointerdown", (event) => {
@@ -1618,6 +1846,7 @@ function bindGraphInteractions() {
     if (!state.dragging) return;
     state.dragging = false;
     renderGraph();
+    persistUrlState();
   });
 }
 
@@ -1635,33 +1864,38 @@ function bindControls() {
     renderAll();
   });
   elements.searchInput?.addEventListener("input", (event) => {
-    state.search = String(event.target.value || "").trim().toLowerCase();
+    state.search = String(event.target.value || "");
     renderAll();
   });
   elements.resetButton?.addEventListener("click", resetFilters);
+  elements.copyViewButton?.addEventListener("click", copyCurrentViewLink);
   elements.graphReset?.addEventListener("click", () => {
     state.graphScale = 1;
     state.graphOffsetX = 0;
     state.graphOffsetY = 0;
     renderGraph();
+    persistUrlState();
   });
   elements.graphZoomIn?.addEventListener("click", () => {
     state.graphScale = Math.min(2.1, Number((state.graphScale + 0.1).toFixed(2)));
     renderGraph();
+    persistUrlState();
   });
   elements.graphZoomOut?.addEventListener("click", () => {
     state.graphScale = Math.max(0.62, Number((state.graphScale - 0.1).toFixed(2)));
     renderGraph();
+    persistUrlState();
   });
 }
 
 async function init() {
   state.snapshot = await loadInspectionSnapshot();
+  state.model = buildInspectionModel();
   populateFamilyOptions();
+  loadUrlState();
   bindControls();
   bindGraphInteractions();
-  state.model = buildInspectionModel();
-  state.selectedId = rankedBlockers()[0]?.id || state.model.capabilities[0]?.id || "";
+  state.selectedId = state.selectedId || rankedBlockers()[0]?.id || state.model.capabilities[0]?.id || "";
   renderAll();
 }
 
